@@ -7,7 +7,7 @@ import SeleccionarTipoProyecto from './components/SeleccionarTipoProyecto';
 import CrearPOA from './components/CrearPOA';
 import SidebarContent from './components/SidebarContent.tsx'; // Importar el componente SidebarContent actualizado
 import CrearProyectoApi from './components/CrearProyectoApi'; // Importar el componente para crear proyectos
-
+import Login from './components/Login.tsx';
 // Interface para el usuario
 interface Usuario {
   nombre: string;
@@ -71,11 +71,12 @@ const AppLayout: React.FC = () => {
           {/* Contenido principal - Rutas */}
           <Container fluid className="p-4">
             <Routes>
-              <Route path="/" element={<h1>Bienvenido al Sistema de Gestión de Proyectos</h1>} />
+              <Route path="/" element={<h1>Bienvenido al Sistema de Gestión de Proyectos 1</h1>} />
               <Route path="/nuevo-proyecto" element={<SeleccionarTipoProyecto />} />
               {/* Nueva ruta para la creación directa de proyectos basada en el ID del tipo seleccionado */}
               <Route path="/crear-proyecto/:tipoProyectoId" element={<CrearProyectoDirecto />} />
               <Route path="/nuevo-poa" element={<CrearPOA />} />
+              <Route path="/login" element={<Login/>} />
             </Routes>
           </Container>
         </div>
@@ -152,7 +153,7 @@ const CrearProyectoDirecto: React.FC = () => {
     // Con una API real sería:
     // const fetchTipoProyecto = async () => {
     //   try {
-    //     const response = await fetch(`/api/tipos-proyecto/${tipoProyectoId}`);
+    //     const response = await fetch(/api/tipos-proyecto/${tipoProyectoId});
     //     const data = await response.json();
     //     setTipoProyectoSeleccionado(data);
     //   } catch (error) {
