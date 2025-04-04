@@ -1,6 +1,7 @@
-import { useState, FormEvent } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { authAPI } from '../api/userAPI';
+import { authAPI, rolAPI } from '../api/userAPI';
+import { Rol } from '../interfaces/user';
 import '../styles/Login.css';
 
 const Register = () => {
@@ -10,10 +11,32 @@ const Register = () => {
     const [confirmPassword, setConfirmPassword] = useState<string>('');
     const [error, setError] = useState<string>('');
     const [loading, setLoading] = useState<boolean>(false);
+    const [roles, setRoles] = useState<Rol[]>([]);
+    const [selectedRol, setSelectedRol] = useState<string>('');
+    const [loadingRoles, setLoadingRoles] = useState<boolean>(true);
     const navigate = useNavigate();
 
-    // ID de rol fijo para administrador
-    const ID_ROL_ADMIN = "307ac64f-1cf9-4657-8677-314e8fba459e";
+    // Cargar roles al montar el componente
+    useEffect(() => {
+        const fetchRoles = async () => {
+            try {
+                const rolesData = await rolAPI.getRoles();
+                setRoles(rolesData);
+                
+                // Si hay roles disponibles, seleccionar el primero por defecto
+                if (rolesData.length > 0) {
+                    setSelectedRol(rolesData[0].id_rol);
+                }
+            } catch (error) {
+                console.error('Error al cargar roles:', error);
+                setError('No se pudieron cargar los roles. Por favor intenta más tarde.');
+            } finally {
+                setLoadingRoles(false);
+            }
+        };
+
+        fetchRoles();
+    }, []);
 
     const handleRegister = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -45,7 +68,7 @@ const Register = () => {
                 nombre_usuario,
                 email,
                 password, // La API se encargará de hashear la contraseña
-                id_rol: ID_ROL_ADMIN
+                id_rol: selectedRol
             });
 
             // Si todo salió bien, redirigir al login
@@ -136,17 +159,31 @@ const Register = () => {
                         <select 
                             id="rol" 
                             className="input-field"
-                            disabled
+                            value={selectedRol}
+                            onChange={(e) => setSelectedRol(e.target.value)}
+                            disabled={loadingRoles || roles.length === 0}
                         >
-                            <option value={ID_ROL_ADMIN}>Administrador</option>
+                            {loadingRoles ? (
+                                <option value="">Cargando roles...</option>
+                            ) : roles.length === 0 ? (
+                                <option value="">No hay roles disponibles</option>
+                            ) : (
+                                roles.map(rol => (
+                                    <option key={rol.id_rol} value={rol.id_rol}>
+                                        {rol.nombre_rol}
+                                    </option>
+                                ))
+                            )}
                         </select>
-                        <small className="text-muted">Actualmente solo está disponible el rol de Administrador</small>
+                        {roles.length === 1 && (
+                            <small className="text-muted">Actualmente solo está disponible el rol de {roles[0].nombre_rol}</small>
+                        )}
                     </div>
 
                     <button
                         type="submit"
                         className="submit-button"
-                        disabled={loading}
+                        disabled={loading || loadingRoles}
                     >
                         {loading ? 'Procesando...' : 'Registrarse'}
                     </button>

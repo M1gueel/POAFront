@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { UserLogin, UserRegister, UserProfile, AuthResponse } from '../interfaces/user';
+import { UserLogin, UserRegister, UserProfile, AuthResponse, Rol } from '../interfaces/user';
 
 // Configuración base de axios
 const API = axios.create({
@@ -105,5 +105,13 @@ export const authAPI = {
             imagen: data.imagen || '/profile-placeholder.jpg',
             username: data.username
         };
+    }
+};
+
+export const rolAPI = {
+    // Obtener todos los roles
+    getRoles: async (): Promise<Rol[]> => {
+        const response = await API.get('/roles/');
+        return response.data;
     }
 };
