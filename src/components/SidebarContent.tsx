@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Nav, Button, Image } from 'react-bootstrap';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext'; // Ajusta la ruta según sea necesario
 
 // Interface para el tipo de proyecto
 interface TipoProyecto {
@@ -31,6 +32,7 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
   isSidebarCollapsed, 
   toggleSidebar 
 }) => {
+  const { logout } = useAuth(); // Obtener logout directamente del contexto
   const location = useLocation();
   const navigate = useNavigate();
   
@@ -243,7 +245,10 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
                 variant="outline-light" 
                 size="sm" 
                 className="w-100 mt-2"
-                onClick={onItemClick}
+                onClick={() => {
+                  if (onItemClick) onItemClick();
+                  logout(); // Usa la función del contexto
+                }}
               >
                 <i className="bi bi-box-arrow-right me-2"></i>
                 Cerrar Sesión
