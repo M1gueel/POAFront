@@ -19,6 +19,7 @@ import Dashboard from './components/Dashboard.tsx';
 // import ListaPeriodos from './components/ListaPeriodos';
 import AgregarPeriodo from './components/AgregarPeriodo';
 import ProtectedRoute from './components/ProtectedRoute.tsx';
+import Register from './components/Register.tsx';
 // import EditarPeriodo from './components/EditarPeriodo';
 // import PerfilUsuario from './components/PerfilUsuario';
 // import PaginaNoEncontrada from './components/PaginaNoEncontrada';
@@ -126,7 +127,7 @@ const AppLayout: React.FC = () => {
           <Routes>
             {/* Rutas públicas */}
             <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<RegistrarUsuario />} />
+            <Route path="/register" element={<Register />} />
             
             {/* Ruta principal / dashboard - protegida */}
             <Route 
