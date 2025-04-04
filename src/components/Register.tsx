@@ -19,7 +19,7 @@ const Register = () => {
     const navigate = useNavigate();
 
     // ID de rol fijo para administrador
-    const ID_ROL_ADMIN = "296d328a-c861-4340-aa2f-7dab64dcded1";
+    const ID_ROL_ADMIN = "307ac64f-1cf9-4657-8677-314e8fba459e";
 
     // Función para hacer hash de la contraseña
     async function hashPassword(password: string): Promise<string> {

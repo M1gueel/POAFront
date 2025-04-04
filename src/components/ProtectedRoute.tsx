@@ -1,55 +1,26 @@
-import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { authService } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import { ReactNode } from 'react';
 
 interface ProtectedRouteProps {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
+  const { isAuthenticated, loading } = useAuth();
   const location = useLocation();
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        // Verificar si hay un token
-        const token = localStorage.getItem('token');
-        if (!token) {
-          setIsAuthenticated(false);
-          return;
-        }
-        
-        // Verificar si el token es válido obteniendo el perfil del usuario
-        await authService.getCurrentUser();
-        setIsAuthenticated(true);
-      } catch (error) {
-        console.error('Error de autenticación:', error);
-        localStorage.removeItem('token'); // Limpiar token inválido
-        setIsAuthenticated(false);
-      }
-    };
-    
-    checkAuth();
-  }, []);
-
-  // Mostrar loading mientras verifica autenticación
-  if (isAuthenticated === null) {
-    return (
-      <div className="d-flex justify-content-center align-items-center" style={{ height: '100vh' }}>
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Verificando autenticación...</span>
-        </div>
-      </div>
-    );
+  // Mostrar un indicador de carga mientras se verifica la autenticación
+  if (loading) {
+    return <div>Cargando...</div>; // Puedes reemplazar esto con un componente de spinner
   }
 
-  // Redirigir a login si no está autenticado
+  // Si no está autenticado, redirigir al login
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Mostrar el contenido protegido
+  // Si está autenticado, mostrar el contenido protegido
   return <>{children}</>;
 };
 

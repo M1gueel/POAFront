@@ -1,5 +1,6 @@
-import { useState, FormEvent, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useState, FormEvent } from 'react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import '../styles/Login.css';
 
 const Login = () => {
@@ -7,15 +8,7 @@ const Login = () => {
     const [password, setPassword] = useState<string>('');
     const [error, setError] = useState<string>('');
     const [loading, setLoading] = useState<boolean>(false);
-    const navigate = useNavigate(); // Hook para la navegación
-
-    // Verificar si ya hay un token al cargar el componente
-    useEffect(() => {
-        const token = localStorage.getItem('token');
-        if (token) {
-            navigate('/'); // Redirigir si ya hay un token
-        }
-    }, [navigate]);
+    const { login } = useAuth(); // Usar el hook de autenticación
 
     // Función para hacer hash de la contraseña
     async function hashPassword(password: string): Promise<string> {
@@ -39,7 +32,6 @@ const Login = () => {
         try {
             setLoading(true);
 
-            console.log('email', email);
             // Hacer hash de la contraseña
             const hashedPassword = await hashPassword(password);
 
@@ -54,10 +46,9 @@ const Login = () => {
                 headers: {
                     "Content-Type": "application/x-www-form-urlencoded",
                     "Accept": "application/json",
-                  },
+                },
                 body: body,
             });
-            console.log("response", response);
 
             // Verificar si la respuesta es exitosa
             if (!response.ok) {
@@ -66,39 +57,36 @@ const Login = () => {
 
             // Procesar la respuesta
             const data = await response.json();
+            const accessToken = data.access_token;
+            
+            let userData = {
+                nombre: email,
+                rol: 'Usuario',
+                imagen: '/profile-placeholder.jpg'
+            };
 
-            // Guardar el token en localStorage
-            localStorage.setItem('token', data.access_token);
-
-            // Obtener y guardar información del usuario
+            // Obtener información del usuario
             try {
                 const userResponse = await fetch('http://localhost:8000/perfil', {
                     headers: {
-                        'Authorization': `Bearer ${data.access_token}`
+                        'Authorization': `Bearer ${accessToken}`
                     }
                 });
                 
                 if (userResponse.ok) {
-                    const userData = await userResponse.json();
-                    // Guardar datos del usuario en localStorage para usar en la aplicación
-                    localStorage.setItem('usuario', JSON.stringify({
-                        nombre: userData.nombre || userData.username || email,
-                        rol: userData.rol || 'Usuario',
-                        imagen: userData.imagen || '/profile-placeholder.jpg'
-                    }));
+                    const userDetails = await userResponse.json();
+                    userData = {
+                        nombre: userDetails.nombre || userDetails.username || email,
+                        rol: userDetails.rol || 'Usuario',
+                        imagen: userDetails.imagen || '/profile-placeholder.jpg'
+                    };
                 }
             } catch (error) {
                 console.error('Error al obtener datos del usuario:', error);
-                // Si falla obtener datos del usuario, guardar datos básicos
-                localStorage.setItem('usuario', JSON.stringify({
-                    nombre: email,
-                    rol: 'Usuario',
-                    imagen: '/profile-placeholder.jpg'
-                }));
             }
 
-            // Redireccionar al usuario al dashboard
-            navigate('/');
+            // Usar la función login del contexto
+            login(accessToken, userData);
 
         } catch (error) {
             console.error('Error al iniciar sesión:', error);
