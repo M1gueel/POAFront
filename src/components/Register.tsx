@@ -1,13 +1,7 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import '../styles/Login.css'; // Reutilizamos los estilos del login
-
-interface UserCreate {
-    nombre_usuario: string;
-    email: string;
-    password: string;
-    id_rol: string;
-}
+import { authAPI } from '../api/userAPI';
+import '../styles/Login.css';
 
 const Register = () => {
     const [nombre_usuario, setNombreUsuario] = useState<string>('');
@@ -20,15 +14,6 @@ const Register = () => {
 
     // ID de rol fijo para administrador
     const ID_ROL_ADMIN = "307ac64f-1cf9-4657-8677-314e8fba459e";
-
-    // Función para hacer hash de la contraseña
-    async function hashPassword(password: string): Promise<string> {
-        const encoder = new TextEncoder();
-        const data = encoder.encode(password);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    }
 
     const handleRegister = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -55,35 +40,20 @@ const Register = () => {
         try {
             setLoading(true);
             
-            // Crear objeto de usuario para enviar
-            const userData: UserCreate = {
+            // Usar el servicio de autenticación para registrar
+            await authAPI.register({
                 nombre_usuario,
                 email,
-                password: await hashPassword(password),
+                password, // La API se encargará de hashear la contraseña
                 id_rol: ID_ROL_ADMIN
-            };
-
-            // Realizar la petición de registro
-            const response = await fetch('http://localhost:8000/register', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(userData),
             });
-
-            // Verificar si la respuesta es exitosa
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.detail || 'Error al registrar usuario');
-            }
 
             // Si todo salió bien, redirigir al login
             navigate('/login', { state: { message: 'Registro exitoso. Por favor inicia sesión.' } });
 
         } catch (error: any) {
             console.error('Error al registrar:', error);
-            setError(error.message || 'Error al registrar el usuario');
+            setError(error.response?.data?.detail || 'Error al registrar el usuario');
         } finally {
             setLoading(false);
         }

@@ -1,6 +1,7 @@
 import { useState, FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { authAPI } from '../api/userAPI';
 import '../styles/Login.css';
 
 const Login = () => {
@@ -8,19 +9,10 @@ const Login = () => {
     const [password, setPassword] = useState<string>('');
     const [error, setError] = useState<string>('');
     const [loading, setLoading] = useState<boolean>(false);
-    const { login } = useAuth(); // Usar el hook de autenticación
-
-    // Función para hacer hash de la contraseña
-    async function hashPassword(password: string): Promise<string> {
-        const encoder = new TextEncoder();
-        const data = encoder.encode(password);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    }
+    const { login } = useAuth();
 
     const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
-        e.preventDefault(); // Prevent form from refreshing the page
+        e.preventDefault();
         setError('');
 
         // Validar campos
@@ -31,63 +23,13 @@ const Login = () => {
 
         try {
             setLoading(true);
-
-            // Hacer hash de la contraseña
-            const hashedPassword = await hashPassword(password);
-
-            // Configurar el cuerpo de la solicitud
-            const body = new URLSearchParams();
-            body.append('username', email);
-            body.append('password', hashedPassword);
-
-            // Realizar la petición de login
-            const response = await fetch('http://localhost:8000/login', {
-                method: 'POST',
-                headers: {
-                    "Content-Type": "application/x-www-form-urlencoded",
-                    "Accept": "application/json",
-                },
-                body: body,
-            });
-
-            // Verificar si la respuesta es exitosa
-            if (!response.ok) {
-                throw new Error('Error en las credenciales');
-            }
-
-            // Procesar la respuesta
-            const data = await response.json();
-            const accessToken = data.access_token;
             
-            let userData = {
-                nombre: email,
-                rol: 'Usuario',
-                imagen: '/profile-placeholder.jpg'
-            };
-
-            // Obtener información del usuario
-            try {
-                const userResponse = await fetch('http://localhost:8000/perfil', {
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`
-                    }
-                });
-                
-                if (userResponse.ok) {
-                    const userDetails = await userResponse.json();
-                    userData = {
-                        nombre: userDetails.nombre || userDetails.username || email,
-                        rol: userDetails.rol || 'Usuario',
-                        imagen: userDetails.imagen || '/profile-placeholder.jpg'
-                    };
-                }
-            } catch (error) {
-                console.error('Error al obtener datos del usuario:', error);
-            }
-
+            // Usar el servicio de autenticación
+            const { token, userData } = await authAPI.login(email, password);
+            
             // Usar la función login del contexto
-            login(accessToken, userData);
-
+            login(token, userData);
+            
         } catch (error) {
             console.error('Error al iniciar sesión:', error);
             setError('Usuario o contraseña incorrectos');
