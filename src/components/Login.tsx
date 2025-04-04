@@ -34,8 +34,8 @@ const Login = () => {
             // Hacer hash de la contraseña
             const hashedPassword = await hashPassword(password);
             const body = new URLSearchParams();
-            body.append("username", "jhon@gmail.com");
-            body.append("password", "12345");
+            body.append('username', email);
+            body.append('password', hashedPassword);
             // Realizar la petición de login
             const response = await fetch('http://localhost:8000/login', {
                 method: 'POST',
@@ -46,6 +46,7 @@ const Login = () => {
                 body: body,
             });
             console.log("response", response);
+            console.log(response);
             // Verificar si la respuesta es exitosa
             if (!response.ok) {
                 throw new Error('Error en las credenciales');
