@@ -1,4 +1,4 @@
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import '../styles/Login.css';
 
@@ -8,6 +8,14 @@ const Login = () => {
     const [error, setError] = useState<string>('');
     const [loading, setLoading] = useState<boolean>(false);
     const navigate = useNavigate(); // Hook para la navegación
+
+    // Verificar si ya hay un token al cargar el componente
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            navigate('/'); // Redirigir si ya hay un token
+        }
+    }, [navigate]);
 
     // Función para hacer hash de la contraseña
     async function hashPassword(password: string): Promise<string> {
@@ -30,12 +38,16 @@ const Login = () => {
 
         try {
             setLoading(true);
+
             console.log('email', email);
             // Hacer hash de la contraseña
             const hashedPassword = await hashPassword(password);
+
+            // Configurar el cuerpo de la solicitud
             const body = new URLSearchParams();
             body.append('username', email);
             body.append('password', hashedPassword);
+
             // Realizar la petición de login
             const response = await fetch('http://localhost:8000/login', {
                 method: 'POST',
@@ -46,6 +58,7 @@ const Login = () => {
                 body: body,
             });
             console.log("response", response);
+
             // Verificar si la respuesta es exitosa
             if (!response.ok) {
                 throw new Error('Error en las credenciales');
@@ -57,8 +70,35 @@ const Login = () => {
             // Guardar el token en localStorage
             localStorage.setItem('token', data.access_token);
 
-            // Redireccionar al usuario a AppLayout usando react-router
-            navigate('/'); // Asumiendo que AppLayout está en la ruta principal
+            // Obtener y guardar información del usuario
+            try {
+                const userResponse = await fetch('http://localhost:8000/perfil', {
+                    headers: {
+                        'Authorization': `Bearer ${data.access_token}`
+                    }
+                });
+                
+                if (userResponse.ok) {
+                    const userData = await userResponse.json();
+                    // Guardar datos del usuario en localStorage para usar en la aplicación
+                    localStorage.setItem('usuario', JSON.stringify({
+                        nombre: userData.nombre || userData.username || email,
+                        rol: userData.rol || 'Usuario',
+                        imagen: userData.imagen || '/profile-placeholder.jpg'
+                    }));
+                }
+            } catch (error) {
+                console.error('Error al obtener datos del usuario:', error);
+                // Si falla obtener datos del usuario, guardar datos básicos
+                localStorage.setItem('usuario', JSON.stringify({
+                    nombre: email,
+                    rol: 'Usuario',
+                    imagen: '/profile-placeholder.jpg'
+                }));
+            }
+
+            // Redireccionar al usuario al dashboard
+            navigate('/');
 
         } catch (error) {
             console.error('Error al iniciar sesión:', error);

@@ -1,16 +1,18 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
+
 // import App from './App.tsx'
-import CrearProyecto from './components/CrearProyecto.tsx';
-import AgregarPOA from './components/AgregarPOA.tsx';
-import AgregarPeriodo from './components/AgregarPeriodo.tsx';
-import RegistrarUsuario from './components/RegistrarUsuario.tsx';
-import CrearProyectoApi from './components/CrearProyectoApi.tsx';
-import AgregarPOAApi from './components/AgregarPOASApi.tsx';
-import SeleccionarTipoProyecto from './components/SeleccionarTipoProyecto.tsx';
-import AppLayout from './AppLayout.tsx';
-import Login from './components/Login.tsx';
+// import CrearProyecto from './components/CrearProyecto.tsx';
+// import AgregarPOA from './components/AgregarPOA.tsx';
+// import AgregarPeriodo from './components/AgregarPeriodo.tsx';
+// import RegistrarUsuario from './components/RegistrarUsuario.tsx';
+// import CrearProyectoApi from './components/CrearProyectoApi.tsx';
+// import AgregarPOAApi from './components/AgregarPOASApi.tsx';
+// import SeleccionarTipoProyecto from './components/SeleccionarTipoProyecto.tsx';
+// import AppLayout from './AppLayout.tsx';
+import App from './App.tsx';
+// import Login from './components/Login.tsx';
 
 
 createRoot(document.getElementById('root')!).render(
@@ -24,6 +26,8 @@ createRoot(document.getElementById('root')!).render(
       {/* <RegistrarUsuario/> */}
 
       {/* <SeleccionarTipoProyecto/> */}
-      <AppLayout/>
+      {/* <AppLayout/> */}
+        <App/>
+      
   </StrictMode>,
 )
