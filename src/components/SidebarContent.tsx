@@ -21,9 +21,16 @@ interface Usuario {
 interface SidebarContentProps {
   usuario: Usuario;
   onItemClick?: () => void;
+  isSidebarCollapsed: boolean;
+  toggleSidebar: () => void;
 }
 
-const SidebarContent: React.FC<SidebarContentProps> = ({ usuario, onItemClick }) => {
+const SidebarContent: React.FC<SidebarContentProps> = ({ 
+  usuario, 
+  onItemClick, 
+  isSidebarCollapsed, 
+  toggleSidebar 
+}) => {
   const location = useLocation();
   const navigate = useNavigate();
   
@@ -89,20 +96,6 @@ const SidebarContent: React.FC<SidebarContentProps> = ({ usuario, onItemClick })
         setTiposProyecto(mockTiposProyecto);
         setIsLoading(false);
       }, 500);
-      
-      // Cuando integres con una API real:
-      // const cargarTiposProyecto = async () => {
-      //   try {
-      //     const response = await fetch('/api/tipos-proyecto');
-      //     const data = await response.json();
-      //     setTiposProyecto(data);
-      //   } catch (error) {
-      //     console.error('Error al cargar tipos de proyecto:', error);
-      //   } finally {
-      //     setIsLoading(false);
-      //   }
-      // };
-      // cargarTiposProyecto();
     }
   }, [showTiposProyecto]);
 
@@ -121,125 +114,204 @@ const SidebarContent: React.FC<SidebarContentProps> = ({ usuario, onItemClick })
 
   return (
     <React.Fragment>
-      {/* Logo y título */}
-      <div className="d-flex align-items-center justify-content-center p-3 border-bottom">
-        <span className="fs-4 fw-semibold">SGP</span>
+      {/* Botón de toggle en la parte superior */}
+      <div className="d-flex align-items-center justify-content-between p-3 border-bottom">
+        <Link 
+          to="/dashboard" 
+          className="fs-4 fw-semibold text-decoration-none text-white"
+          onClick={onItemClick}
+        >
+          SGP
+        </Link>
+        <Button 
+          variant="outline-light" 
+          size="sm" 
+          onClick={toggleSidebar}
+          className="d-none d-lg-block"
+        >
+          <i className={`bi bi-chevron-${isSidebarCollapsed ? 'right' : 'left'}`}></i>
+        </Button>
       </div>
       
-      {/* Links de navegación */}
-      <Nav className="flex-column mt-3">
-        <div className="px-3 mb-2 text-secondary text-uppercase small">Proyectos</div>
-        
-        {/* Sección Proyectos */}
-        <Nav.Item>
-          <Nav.Link 
-            as={Link} 
-            to="/proyectos" 
-            className={`text-white ${isActive("/proyectos")}`}
-            onClick={onItemClick}
-          >
-            <i className="bi bi-folder me-2"></i>
-            Listar Proyectos
-          </Nav.Link>
-        </Nav.Item>
-        
-        {/* Nuevo Proyecto - Ahora con función para mostrar/ocultar tipos */}
-        <Nav.Item>
-          <Nav.Link 
-            className="text-white"
-            onClick={() => setShowTiposProyecto(!showTiposProyecto)}
-            style={{ cursor: 'pointer' }}
-          >
-            <i className="bi bi-plus-circle me-2"></i>
-            Nuevo Proyecto
-            <i className={`bi bi-chevron-${showTiposProyecto ? 'down' : 'right'} ms-2`}></i>
-          </Nav.Link>
-          
-          {/* Submenu para tipos de proyecto */}
-          {showTiposProyecto && (
-            <div className="ps-4 border-start border-secondary ms-3">
-              {isLoading ? (
-                <div className="text-white-50 p-2">
-                  <div className="spinner-border spinner-border-sm me-2" role="status">
-                    <span className="visually-hidden">Cargando...</span>
-                  </div>
-                  Cargando...
+      {/* Solo mostrar estos elementos si el sidebar no está colapsado */}
+      {!isSidebarCollapsed && (
+        <>
+          {/* Links de navegación */}
+          <Nav className="flex-column mt-3">
+            <div className="px-3 mb-2 text-secondary text-uppercase small">Proyectos</div>
+            
+            {/* Sección Proyectos */}
+            <Nav.Item>
+              <Nav.Link 
+                as={Link} 
+                to="/proyectos" 
+                className={`text-white ${isActive("/proyectos")}`}
+                onClick={onItemClick}
+              >
+                <i className="bi bi-folder me-2"></i>
+                Listar Proyectos
+              </Nav.Link>
+            </Nav.Item>
+            
+            {/* Nuevo Proyecto - Ahora con función para mostrar/ocultar tipos */}
+            <Nav.Item>
+              <Nav.Link 
+                className="text-white"
+                onClick={() => setShowTiposProyecto(!showTiposProyecto)}
+                style={{ cursor: 'pointer' }}
+              >
+                <i className="bi bi-plus-circle me-2"></i>
+                Nuevo Proyecto
+                <i className={`bi bi-chevron-${showTiposProyecto ? 'down' : 'right'} ms-2`}></i>
+              </Nav.Link>
+              
+              {/* Submenu para tipos de proyecto */}
+              {showTiposProyecto && (
+                <div className="ps-4 border-start border-secondary ms-3">
+                  {isLoading ? (
+                    <div className="text-white-50 p-2">
+                      <div className="spinner-border spinner-border-sm me-2" role="status">
+                        <span className="visually-hidden">Cargando...</span>
+                      </div>
+                      Cargando...
+                    </div>
+                  ) : (
+                    tiposProyecto.map(tipo => (
+                      <Nav.Link
+                        key={tipo.id_tipo_proyecto}
+                        className="text-white-50 py-1"
+                        onClick={() => handleSelectTipoProyecto(tipo)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <i className="bi bi-arrow-right-short me-1"></i>
+                        {tipo.codigo_tipo}: {tipo.nombre}
+                      </Nav.Link>
+                    ))
+                  )}
                 </div>
-              ) : (
-                tiposProyecto.map(tipo => (
-                  <Nav.Link
-                    key={tipo.id_tipo_proyecto}
-                    className="text-white-50 py-1"
-                    onClick={() => handleSelectTipoProyecto(tipo)}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <i className="bi bi-arrow-right-short me-1"></i>
-                    {tipo.codigo_tipo}: {tipo.nombre}
-                  </Nav.Link>
-                ))
               )}
+            </Nav.Item>
+            
+            {/* Sección POAs */}
+            <div className="px-3 mt-4 mb-2 text-secondary text-uppercase small">POAs</div>
+            
+            <Nav.Item>
+              <Nav.Link 
+                as={Link} 
+                to="/nuevo-poa" 
+                className={`text-white ${isActive("/nuevo-poa")}`}
+                onClick={onItemClick}
+              >
+                <i className="bi bi-file-earmark-plus me-2"></i>
+                Nuevo POA
+              </Nav.Link>
+            </Nav.Item>
+            
+            {/* Preferencias de usuario */}
+            <div className="mt-auto">
+              <div className="px-3 mb-2 text-secondary text-uppercase small">Usuario</div>
+                <Nav.Item>
+                  <Nav.Link 
+                    as={Link} 
+                    to="/perfil" 
+                    className={`text-white ${isActive("/perfil")}`}
+                    onClick={onItemClick}
+                  >
+                    <i className="bi bi-person-circle me-2"></i>
+                    Perfil
+                  </Nav.Link>
+                </Nav.Item>
             </div>
-          )}
-        </Nav.Item>
-        
-        {/* Sección POAs */}
-        <div className="px-3 mt-4 mb-2 text-secondary text-uppercase small">POAs</div>
-        
-        <Nav.Item>
-          <Nav.Link 
-            as={Link} 
-            to="/nuevo-poa" 
-            className={`text-white ${isActive("/nuevo-poa")}`}
-            onClick={onItemClick}
-          >
-            <i className="bi bi-file-earmark-plus me-2"></i>
-            Nuevo POA
-          </Nav.Link>
-        </Nav.Item>
-        
-        {/* Preferencias de usuario */}
-        <div className="mt-auto">
-          <div className="px-3 mb-2 text-secondary text-uppercase small">Usuario</div>
+            
+            {/* Información del usuario en la parte inferior del sidebar */}
+            <div className="mt-auto p-3 border-top">
+              <div className="d-flex align-items-center">
+                <Image 
+                  src={usuario.imagen} 
+                  roundedCircle 
+                  width="40" 
+                  height="40" 
+                  className="me-2"
+                  alt={usuario.nombre}
+                />
+                <div>
+                  <div className="fw-bold">{usuario.nombre}</div>
+                  <small className="text-muted">{usuario.rol}</small>
+                </div>
+              </div>
+              <Button 
+                variant="outline-light" 
+                size="sm" 
+                className="w-100 mt-2"
+                onClick={onItemClick}
+              >
+                <i className="bi bi-box-arrow-right me-2"></i>
+                Cerrar Sesión
+              </Button>
+            </div>
+          </Nav>
+        </>
+      )}
+      
+      {/* Cuando el sidebar está colapsado, mostrar solo íconos */}
+      {isSidebarCollapsed && (
+        <Nav className="flex-column align-items-center mt-3">
+          <Nav.Item>
+            <Nav.Link 
+              as={Link} 
+              to="/proyectos" 
+              className={`text-white ${isActive("/proyectos")}`}
+              onClick={onItemClick}
+              title="Listar Proyectos"
+            >
+              <i className="bi bi-folder"></i>
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link 
+              className="text-white"
+              onClick={() => setShowTiposProyecto(!showTiposProyecto)}
+              style={{ cursor: 'pointer' }}
+              title="Nuevo Proyecto"
+            >
+              <i className="bi bi-plus-circle"></i>
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link 
+              as={Link} 
+              to="/nuevo-poa" 
+              className={`text-white ${isActive("/nuevo-poa")}`}
+              onClick={onItemClick}
+              title="Nuevo POA"
+            >
+              <i className="bi bi-file-earmark-plus"></i>
+            </Nav.Link>
+          </Nav.Item>
+          <div className="mt-auto mb-3">
             <Nav.Item>
               <Nav.Link 
                 as={Link} 
                 to="/perfil" 
                 className={`text-white ${isActive("/perfil")}`}
                 onClick={onItemClick}
+                title="Perfil"
               >
-                <i className="bi bi-person-circle me-2"></i>
-                Perfil
+                <i className="bi bi-person-circle"></i>
               </Nav.Link>
             </Nav.Item>
-        </div>
-        
-        {/* Información del usuario en la parte inferior del sidebar */}
-        <div className="mt-auto p-3 border-top">
-          <div className="d-flex align-items-center">
-            <Image 
-              src={usuario.imagen} 
-              roundedCircle 
-              width="40" 
-              height="40" 
-              className="me-2"
-              alt={usuario.nombre}
-            />
-            <div>
-              <div className="fw-bold">{usuario.nombre}</div>
-              <small className="text-muted">{usuario.rol}</small>
-            </div>
+            <Nav.Item>
+              <Nav.Link 
+                className="text-white"
+                onClick={onItemClick}
+                title="Cerrar Sesión"
+              >
+                <i className="bi bi-box-arrow-right"></i>
+              </Nav.Link>
+            </Nav.Item>
           </div>
-          <Button 
-            variant="outline-light" 
-            size="sm" 
-            className="w-100 mt-2"
-            onClick={onItemClick}
-          >
-            <i className="bi bi-box-arrow-right me-2"></i>
-            Cerrar Sesión
-          </Button>
-        </div>
-      </Nav>
+        </Nav>
+      )}
     </React.Fragment>
   );
 };
