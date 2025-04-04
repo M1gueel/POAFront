@@ -33,7 +33,7 @@ const Login = () => {
             console.log('email', email);
             // Hacer hash de la contraseña
             const hashedPassword = await hashPassword(password);
-            const body = new FormData();
+            const body = new URLSearchParams();
             body.append("username", "jhon@gmail.com");
             body.append("password", "12345");
             // Realizar la petición de login
