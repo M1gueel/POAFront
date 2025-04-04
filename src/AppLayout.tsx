@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, JSX } from 'react';
 import { Container, Nav, Navbar, Button, Image, Offcanvas } from 'react-bootstrap';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from 'react-router-dom';
 
 // Importación de componentes
 import SeleccionarTipoProyecto from './components/SeleccionarTipoProyecto';
 import CrearPOA from './components/CrearPOA';
-import SidebarContent from './components/SidebarContent.tsx'; // Importar el componente SidebarContent actualizado
-import CrearProyectoApi from './components/CrearProyectoApi'; // Importar el componente para crear proyectos
+import SidebarContent from './components/SidebarContent.tsx';
+import CrearProyectoApi from './components/CrearProyectoApi';
 import Login from './components/Login.tsx';
+import Register from './components/Register.tsx'; // Importar el nuevo componente de registro
+
 // Interface para el usuario
 interface Usuario {
   nombre: string;
@@ -15,8 +17,27 @@ interface Usuario {
   imagen: string;
 }
 
+// Componente para proteger rutas que requieren autenticación
+const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
+  const token = localStorage.getItem('token');
+  
+  if (!token) {
+    // Redireccionar al login si no hay token
+    return <Navigate to="/login" replace />;
+  }
+  
+  return children;
+};
+
 const AppLayout: React.FC = () => {
   const [showSidebar, setShowSidebar] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  
+  // Verificar autenticación al cargar
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    setIsAuthenticated(!!token);
+  }, []);
   
   // Usuario mock (esto vendría de tu sistema de autenticación)
   const usuarioActual: Usuario = {
@@ -30,64 +51,74 @@ const AppLayout: React.FC = () => {
 
   return (
     <Router>
-      <div className="d-flex">
-        {/* Sidebar para pantallas grandes */}
-        <div className="d-none d-lg-flex flex-column bg-dark text-white" style={{ width: '280px', minHeight: '100vh' }}>
-          <SidebarContent usuario={usuarioActual} />
-        </div>
+      <Routes>
+        {/* Rutas públicas */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        
+        {/* Rutas protegidas dentro del layout principal */}
+        <Route
+          path="/*"
+          element={
+            <ProtectedRoute>
+              <div className="d-flex">
+                {/* Sidebar para pantallas grandes */}
+                <div className="d-none d-lg-flex flex-column bg-dark text-white" style={{ width: '280px', minHeight: '100vh' }}>
+                  <SidebarContent usuario={usuarioActual} />
+                </div>
 
-        {/* Contenido principal */}
-        <div className="flex-grow-1">
-          {/* Navbar Superior con botón para mostrar sidebar en pantallas pequeñas */}
-          <Navbar bg="primary" variant="dark" expand="lg" className="mb-3 px-3">
-            <Container fluid>
-              <Button 
-                variant="outline-light" 
-                className="d-lg-none me-2"
-                onClick={handleShowSidebar}
-              >
-                <i className="bi bi-list"></i> Menú
-              </Button>
-              <Navbar.Brand href="#home">Sistema de Gestión de Proyectos</Navbar.Brand>
-              <Navbar.Toggle aria-controls="basic-navbar-nav" />
-              <Navbar.Collapse id="basic-navbar-nav" className="justify-content-end">
-                <Navbar.Text className="text-white">
-                  Usuario: {usuarioActual.nombre}
-                </Navbar.Text>
-              </Navbar.Collapse>
-            </Container>
-          </Navbar>
+                {/* Contenido principal */}
+                <div className="flex-grow-1">
+                  {/* Navbar Superior con botón para mostrar sidebar en pantallas pequeñas */}
+                  <Navbar bg="primary" variant="dark" expand="lg" className="mb-3 px-3">
+                    <Container fluid>
+                      <Button 
+                        variant="outline-light" 
+                        className="d-lg-none me-2"
+                        onClick={handleShowSidebar}
+                      >
+                        <i className="bi bi-list"></i> Menú
+                      </Button>
+                      <Navbar.Brand href="#home">Sistema de Gestión de Proyectos</Navbar.Brand>
+                      <Navbar.Toggle aria-controls="basic-navbar-nav" />
+                      <Navbar.Collapse id="basic-navbar-nav" className="justify-content-end">
+                        <Navbar.Text className="text-white">
+                          Usuario: {usuarioActual.nombre}
+                        </Navbar.Text>
+                      </Navbar.Collapse>
+                    </Container>
+                  </Navbar>
 
-          {/* Sidebar como Offcanvas para pantallas pequeñas */}
-          <Offcanvas show={showSidebar} onHide={handleCloseSidebar} className="bg-dark text-white" style={{ width: '280px' }}>
-            <Offcanvas.Header closeButton closeVariant="white">
-              <Offcanvas.Title>Menú</Offcanvas.Title>
-            </Offcanvas.Header>
-            <Offcanvas.Body>
-              <SidebarContent usuario={usuarioActual} onItemClick={handleCloseSidebar} />
-            </Offcanvas.Body>
-          </Offcanvas>
+                  {/* Sidebar como Offcanvas para pantallas pequeñas */}
+                  <Offcanvas show={showSidebar} onHide={handleCloseSidebar} className="bg-dark text-white" style={{ width: '280px' }}>
+                    <Offcanvas.Header closeButton closeVariant="white">
+                      <Offcanvas.Title>Menú</Offcanvas.Title>
+                    </Offcanvas.Header>
+                    <Offcanvas.Body>
+                      <SidebarContent usuario={usuarioActual} onItemClick={handleCloseSidebar} />
+                    </Offcanvas.Body>
+                  </Offcanvas>
 
-          {/* Contenido principal - Rutas */}
-          <Container fluid className="p-4">
-            <Routes>
-              <Route path="/" element={<h1>Bienvenido al Sistema de Gestión de Proyectos 1</h1>} />
-              <Route path="/nuevo-proyecto" element={<SeleccionarTipoProyecto />} />
-              {/* Nueva ruta para la creación directa de proyectos basada en el ID del tipo seleccionado */}
-              <Route path="/crear-proyecto/:tipoProyectoId" element={<CrearProyectoDirecto />} />
-              <Route path="/nuevo-poa" element={<CrearPOA />} />
-              <Route path="/login" element={<Login/>} />
-            </Routes>
-          </Container>
-        </div>
-      </div>
+                  {/* Contenido principal - Rutas */}
+                  <Container fluid className="p-4">
+                    <Routes>
+                      <Route path="/" element={<h1>Bienvenido al Sistema de Gestión de Proyectos</h1>} />
+                      <Route path="/nuevo-proyecto" element={<SeleccionarTipoProyecto />} />
+                      <Route path="/crear-proyecto/:tipoProyectoId" element={<CrearProyectoDirecto />} />
+                      <Route path="/nuevo-poa" element={<CrearPOA />} />
+                    </Routes>
+                  </Container>
+                </div>
+              </div>
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
     </Router>
   );
 };
 
 // Componente para manejar la creación directa de proyectos
-import { useParams } from 'react-router-dom';
-
 const CrearProyectoDirecto: React.FC = () => {
   const { tipoProyectoId } = useParams<{ tipoProyectoId: string }>();
   const [tipoProyectoSeleccionado, setTipoProyectoSeleccionado] = useState<any>(null);
@@ -149,20 +180,6 @@ const CrearProyectoDirecto: React.FC = () => {
       }
       setIsLoading(false);
     }, 500);
-    
-    // Con una API real sería:
-    // const fetchTipoProyecto = async () => {
-    //   try {
-    //     const response = await fetch(/api/tipos-proyecto/${tipoProyectoId});
-    //     const data = await response.json();
-    //     setTipoProyectoSeleccionado(data);
-    //   } catch (error) {
-    //     console.error('Error al cargar tipo de proyecto:', error);
-    //   } finally {
-    //     setIsLoading(false);
-    //   }
-    // };
-    // fetchTipoProyecto();
   }, [tipoProyectoId]);
   
   // Mientras carga, muestra un spinner

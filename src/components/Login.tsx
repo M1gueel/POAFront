@@ -1,5 +1,5 @@
 import { useState, FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import '../styles/Login.css';
 
 const Login = () => {
@@ -46,7 +46,6 @@ const Login = () => {
                 body: body,
             });
             console.log("response", response);
-            console.log(response);
             // Verificar si la respuesta es exitosa
             if (!response.ok) {
                 throw new Error('Error en las credenciales');
@@ -86,7 +85,7 @@ const Login = () => {
                         <input
                             id="email"
                             type="email"
-                            placeholder="david.torres@epn.edu.ec"
+                            placeholder="usuario@epn.edu.ec"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             required
@@ -114,6 +113,10 @@ const Login = () => {
                     >
                         {loading ? 'Procesando...' : 'Ingresar'}
                     </button>
+                    
+                    <div className="register-link">
+                        ¿No tienes una cuenta? <Link to="/register">Regístrate aquí</Link>
+                    </div>
                 </form>
             </div>
         </div>

@@ -10,6 +10,7 @@ import CrearProyectoApi from './components/CrearProyectoApi.tsx';
 import AgregarPOAApi from './components/AgregarPOASApi.tsx';
 import SeleccionarTipoProyecto from './components/SeleccionarTipoProyecto.tsx';
 import AppLayout from './AppLayout.tsx';
+import Login from './components/Login.tsx';
 
 
 createRoot(document.getElementById('root')!).render(
