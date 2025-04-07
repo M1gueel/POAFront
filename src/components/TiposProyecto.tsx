@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { TipoProyecto } from '../interfaces/project';
 import { projectAPI } from '../api/projectAPI';
 import { HelpCircle } from 'lucide-react';
-import '../styles/TiposProyecto.css'; // Importamos el nuevo archivo CSS
+import '../styles/TiposProyecto.css'; // Importamos el archivo CSS
 
 // Componente para mostrar los tipos de proyecto como botones
 const TiposProyecto: React.FC = () => {
@@ -29,40 +29,58 @@ const TiposProyecto: React.FC = () => {
   }, []);
 
   if (loading) {
-    return <div className="loading-message">Cargando tipos de proyecto...</div>;
+    return (
+      <div className="tipos-proyecto-wrapper">
+        <h1 className="tipos-proyecto-title">Tipo de Proyecto</h1>
+        <div className="loading-message">Cargando tipos de proyecto...</div>
+      </div>
+    );
   }
 
   if (error) {
-    return <div className="error-message">{error}</div>;
+    return (
+      <div className="tipos-proyecto-wrapper">
+        <h1 className="tipos-proyecto-title">Tipo de Proyecto</h1>
+        <div className="error-message">{error}</div>
+      </div>
+    );
   }
 
   return (
-    <div className="tipos-proyecto-container">
-      {tiposProyecto.length === 0 ? (
-        <div className="empty-message">No hay tipos de proyecto disponibles</div>
-      ) : (
-        tiposProyecto.map((tipo) => (
-          <button
-            key={tipo.id_tipo_proyecto}
-            className="tipo-proyecto-button"
-            onClick={() => {
-              // Aquí puedes manejar la acción del botón
-              console.log('Tipo seleccionado:', tipo);
-            }}
-          >
-            <div>
-              <span className="tipo-proyecto-codigo">{tipo.codigo_tipo}</span>
-              <span className="tipo-proyecto-nombre">{tipo.nombre}</span>
-            </div>
-            <div className="tooltip-container">
-              <HelpCircle size={18} className="help-icon" />
-              <div className="tooltip">
-                {tipo.descripcion}
+    <div className="tipos-proyecto-wrapper">
+      <h1 className="tipos-proyecto-title">Tipo de Proyecto</h1>
+      <div className="tipos-proyecto-container">
+        {tiposProyecto.length === 0 ? (
+          <div className="empty-message">No hay tipos de proyecto disponibles</div>
+        ) : (
+          tiposProyecto.map((tipo) => (
+            <button
+              key={tipo.id_tipo_proyecto}
+              className="tipo-proyecto-button"
+              onClick={() => {
+                // Aquí puedes manejar la acción del botón
+                console.log('Tipo seleccionado:', tipo);
+              }}
+            >
+              <div>
+              <span className="tipo-proyecto-codigo">
+                <span style={{ display: 'inline-block', minWidth: '50px' }}>
+                  {tipo.codigo_tipo}
+                </span>
+                |
+              </span>
+                <span className="tipo-proyecto-nombre">{tipo.nombre}</span>
               </div>
-            </div>
-          </button>
-        ))
-      )}
+              <div className="tooltip-container">
+                <HelpCircle size={18} className="help-icon" />
+                <div className="tooltip">
+                  {tipo.descripcion}
+                </div>
+              </div>
+            </button>
+          ))
+        )}
+      </div>
     </div>
   );
 };

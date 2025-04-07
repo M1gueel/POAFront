@@ -1,12 +1,27 @@
 /* styles/TiposProyecto.css */
 
-.tipos-proyecto-container {
+.tipos-proyecto-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    padding: 1.5rem 1rem;
+  }
+  
+  .tipos-proyecto-title {
+    font-size: 2.25rem;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 2.25rem;
+    text-align: center;
+  }
+  
+  .tipos-proyecto-container {
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
     width: 100%;
     max-width: 36rem;
-    padding: 1rem;
   }
   
   .tipo-proyecto-button {
