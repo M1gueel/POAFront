@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { TipoProyecto } from '../interfaces/project';
 import { projectAPI } from '../api/projectAPI';
 import { HelpCircle } from 'lucide-react';
-import '../styles/TiposProyecto.css'; // Importamos el archivo CSS
+import '../styles/TiposProyecto.css';
 
 // Componente para mostrar los tipos de proyecto como botones
 const TiposProyecto: React.FC = () => {
   const [tiposProyecto, setTiposProyecto] = useState<TipoProyecto[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchTiposProyecto = async () => {
@@ -27,6 +29,15 @@ const TiposProyecto: React.FC = () => {
 
     fetchTiposProyecto();
   }, []);
+
+  const handleTipoProyectoSelect = (tipo: TipoProyecto) => {
+    // Navegamos a CrearProyecto con los parámetros necesarios
+    navigate(`/crear-proyecto/`, { 
+      state: { 
+        tipoProyecto: tipo 
+      } 
+    });
+  };
 
   if (loading) {
     return (
@@ -57,18 +68,15 @@ const TiposProyecto: React.FC = () => {
             <button
               key={tipo.id_tipo_proyecto}
               className="tipo-proyecto-button"
-              onClick={() => {
-                // Aquí puedes manejar la acción del botón
-                console.log('Tipo seleccionado:', tipo);
-              }}
+              onClick={() => handleTipoProyectoSelect(tipo)}
             >
               <div>
-              <span className="tipo-proyecto-codigo">
-                <span style={{ display: 'inline-block', minWidth: '50px' }}>
-                  {tipo.codigo_tipo}
+                <span className="tipo-proyecto-codigo">
+                  <span style={{ display: 'inline-block', minWidth: '50px' }}>
+                    {tipo.codigo_tipo}
+                  </span>
+                  |
                 </span>
-                |
-              </span>
                 <span className="tipo-proyecto-nombre">{tipo.nombre}</span>
               </div>
               <div className="tooltip-container">

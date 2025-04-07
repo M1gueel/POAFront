@@ -11,6 +11,16 @@ export interface TipoProyecto {
     descripcion: string;
   }
 
+ export interface EstadoProyecto {
+    id_estado_proyecto: string;
+    nombre: string;
+  }
+  
+ export interface DirectorProyecto {
+    id_usuario: string;
+    nombre_usuario: string;
+  }
+
 export  interface Periodo {
     id_periodo: string;
     codigo_periodo: string;

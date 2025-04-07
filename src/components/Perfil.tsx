@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { userAPI } from '../api/userAPI';
-import { PerfilUsuario, Rol } from '../interfaces/user';
+import { PerfilUsuario } from '../interfaces/user';
 import { useAuth } from '../context/AuthContext';
+import '../styles/Perfil.css'; // Importamos los estilos
 
 const Perfil: React.FC = () => {
   const { token } = useAuth();
@@ -37,29 +38,52 @@ const Perfil: React.FC = () => {
     cargarPerfil();
   }, [token]);
 
-  if (loading) return <div className="container mx-auto p-4">Cargando perfil...</div>;
-  if (error) return <div className="container mx-auto p-4 text-red-500">{error}</div>;
-  if (!perfil) return <div className="container mx-auto p-4">No se encontró información del perfil</div>;
+  if (loading) {
+    return (
+      <div className="perfil-wrapper">
+        <h1 className="perfil-title">Perfil de Usuario</h1>
+        <div className="loading-message">Cargando perfil...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="perfil-wrapper">
+        <h1 className="perfil-title">Perfil de Usuario</h1>
+        <div className="error-message">{error}</div>
+      </div>
+    );
+  }
+
+  if (!perfil) {
+    return (
+      <div className="perfil-wrapper">
+        <h1 className="perfil-title">Perfil de Usuario</h1>
+        <div className="empty-message">No se encontró información del perfil</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="container mx-auto p-4">
-      <div className="bg-white shadow-md rounded-lg p-6 max-w-md mx-auto">
-        <h1 className="text-2xl font-bold mb-6 text-center">Perfil de Usuario</h1>
-        
-        <div className="space-y-4">
-          <div className="flex flex-col">
-            <span className="text-gray-600 text-sm">ID:</span>
-            <span className="font-medium">{perfil.id}</span>
+    <div className="perfil-wrapper">
+      <h1 className="perfil-title">Perfil de Usuario</h1>
+      
+      <div className="perfil-card">
+        <div className="perfil-datos">
+          <div className="perfil-campo">
+            <span className="perfil-etiqueta">ID</span>
+            <span className="perfil-valor">{perfil.id}</span>
           </div>
           
-          <div className="flex flex-col">
-            <span className="text-gray-600 text-sm">Nombre:</span>
-            <span className="font-medium">{perfil.nombre}</span>
+          <div className="perfil-campo">
+            <span className="perfil-etiqueta">Nombre</span>
+            <span className="perfil-valor">{perfil.nombre}</span>
           </div>
           
-          <div className="flex flex-col">
-            <span className="text-gray-600 text-sm">Rol:</span>
-            <span className="font-medium">{nombreRol}</span>
+          <div className="perfil-campo">
+            <span className="perfil-etiqueta">Rol</span>
+            <span className="perfil-valor">{nombreRol}</span>
           </div>
         </div>
       </div>
