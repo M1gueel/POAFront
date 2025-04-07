@@ -10,6 +10,7 @@ export const API = axios.create({
 API.interceptors.request.use((config) => {
     const token = localStorage.getItem('token');
     if (token) {
+        config.headers = config.headers || {};
         config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
@@ -59,7 +60,7 @@ export const authAPI = {
             
             // Obtener el perfil del usuario
             const userResponse = await API.get('/perfil');
-            const userDetails = userResponse.data;
+            const userDetails = userResponse.data as { nombre?: string; rol: string };
             
             // Obtener el nombre del rol basado en el id_rol
             const rolName = await userAPI.getRolNameById(userDetails.rol);
@@ -101,7 +102,7 @@ export const userAPI = {
     // Obtener el perfil del usuario actual
     getPerfilUsuario: async (): Promise<PerfilUsuario> => {
         const response = await API.get('/perfil');
-        return response.data;
+        return response.data as PerfilUsuario;
     },
     
     // Obtener el nombre del rol a partir del id_rol
@@ -122,6 +123,6 @@ export const rolAPI = {
     // Obtener todos los roles
     getRoles: async (): Promise<Rol[]> => {
         const response = await API.get('/roles/');
-        return response.data;
+        return response.data as Rol[];
     }
 };
