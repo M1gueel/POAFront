@@ -23,13 +23,13 @@ const Login = () => {
 
         try {
             setLoading(true);
-            
+
             // Usar el servicio de autenticación
             const { token, userData } = await authAPI.login(email, password);
-            
+
             // Usar la función login del contexto
             login(token, userData);
-            
+
         } catch (error) {
             console.error('Error al iniciar sesión:', error);
             setError('Usuario o contraseña incorrectos');
@@ -83,7 +83,7 @@ const Login = () => {
                     >
                         {loading ? 'Procesando...' : 'Ingresar'}
                     </button>
-                    
+
                     <div className="register-link">
                         ¿No tienes una cuenta? <Link to="/register">Regístrate aquí</Link>
                     </div>

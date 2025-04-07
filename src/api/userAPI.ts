@@ -1,8 +1,8 @@
 import axios from 'axios';
-import { UserLogin, UserRegister, UserProfile, AuthResponse, Rol } from '../interfaces/user';
+import { UserRegister, UserProfile, AuthResponse, Rol, PerfilUsuario } from '../interfaces/user';
 
 // Configuración base de axios
-const API = axios.create({
+export const API = axios.create({
     baseURL: 'http://localhost:8000',
 });
 
@@ -51,7 +51,6 @@ export const authAPI = {
         let userData: UserProfile = {
             nombre: email,
             rol: 'Usuario',
-            imagen: '/profile-placeholder.jpg'
         };
         
         try {
@@ -62,11 +61,13 @@ export const authAPI = {
             const userResponse = await API.get('/perfil');
             const userDetails = userResponse.data;
             
+            // Obtener el nombre del rol basado en el id_rol
+            const rolName = await userAPI.getRolNameById(userDetails.rol);
+            
             userData = {
-                nombre: userDetails.nombre || userDetails.username || email,
-                rol: userDetails.rol || 'Usuario',
-                imagen: userDetails.imagen || '/profile-placeholder.jpg',
-                username: userDetails.username
+                nombre: userDetails.nombre || email,
+                rol: rolName,
+                username: userDetails.nombre
             };
         } catch (error) {
             console.error('Error al obtener datos del usuario:', error);
@@ -92,22 +93,31 @@ export const authAPI = {
                 'Content-Type': 'application/json',
             }
         });
-    },
-    
-    // Obtener el perfil del usuario actual
-    getCurrentUser: async (): Promise<UserProfile> => {
-        const response = await API.get('/perfil');
-        const data = response.data;
-        
-        return {
-            nombre: data.nombre || data.username,
-            rol: data.rol || 'Usuario',
-            imagen: data.imagen || '/profile-placeholder.jpg',
-            username: data.username
-        };
     }
 };
 
+// Servicios de usuario
+export const userAPI = {
+    // Obtener el perfil del usuario actual
+    getPerfilUsuario: async (): Promise<PerfilUsuario> => {
+        const response = await API.get('/perfil');
+        return response.data;
+    },
+    
+    // Obtener el nombre del rol a partir del id_rol
+    getRolNameById: async (id_rol: string): Promise<string> => {
+        try {
+            const roles = await rolAPI.getRoles();
+            const rol = roles.find(r => r.id_rol === id_rol);
+            return rol ? rol.nombre_rol : 'Usuario';
+        } catch (error) {
+            console.error('Error al obtener nombre del rol:', error);
+            return 'Usuario';
+        }
+    }
+};
+
+// Servicios de roles
 export const rolAPI = {
     // Obtener todos los roles
     getRoles: async (): Promise<Rol[]> => {

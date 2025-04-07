@@ -1,16 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import CrearProyectoApi from './CrearProyectoApi';
+import CrearProyectoApi from '../api/CrearProyectoApi';
+import { TipoProyecto } from '../interfaces/project';
 
-// Tipos
-interface TipoProyecto {
-  id_tipo_proyecto: string;
-  codigo_tipo: string;
-  nombre: string;
-  descripcion: string;
-}
 
-const CrearProyectoDirecto: React.FC = () => {
+const CrearProyecto: React.FC = () => {
   const { tipoProyectoId } = useParams<{ tipoProyectoId: string }>();
   const [tipoProyectoSeleccionado, setTipoProyectoSeleccionado] = useState<TipoProyecto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -20,13 +14,6 @@ const CrearProyectoDirecto: React.FC = () => {
     const fetchTipoProyecto = async () => {
       try {
         setIsLoading(true);
-        
-        // Aquí deberías hacer una llamada a tu API para obtener el tipo de proyecto
-        // Por ejemplo:
-        // const response = await fetch(`http://tu-backend/api/tipos-proyecto/${tipoProyectoId}`);
-        // const data = await response.json();
-        
-        // Mientras tanto, usamos datos mock para desarrollo
         const mockTiposProyecto = [
           {
             id_tipo_proyecto: '1e4e8f1c-1a1a-4a1a-8a1a-1a1a1a1a1a1a',
@@ -88,4 +75,4 @@ const CrearProyectoDirecto: React.FC = () => {
   );
 };
 
-export default CrearProyectoDirecto;
+export default CrearProyecto;

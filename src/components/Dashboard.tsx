@@ -6,11 +6,11 @@ export interface PeriodoFormProps {
   id_periodo: string;
 }
 
-const AgregarPeriodo: React.FC = () => {
+const Dashboard: React.FC = () => {
     
     return (
         <h1>Dashboard</h1>
     );
 };
 
-export default AgregarPeriodo;
+export default Dashboard;

@@ -5,7 +5,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
 interface Usuario {
   nombre: string;
   rol: string;
-  imagen: string;
 }
 
 // Definir la interfaz del contexto de autenticación
@@ -52,7 +51,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           localStorage.removeItem('usuario');
         }
       }
-      
+
       setLoading(false);
     };
 
@@ -63,13 +62,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     if (!loading) {
       const isPublicRoute = ['/login', '/register'].includes(location.pathname);
-      
+
       if (!token && !isPublicRoute) {
         // Si no hay token y no es ruta pública, redirigir a login
         navigate('/login');
       } else if (token && isPublicRoute) {
         // Si hay token y es ruta pública, redirigir a la página principal
-        navigate('/');
+        navigate('/dashboard');
       }
     }
   }, [token, location.pathname, loading, navigate]);
@@ -80,7 +79,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.setItem('usuario', JSON.stringify(userData));
     setToken(newToken);
     setUsuario(userData);
-    navigate('/');
+    navigate('/dashboard');
   };
 
   // Función de logout

@@ -1,38 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Form, Button, Container, Card, Row, Col, Table, Modal } from 'react-bootstrap';
-
-// Interfaces actualizadas según la estructura de la BD
-interface Proyecto {
-  id_proyecto: string;
-  codigo_proyecto: string;
-  titulo: string;
-}
-
-interface Periodo {
-  id_periodo: string;
-  codigo_periodo: string;
-  nombre_periodo: string;
-  fecha_inicio: string;
-  fecha_fin: string;
-  anio?: string;
-  mes?: string;
-}
-
-interface EstadoPOA {
-  id_estado_poa: string;
-  nombre: string;
-  descripcion: string;
-}
-
-interface TipoPOA {
-  id_tipo_poa: string;
-  codigo_tipo: string;
-  nombre: string;
-  descripcion: string;
-  duracion_meses: number;
-  cantidad_periodos: number;
-  presupuesto_maximo: number;
-}
+import {Proyecto, Periodo } from '../interfaces/project';
+import { EstadoPOA, TipoPOA } from '../interfaces/poa';
 
 const CrearPOA: React.FC = () => {
   // Estados para campos del formulario - actualizados conforme a la tabla SQL
