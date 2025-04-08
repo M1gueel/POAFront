@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Form, Button, Container, Card } from 'react-bootstrap';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { TipoProyecto, EstadoProyecto, DirectorProyecto } from '../interfaces/project';
+import { TipoProyecto, EstadoProyecto } from '../interfaces/project';
+import { projectAPI } from '../api/projectAPI';
+import { authAPI, rolAPI, userAPI } from '../api/userAPI';
+import { UserProfile } from '../interfaces/user';
 
 interface LocationState {
   tipoProyecto: TipoProyecto;
@@ -17,16 +20,19 @@ const CrearProyecto: React.FC = () => {
   const [titulo, setTitulo] = useState('');
   const [tipoProyecto, setTipoProyecto] = useState<TipoProyecto | null>(null);
   const [id_estado_proyecto, setId_estado_proyecto] = useState('');
-  const tipoProyectoId = tipoProyecto?.id_tipo_proyecto;
+  const [director_nombre, setDirector_nombre] = useState(''); // Cambio: ahora es un campo de texto
   const [presupuesto_aprobado, setPresupuesto_aprobado] = useState('');
   const [fecha_inicio, setFecha_inicio] = useState('');
   const [fecha_fin, setFecha_fin] = useState('');
   const [fecha_prorroga, setFecha_prorroga] = useState('');
+  const [fecha_prorroga_inicio, setFecha_prorroga_inicio] = useState(''); // Nuevo campo
+  const [fecha_prorroga_fin, setFecha_prorroga_fin] = useState(''); // Nuevo campo
   const [tiempo_prorroga_meses, setTiempo_prorroga_meses] = useState('');
-  
+  // campo para el usuario 
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+
   // Estados para las listas de opciones
   const [estadosProyecto, setEstadosProyecto] = useState<EstadoProyecto[]>([]);
-  const [directoresProyecto, setDirectoresProyecto] = useState<DirectorProyecto[]>([]);
   
   // Estados para mensajes de carga o error
   const [isLoading, setIsLoading] = useState(false);
@@ -46,8 +52,6 @@ const CrearProyecto: React.FC = () => {
     } else {
       // Si no hay datos en state, redirigir a la selección de tipo
       setError('Por favor seleccione un tipo de proyecto');
-      // Opcionalmente, redirigir después de un tiempo
-      // setTimeout(() => navigate('/tipos-proyecto'), 3000);
     }
   }, [state, navigate]);
 
@@ -58,29 +62,16 @@ const CrearProyecto: React.FC = () => {
       setError(null);
       
       try {
-        // Aquí irían las llamadas a la API para cargar datos
-        // Simulación de carga de datos
-        setTimeout(() => {
-          // Datos de ejemplo
-          const mockEstadosProyecto: EstadoProyecto[] = [
-            { id_estado_proyecto: '1', nombre: 'Nuevo' },
-            { id_estado_proyecto: '2', nombre: 'En Revisión' },
-            { id_estado_proyecto: '3', nombre: 'Aprobado' },
-            { id_estado_proyecto: '4', nombre: 'En Ejecución' },
-            { id_estado_proyecto: '5', nombre: 'Finalizado' }
-          ];
-          
-          const mockDirectoresProyecto: DirectorProyecto[] = [
-            { id_usuario: '1', nombre_usuario: 'Juan Pérez' },
-            { id_usuario: '2', nombre_usuario: 'María García' },
-            { id_usuario: '3', nombre_usuario: 'Carlos Rodríguez' },
-            { id_usuario: '4', nombre_usuario: 'Ana Martínez' }
-          ];
-          
-          setEstadosProyecto(mockEstadosProyecto);
-          setDirectoresProyecto(mockDirectoresProyecto);
-          setIsLoading(false);
-        }, 500);
+        // Cargar los estados de proyecto desde la API
+        const estadosData = await projectAPI.getEstadosProyecto();
+        setEstadosProyecto(estadosData);
+        
+        // Seleccionar el primer estado por defecto si existe
+        if (estadosData.length > 0) {
+          setId_estado_proyecto(estadosData[0].id_estado_proyecto);
+        }
+        
+        setIsLoading(false);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error desconocido');
         console.error(err);
@@ -91,7 +82,59 @@ const CrearProyecto: React.FC = () => {
     cargarDatos();
   }, []);
 
-  const handleSubmit = (event: React.FormEvent) => {
+  // Efecto para cargar el usuario actual y su rol
+  useEffect(() => {
+    const cargarUsuarioActual = async () => {
+      try {
+        const perfilUsuario = await userAPI.getPerfilUsuario();
+        setCurrentUser(perfilUsuario);
+        // El director va a ser el usuario actual
+        setDirector_nombre(perfilUsuario.nombre);
+      } catch (err) {
+        console.error("Error al cargar el usuario actual:", err);
+        setError("No se pudo cargar el usuario actual. Por favor, recarga la página.");
+      }
+    };
+    
+    cargarUsuarioActual();
+  }, []);
+
+  // Función para crear un usuario director
+  // const crearUsuarioDirector = async (nombre: string): Promise<string> => {
+  //   try {
+  //     // Generar email a partir del nombre (quitar espacios)
+  //     const email = `${nombre.replace(/\s+/g, '')}@epn.edu.ec`.toLowerCase();
+      
+  //     // Buscar el ID del rol de Director de Proyecto
+  //     const roles = await rolAPI.getRoles(); 
+  //     const rolDirector = roles.find(r => r.nombre_rol === "Director de Proyecto");
+      
+  //     if (!rolDirector) {
+  //       throw new Error("No se encontró el rol de Director de Proyecto");
+  //     }
+      
+  //     // Registrar el nuevo usuario
+  //     await authAPI.register({
+  //       nombre_usuario: nombre,
+  //       email: email,
+  //       password: "12345",
+  //       id_rol: rolDirector.id_rol
+  //     });
+      
+  //     // Obtener el ID del usuario recién creado
+  //     // Simulación - En un caso real necesitaríamos una API para obtener el ID por email
+  //     // Esta parte requeriría un endpoint adicional o devolver el ID al crear el usuario
+      
+  //     // Por ahora, retornamos un ID simulado (esto deberá ser reemplazado)
+  //     return "temp-user-id";
+  //   } catch (error) {
+  //     console.error("Error al crear el usuario director:", error);
+  //     throw error;
+  //   }
+  // };
+
+  // Función para manejar el envío del formulario
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     
     // Validación de campos requeridos
@@ -100,22 +143,41 @@ const CrearProyecto: React.FC = () => {
       return;
     }
     
-    // Aquí iría la lógica para enviar datos al backend
-    console.log('Enviando datos del formulario...', {
-      codigo_proyecto,
-      titulo,
-      id_tipo_proyecto: tipoProyecto.id_tipo_proyecto,
-      id_estado_proyecto,
-      //id_director_proyecto,
-      presupuesto_aprobado,
-      fecha_inicio,
-      fecha_fin,
-      fecha_prorroga,
-      tiempo_prorroga_meses
-    });
+    setIsLoading(true);
     
-    // Mostrar mensaje de éxito
-    alert('Proyecto creado con éxito');
+    try {
+      // Preparar datos para enviar al backend
+      const proyectoData = {
+        codigo_proyecto, // Sin acento
+        titulo,
+        id_tipo_proyecto: tipoProyecto.id_tipo_proyecto,
+        id_estado_proyecto,
+        // No incluimos id_director_proyecto, el backend usará el usuario actual
+        presupuesto_aprobado: presupuesto_aprobado ? parseFloat(presupuesto_aprobado) : 0,
+        fecha_inicio,
+        fecha_fin,
+        // Solo incluir campos de prórroga si tienen valor
+        ...(fecha_prorroga ? { fecha_prorroga } : {}),
+        ...(fecha_prorroga_inicio ? { fecha_prorroga_inicio } : {}),
+        ...(fecha_prorroga_fin ? { fecha_prorroga_fin } : {}),
+        // El backend agregará la fecha de creación
+      };
+      
+      console.log("Enviando datos:", proyectoData); // Para depuración
+      
+      // Enviar datos al backend
+      await projectAPI.crearProyecto(proyectoData);
+      
+      // Mostrar mensaje de éxito
+      alert('Proyecto creado con éxito');
+      navigate('/proyectos');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Error al crear el proyecto';
+      console.error(errorMessage, err);
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -194,22 +256,18 @@ const CrearProyecto: React.FC = () => {
             </Form.Control>
           </Form.Group>
 
-          <Form.Group controlId="id_director_proyecto" className="mb-4">
-            <Form.Label className="fw-semibold">Director del Proyecto</Form.Label>
+          <Form.Group controlId="director_nombre" className="mb-4">
+            <Form.Label className="fw-semibold">Director del Proyecto <span className="text-danger">*</span></Form.Label>
             <Form.Control
-              as="select"
+              type="text"
               size="lg"
-              //value={id_director_proyecto}
-              //onChange={(e) => setId_director_proyecto(e.target.value)}
-              disabled={isLoading}
-            >
-              <option value="">Seleccione...</option>
-              {directoresProyecto.map(director => (
-                <option key={director.id_usuario} value={director.id_usuario}>
-                  {director.nombre_usuario}
-                </option>
-              ))}
-            </Form.Control>
+              value={director_nombre}
+              readOnly
+              className="bg-light"
+            />
+            <Form.Text className="text-muted">
+              Como usuario actual, serás asignado automáticamente como director de este proyecto.
+            </Form.Text>
           </Form.Group>
 
           <Form.Group controlId="presupuesto_aprobado" className="mb-4">
@@ -244,8 +302,11 @@ const CrearProyecto: React.FC = () => {
             />
           </Form.Group>
 
+        <div className="mt-5 mb-4 border-top pt-4">
+        <h4 className="mb-3">Datos de Prórroga <span className="text-muted fs-6">(Opcional)</span></h4>  
+
           <Form.Group controlId="fecha_prorroga" className="mb-4">
-            <Form.Label className="fw-semibold">Fecha de Prórroga</Form.Label>
+            <Form.Label className="fw-semibold">Fecha de Prórroga <span className="text-muted">(Opcional)</span></Form.Label>
             <Form.Control
               type="date"
               size="lg"
@@ -254,8 +315,28 @@ const CrearProyecto: React.FC = () => {
             />
           </Form.Group>
 
+          <Form.Group controlId="fecha_prorroga_inicio" className="mb-4">
+            <Form.Label className="fw-semibold">Fecha de Inicio de Prórroga <span className="text-muted">(Opcional)</span></Form.Label>
+            <Form.Control
+              type="date"
+              size="lg"
+              value={fecha_prorroga_inicio}
+              onChange={(e) => setFecha_prorroga_inicio(e.target.value)}
+            />
+          </Form.Group>
+
+          <Form.Group controlId="fecha_prorroga_fin" className="mb-4">
+            <Form.Label className="fw-semibold">Fecha de Fin de Prórroga <span className="text-muted">(Opcional)</span></Form.Label>
+            <Form.Control
+              type="date"
+              size="lg"
+              value={fecha_prorroga_fin}
+              onChange={(e) => setFecha_prorroga_fin(e.target.value)}
+            />
+          </Form.Group>
+
           <Form.Group controlId="tiempo_prorroga_meses" className="mb-4">
-            <Form.Label className="fw-semibold">Tiempo de Prórroga (meses)</Form.Label>
+            <Form.Label className="fw-semibold">Tiempo de Prórroga (meses) <span className="text-muted">(Opcional)</span></Form.Label>
             <Form.Control
               type="number"
               placeholder="Ingrese el tiempo de prórroga"
@@ -264,7 +345,8 @@ const CrearProyecto: React.FC = () => {
               onChange={(e) => setTiempo_prorroga_meses(e.target.value)}
             />
           </Form.Group>
-                
+        </div>        
+        
           <div className="text-center mt-5 d-flex justify-content-center gap-4">
             <Button 
               variant="secondary" 

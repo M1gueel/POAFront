@@ -1,5 +1,6 @@
 import { API } from './userAPI';
-import { TipoProyecto } from '../interfaces/project';
+import { Proyecto, TipoProyecto } from '../interfaces/project';
+import { PerfilUsuario } from '../interfaces/user';
 
 export const projectAPI = {
     // Obtener todos los tipos de proyecto
@@ -8,4 +9,26 @@ export const projectAPI = {
         return response.data;
     },
     
+    // Obtener estados de proyecto
+    getEstadosProyecto: async (): Promise<{ id_estado_proyecto: string, nombre: string }[]> => {
+        const response = await API.get('/estados-proyecto/');
+        return response.data;
+    },
+    
+    // Obtener usuarios que pueden ser directores
+    getDirectoresProyecto: async (): Promise<PerfilUsuario[]> => {
+        const response = await API.get('/usuarios/directores/');
+        return response.data;
+    },
+    
+    // Crear un nuevo proyecto
+    crearProyecto: async (proyectoData: Omit<Proyecto, 'id_proyecto' | 'fecha_creacion' | 'id_director_proyecto'>): Promise<Proyecto> => {
+        const datosAEnviar = {
+          ...proyectoData,
+          fecha_creacion: new Date().toISOString().split('T')[0] // Formato YYYY-MM-DD
+        };
+        
+        const response = await API.post('/proyectos/', datosAEnviar);
+        return response.data;
+      }
 };

@@ -101,9 +101,18 @@ export const authAPI = {
 export const userAPI = {
     // Obtener el perfil del usuario actual
     getPerfilUsuario: async (): Promise<PerfilUsuario> => {
-        const response = await API.get('/perfil');
-        return response.data as PerfilUsuario;
-    },
+        try {
+          const response = await API.get('/perfil');
+          return {
+            id: response.data.id,
+            nombre: response.data.nombre,
+            rol: response.data.rol
+          };
+        } catch (error) {
+          console.error('Error al cargar el perfil del usuario:', error);
+          throw error; // Re-lanzar para manejo en componente
+        }
+      },
     
     // Obtener el nombre del rol a partir del id_rol
     getRolNameById: async (id_rol: string): Promise<string> => {
