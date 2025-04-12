@@ -83,10 +83,6 @@ const Login = () => {
                     >
                         {loading ? 'Procesando...' : 'Ingresar'}
                     </button>
-
-                    <div className="register-link">
-                        ¿No tienes una cuenta? <Link to="/register">Regístrate aquí</Link>
-                    </div>
                 </form>
             </div>
         </div>

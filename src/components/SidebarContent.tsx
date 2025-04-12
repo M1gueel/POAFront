@@ -91,7 +91,7 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
             </Nav.Item>
             
             {/* Preferencias de usuario */}
-            <div className="mt-auto">
+            <div className="mt-auto"> 
               <div className="px-3 mb-2 text-secondary text-uppercase small">Usuario</div>
                 <Nav.Item>
                   <Nav.Link 
@@ -102,6 +102,18 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
                     Perfil
                   </Nav.Link>
                 </Nav.Item>
+            </div>
+
+            <div className='mt-auto'>
+              <Nav.Item>
+                <Nav.Link
+                className={`text-white ${isActive("/register")}`}
+                onClick={() => handleNavigate("/register")}
+                > 
+                  <i className='bi bi-person-circle me-2'></i>
+                    Registrar usuario
+                </Nav.Link>
+              </Nav.Item>
             </div>
             
             {/* Información del usuario en la parte inferior del sidebar */}

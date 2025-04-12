@@ -18,9 +18,9 @@ function App() {
           <Routes>
             {/* Rutas públicas */}
             <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
             
             {/* Rutas protegidas */}
+            <Route path="/register" element={<Register />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/crearPOA" element={<CrearPOA />} />
             <Route path="/perfil" element={<Perfil />} />

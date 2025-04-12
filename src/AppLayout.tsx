@@ -18,7 +18,8 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const toggleSidebar = () => setIsSidebarCollapsed(!isSidebarCollapsed);
   
   // Determinar si estamos en una ruta pública
-  const isPublicRoute = ['/login', '/register'].includes(location.pathname);
+  // const isPublicRoute = ['/login', '/register'].includes(location.pathname);
+  const isPublicRoute = ['/login'].includes(location.pathname);
   
   return (
     <div className="d-flex">

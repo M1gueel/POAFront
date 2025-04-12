@@ -1,3 +1,15 @@
+export interface POA {
+  id_poa: string;
+  id_proyecto: string;
+  id_periodo: string;
+  codigo_poa: string;
+  fecha_creacion: string;
+  id_estado_poa: string;
+  id_tipo_poa: string;
+  anio_ejecucion: string;
+  presupuesto_asignado: number;
+}
+
 export interface EstadoPOA {
   id_estado_poa: string;
   nombre: string;
