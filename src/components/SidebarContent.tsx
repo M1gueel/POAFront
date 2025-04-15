@@ -56,7 +56,7 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
             <div className="px-3 mb-2 text-secondary text-uppercase small">Proyectos</div>
             
             {/* Sección Proyectos */}
-            <Nav.Item>
+            {/* <Nav.Item>
               <Nav.Link 
                 className={`text-white ${isActive("/tipos-proyecto")}`}
                 onClick={() => handleNavigate("/tipos-proyecto")}
@@ -64,13 +64,13 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
                 <i className="bi bi-folder me-2"></i>
                 Listar Proyectos
               </Nav.Link>
-            </Nav.Item>
+            </Nav.Item> */}
             
             {/* Nuevo Proyecto - Ahora con función para mostrar/ocultar tipos */}
             <Nav.Item>
               <Nav.Link 
-                className={`text-white ${isActive("/crear-proyecto")}`}
-                onClick={() => handleNavigate("/crear-proyecto")}
+                className={`text-white ${isActive("/tipos-proyecto")}`}
+                onClick={() => handleNavigate("/tipos-proyecto")}
               >
                 <i className="bi bi-plus-circle me-2"></i>
                 Nuevo Proyecto
@@ -103,7 +103,7 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
                   </Nav.Link>
                 </Nav.Item>
             </div>
-
+            {/* TODO: El registro de usuarios solo lo puede hacer el administrador */}
             <div className='mt-auto'>
               <Nav.Item>
                 <Nav.Link

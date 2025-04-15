@@ -1,7 +1,7 @@
 import { API } from './userAPI';
 import { POA, EstadoPOA, TipoPOA } from '../interfaces/poa';
 import { Periodo } from '../interfaces/periodo'; // Asumiendo que tienes esta interfaz
-// TODO: crear la interfaz Periodo en el archivo interfaces/periodo.ts
+// TODO: La interfaz está creada en poa.ts
 //TODO: crear una api para periodos y agregar los métodos necesarios para obtener, crear y editar periodos
 
 
@@ -36,35 +36,7 @@ export const poaAPI = {
         return response.data;
     },
 
-    //TODO: Pasar este metodo a la api de proyectos y crear los endpoints en el backend
-    // Obtener proyectos (para asociar al POA)
-    getProyectos: async (filtro?: { codigo?: string, titulo?: string }): Promise<any[]> => {
-        let url = '/proyectos/';
-        
-        // Si existe implementación de filtrado en el backend, se podría usar así:
-        // if (filtro?.codigo || filtro?.titulo) {
-        //     const params = new URLSearchParams();
-        //     if (filtro.codigo) params.append('codigo', filtro.codigo);
-        //     if (filtro.titulo) params.append('titulo', filtro.titulo);
-        //     url += `?${params.toString()}`;
-        // }
-        
-        const response = await API.get(url);
-        
-        // Filtrado en el cliente (en caso de que el backend no lo soporte)
-        let proyectos = response.data;
-        if (filtro) {
-            proyectos = proyectos.filter((proyecto: any) => {
-                const matchCodigo = !filtro.codigo || 
-                    proyecto.codigo_proyecto.toLowerCase().includes(filtro.codigo.toLowerCase());
-                const matchTitulo = !filtro.titulo || 
-                    proyecto.titulo.toLowerCase().includes(filtro.titulo.toLowerCase());
-                return matchCodigo && matchTitulo;
-            });
-        }
-        
-        return proyectos;
-    },
+    
 
     // Crear un nuevo POA
     crearPOA: async (poaData: Omit<POA, 'id_poa' | 'fecha_creacion' | 'id_estado_poa'>): Promise<POA> => {

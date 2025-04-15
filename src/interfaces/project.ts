@@ -31,12 +31,12 @@ export interface TipoProyecto {
     nombre_usuario: string;
   }
 
-export  interface Periodo {
-    id_periodo: string;
-    codigo_periodo: string;
-    nombre_periodo: string;
-    fecha_inicio: string;
-    fecha_fin: string;
-    anio?: string;
-    mes?: string;
-  }
+// export  interface Periodo {
+//     id_periodo: string;
+//     codigo_periodo: string;
+//     nombre_periodo: string;
+//     fecha_inicio: string;
+//     fecha_fin: string;
+//     anio?: string;
+//     mes?: string;
+//   }

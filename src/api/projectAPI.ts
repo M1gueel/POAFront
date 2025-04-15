@@ -30,5 +30,28 @@ export const projectAPI = {
         
         const response = await API.post('/proyectos/', datosAEnviar);
         return response.data;
-      }
+    },
+
+    // Obtener proyectos (para asociar al POA)
+    //TODO: Realizar el filtrado de proyecto en el servidor
+    getProyectos: async (filtro?: { codigo?: string, titulo?: string }): Promise<Proyecto[]> => {
+    const response = await API.get('/proyectos/');
+    
+    // Filtrado en el cliente
+    let proyectos = response.data;
+    if (filtro) {
+        proyectos = proyectos.filter((proyecto: any) => {
+            const matchCodigo = !filtro.codigo ||
+                proyecto.codigo_proyecto.toLowerCase().includes(filtro.codigo.toLowerCase());
+            const matchTitulo = !filtro.titulo ||
+                proyecto.titulo.toLowerCase().includes(filtro.titulo.toLowerCase());
+            return matchCodigo && matchTitulo;
+        });
+    }
+    return proyectos;
+    },
+
+      
+
+
 };

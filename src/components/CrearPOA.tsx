@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Form, Button, Container, Card, Row, Col, Table, Modal } from 'react-bootstrap';
 import {Proyecto, Periodo } from '../interfaces/project';
 import { EstadoPOA, TipoPOA } from '../interfaces/poa';
+// import { API } from '../api/userAPI';
+import { projectAPI } from '../api/projectAPI';
+
 
 const CrearPOA: React.FC = () => {
   // Estados para campos del formulario - actualizados conforme a la tabla SQL
@@ -55,12 +58,16 @@ const CrearPOA: React.FC = () => {
         // En una implementación real, esto se reemplazaría con llamadas a la API
         
         // Proyectos (mantenidos del componente original)
-        const mockProyectos: Proyecto[] = [
-          { id_proyecto: '1a1a1a1a-1a1a-1a1a-1a1a-1a1a1a1a1a1a', codigo_proyecto: 'PIIF-12345', titulo: 'Proyecto de Investigación A' },
-          { id_proyecto: '2b2b2b2b-2b2b-2b2b-2b2b-2b2b2b2b2b2b', codigo_proyecto: 'PIS-54321', titulo: 'Estudio de Factibilidad B' },
-          { id_proyecto: '3c3c3c3c-3c3c-3c3c-3c3c-3c3c3c3c3c3c', codigo_proyecto: 'PIGR-98765', titulo: 'Proyecto Grupal C' },
-          { id_proyecto: '4d4d4d4d-4d4d-4d4d-4d4d-4d4d4d4d4d4d', codigo_proyecto: 'PIM-56789', titulo: 'Iniciativa Multidisciplinaria D' },
-        ];
+        // const mockProyectos: Proyecto[] = [
+        //   { id_proyecto: '1a1a1a1a-1a1a-1a1a-1a1a-1a1a1a1a1a1a', codigo_proyecto: 'PIIF-12345', titulo: 'Proyecto de Investigación A' },
+        //   { id_proyecto: '2b2b2b2b-2b2b-2b2b-2b2b-2b2b2b2b2b2b', codigo_proyecto: 'PIS-54321', titulo: 'Estudio de Factibilidad B' },
+        //   { id_proyecto: '3c3c3c3c-3c3c-3c3c-3c3c-3c3c3c3c3c3c', codigo_proyecto: 'PIGR-98765', titulo: 'Proyecto Grupal C' },
+        //   { id_proyecto: '4d4d4d4d-4d4d-4d4d-4d4d-4d4d4d4d4d4d', codigo_proyecto: 'PIM-56789', titulo: 'Iniciativa Multidisciplinaria D' },
+        // ];
+
+        const proyectosData = await projectAPI.getProyectos();
+      setProyectos(proyectosData);
+      setProyectosFiltrados(proyectosData);
 
         // Periodos (actualizados según el script SQL proporcionado)
         const mockPeriodos: Periodo[] = [
@@ -95,8 +102,8 @@ const CrearPOA: React.FC = () => {
         
         // Simular retraso de API
         setTimeout(() => {
-          setProyectos(mockProyectos);
-          setProyectosFiltrados(mockProyectos);
+          // setProyectos(mockProyectos);
+          // setProyectosFiltrados(mockProyectos);
           setPeriodos(mockPeriodos);
           setEstadosPoa(mockEstadosPoa);
           setTiposPoa(mockTiposPoa);
@@ -143,6 +150,7 @@ const CrearPOA: React.FC = () => {
     cargarDatos();
   }, []);
 
+  //TODO:Revisar si el presupuesto maximo se mantiene en el tipo POA
   // Efecto para actualizar el presupuesto máximo cuando se selecciona un tipo de POA
   useEffect(() => {
     if (id_tipo_poa) {
@@ -155,16 +163,42 @@ const CrearPOA: React.FC = () => {
 
   // Filtrar proyectos según la búsqueda
   useEffect(() => {
-    if (busquedaProyecto.length > 0) {
-      const filtrados = proyectos.filter(proyecto => 
-        proyecto.codigo_proyecto.toLowerCase().includes(busquedaProyecto.toLowerCase()) ||
-        proyecto.titulo.toLowerCase().includes(busquedaProyecto.toLowerCase())
-      );
-      setProyectosFiltrados(filtrados);
-    } else {
-      setProyectosFiltrados(proyectos);
-    }
+    const filtrarProyectos = async () => {
+      if (busquedaProyecto.length > 0) {
+        setIsLoading(true);
+        try {
+          // Usar el método getProyectos con filtro
+          const filtrados = await projectAPI.getProyectos({
+            codigo: busquedaProyecto,
+            titulo: busquedaProyecto
+          });
+          setProyectosFiltrados(filtrados);
+        } catch (err) {
+          console.error('Error al filtrar proyectos:', err);
+          // En caso de error, realizar filtrado en cliente con datos ya cargados
+          const filtrados = proyectos.filter(proyecto => 
+            proyecto.codigo_proyecto.toLowerCase().includes(busquedaProyecto.toLowerCase()) ||
+            proyecto.titulo.toLowerCase().includes(busquedaProyecto.toLowerCase())
+          );
+          setProyectosFiltrados(filtrados);
+        } finally {
+          setIsLoading(false);
+        }
+      } else {
+        setProyectosFiltrados(proyectos);
+      }
+    };
+    // Debounce para evitar demasiadas llamadas API durante la escritura
+    const timeoutId = setTimeout(() => {
+      filtrarProyectos();
+    }, 300);
+    
+    return () => clearTimeout(timeoutId);
   }, [busquedaProyecto, proyectos]);
+
+  //TODO: revisar bien la logica de periodo
+  //TODO: al seleccionar el rpoyecto asociado se debe llenar el tipo de POA,
+  //  codigo POA y año de ejecucion
 
   // Auto-generar código POA
   useEffect(() => {
@@ -404,26 +438,35 @@ const CrearPOA: React.FC = () => {
                         className="position-absolute w-100 mt-1 shadow bg-white rounded border"
                         style={{ zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}
                       >
-                        <Table hover size="sm" className="mb-0">
-                          <tbody>
-                            {proyectosFiltrados.length > 0 ? (
-                              proyectosFiltrados.map(proyecto => (
-                                <tr 
-                                  key={proyecto.id_proyecto}
-                                  onClick={() => seleccionarProyecto(proyecto)}
-                                  style={{ cursor: 'pointer' }}
-                                >
-                                  <td>{proyecto.codigo_proyecto}</td>
-                                  <td>{proyecto.titulo}</td>
+                        {isLoading ? (
+                          <div className="text-center py-3">
+                            <div className="spinner-border spinner-border-sm text-primary" role="status">
+                              <span className="visually-hidden">Cargando...</span>
+                            </div>
+                            <span className="ms-2">Buscando proyectos...</span>
+                          </div>
+                        ) : (
+                          <Table hover size="sm" className="mb-0">
+                            <tbody>
+                              {proyectosFiltrados.length > 0 ? (
+                                proyectosFiltrados.map(proyecto => (
+                                  <tr 
+                                    key={proyecto.id_proyecto}
+                                    onClick={() => seleccionarProyecto(proyecto)}
+                                    style={{ cursor: 'pointer' }}
+                                  >
+                                    <td>{proyecto.codigo_proyecto}</td>
+                                    <td>{proyecto.titulo}</td>
+                                  </tr>
+                                ))
+                              ) : (
+                                <tr>
+                                  <td colSpan={2} className="text-center py-2">No se encontraron proyectos</td>
                                 </tr>
-                              ))
-                            ) : (
-                              <tr>
-                                <td colSpan={2} className="text-center py-2">No se encontraron proyectos</td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </Table>
+                              )}
+                            </tbody>
+                          </Table>
+                        )}
                       </div>
                     )}
                   </div>

@@ -25,3 +25,13 @@ export interface TipoPOA {
   cantidad_periodos: number;
   presupuesto_maximo: number;
 }
+
+export  interface Periodo {
+  id_periodo: string;
+  codigo_periodo: string;
+  nombre_periodo: string;
+  fecha_inicio: string;
+  fecha_fin: string;
+  anio?: string;
+  mes?: string;
+}
