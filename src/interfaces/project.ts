@@ -19,6 +19,9 @@ export interface TipoProyecto {
     codigo_tipo: string;
     nombre: string;
     descripcion: string;
+    duracion_meses: number;
+    cantidad_periodos: number;
+    presupuesto_maximo: number;
   }
 
  export interface EstadoProyecto {

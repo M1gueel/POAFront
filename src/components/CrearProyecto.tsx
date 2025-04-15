@@ -23,7 +23,7 @@ const CrearProyecto: React.FC = () => {
   const [titulo, setTitulo] = useState('');
   const [tipoProyecto, setTipoProyecto] = useState<TipoProyecto | null>(null);
   const [id_estado_proyecto, setId_estado_proyecto] = useState('');
-  const [director_nombre, setDirector_nombre] = useState('');
+  const [id_director_proyecto, setId_director_proyecto] = useState('');
   const [directorError, setDirectorError] = useState<string | null>(null);
   const [presupuesto_aprobado, setPresupuesto_aprobado] = useState('');
   const [presupuestoError, setPresupuestoError] = useState<string | null>(null);
@@ -133,7 +133,7 @@ const CrearProyecto: React.FC = () => {
   //manejador para los cambios en el campo director
   const handleDirectorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    setDirector_nombre(value);
+    setId_director_proyecto(value);
     
     if (value.trim() !== '') {
       if (!validarDirectorNombre(value)) {
@@ -164,12 +164,12 @@ const CrearProyecto: React.FC = () => {
     }
     
     // Validar el director
-  if (!director_nombre.trim()) {
+  if (!id_director_proyecto.trim()) {
     setError('El director del proyecto es obligatorio');
     return;
   }
   
-  if (!validarDirectorNombre(director_nombre)) {
+  if (!validarDirectorNombre(id_director_proyecto)) {
     setError('El formato del nombre del director debe ser: Nombre Apellido o Nombre1 Nombre2 Apellido1 Apellido2');
     return;
   }
@@ -188,6 +188,7 @@ const CrearProyecto: React.FC = () => {
         titulo,
         id_tipo_proyecto: tipoProyecto.id_tipo_proyecto,
         id_estado_proyecto,
+        // fecha_creacion: new Date().toISOString(),
         // No incluimos id_director_proyecto, el backend usará el usuario actual
         id_director_proyecto,
         presupuesto_aprobado: presupuesto_aprobado ? parseFloat(presupuesto_aprobado) : 0,
@@ -317,13 +318,13 @@ const CrearProyecto: React.FC = () => {
             </Form.Control>
           </Form.Group>
 
-          <Form.Group controlId="director_nombre" className="mb-4">
+          <Form.Group controlId="id_director_proyecto" className="mb-4">
             <Form.Label className="fw-semibold">Director del Proyecto <span className="text-danger">*</span></Form.Label>
             <Form.Control
               type='text'
               placeholder="Ej: Juan Pérez o Juan Carlos Pérez González"
               size="lg"
-              value={director_nombre}
+              value={id_director_proyecto}
               onChange={handleDirectorChange}
               isInvalid={!!directorError}
               required
