@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Form, Button, Container, Card, Row, Col, Table, Modal } from 'react-bootstrap';
-import {Proyecto, Periodo } from '../interfaces/project';
-import { EstadoPOA, TipoPOA } from '../interfaces/poa';
+import {Proyecto } from '../interfaces/project';
+import { EstadoPOA, TipoPOA,Periodo } from '../interfaces/poa';
 // import { API } from '../api/userAPI';
 import { projectAPI } from '../api/projectAPI';
 
@@ -17,7 +17,6 @@ const CrearPOA: React.FC = () => {
   const [presupuesto_asignado, setPresupuestoAsignado] = useState('0.00');
   
   // Estados adicionales para información complementaria
-  const [descripcion, setDescripcion] = useState('');
   const [fecha_inicio, setFechaInicio] = useState('');
   const [fecha_fin, setFechaFin] = useState('');
   
@@ -222,8 +221,8 @@ const CrearPOA: React.FC = () => {
   };
 
   // Actualizar campos de fecha cuando se selecciona un periodo
-  const handleSeleccionPeriodo = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const periodoId = e.target.value;
+  const handleSeleccionPeriodo = (e: React.ChangeEvent<any>) => {
+    const periodoId = (e.target as HTMLSelectElement).value;
     setIdPeriodo(periodoId);
     
     if (periodoId) {
@@ -363,11 +362,6 @@ const CrearPOA: React.FC = () => {
       presupuesto_asignado: presupuestoNum,
       // La fecha_creacion se establecerá en el backend con GETDATE()
       // El id_poa se generará automáticamente con NEWID()
-      
-      // Campos adicionales para información
-      descripcion,
-      fecha_inicio,
-      fecha_fin
     };
     
     console.log('Datos del POA a crear:', datosPOA);
@@ -589,50 +583,6 @@ const CrearPOA: React.FC = () => {
               </Col>
             </Row>
             
-            {/* Sección de descripción y fechas */}
-            <Row>
-              <Col md={12} className="mb-4">
-                <Form.Group controlId="descripcion">
-                  <Form.Label className="fw-semibold">Descripción</Form.Label>
-                  <Form.Control
-                    as="textarea"
-                    rows={3}
-                    value={descripcion}
-                    onChange={(e) => setDescripcion(e.target.value)}
-                    placeholder="Descripción detallada del POA..."
-                    className="form-control-lg"
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
-            
-            <Row>
-              <Col md={6} className="mb-4">
-                <Form.Group controlId="fecha_inicio">
-                  <Form.Label className="fw-semibold">Fecha de Inicio</Form.Label>
-                  <Form.Control
-                    type="date"
-                    value={fecha_inicio}
-                    onChange={(e) => setFechaInicio(e.target.value)}
-                    readOnly
-                    className="form-control-lg"
-                  />
-                </Form.Group>
-              </Col>
-              
-              <Col md={6} className="mb-4">
-                <Form.Group controlId="fecha_fin">
-                  <Form.Label className="fw-semibold">Fecha de Fin</Form.Label>
-                  <Form.Control
-                    type="date"
-                    value={fecha_fin}
-                    onChange={(e) => setFechaFin(e.target.value)}
-                    readOnly
-                    className="form-control-lg"
-                  />
-                </Form.Group>
-              </Col>
-            </Row>
             
             {/* Botones de acción */}
             <Row className="mt-4">
