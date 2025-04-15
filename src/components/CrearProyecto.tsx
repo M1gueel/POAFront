@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Form, Button, Container, Card } from 'react-bootstrap';
+import { Form, Button, Container, Card, FormText } from 'react-bootstrap';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { TipoProyecto, EstadoProyecto } from '../interfaces/project';
 import { projectAPI } from '../api/projectAPI';
@@ -24,7 +24,9 @@ const CrearProyecto: React.FC = () => {
   const [tipoProyecto, setTipoProyecto] = useState<TipoProyecto | null>(null);
   const [id_estado_proyecto, setId_estado_proyecto] = useState('');
   const [director_nombre, setDirector_nombre] = useState('');
+  const [directorError, setDirectorError] = useState<string | null>(null);
   const [presupuesto_aprobado, setPresupuesto_aprobado] = useState('');
+  const [presupuestoError, setPresupuestoError] = useState<string | null>(null);
   const [fecha_inicio, setFecha_inicio] = useState('');
   const [fecha_fin, setFecha_fin] = useState('');
   const [fecha_prorroga, setFecha_prorroga] = useState('');
@@ -89,22 +91,60 @@ const CrearProyecto: React.FC = () => {
     cargarDatos();
   }, []);
 
+
+  //función de validación para el nombre del director:
+  const validarDirectorNombre = (nombre: string): boolean => {
+    // Patrón para validar: 1-2 nombres seguidos de 1-2 apellidos
+    const pattern = /^[A-Za-zÀ-ÖØ-öø-ÿ]+ [A-Za-zÀ-ÖØ-öø-ÿ]+( [A-Za-zÀ-ÖØ-öø-ÿ]+)?( [A-Za-zÀ-ÖØ-öø-ÿ]+)?$/;
+    return pattern.test(nombre.trim());
+  };
+
   // Efecto para cargar el usuario actual y su rol
-  useEffect(() => {
-    const cargarUsuarioActual = async () => {
-      try {
-        const perfilUsuario = await userAPI.getPerfilUsuario();
-        setCurrentUser(perfilUsuario);
-        // El director va a ser el usuario actual
-        setDirector_nombre(perfilUsuario.nombre);
-      } catch (err) {
-        console.error("Error al cargar el usuario actual:", err);
-        setError("No se pudo cargar el usuario actual. Por favor, recarga la página.");
-      }
-    };
+  // useEffect(() => {
+  //   const cargarUsuarioActual = async () => {
+  //     try {
+  //       const perfilUsuario = await userAPI.getPerfilUsuario();
+  //       setCurrentUser(perfilUsuario);
+  //       // El director va a ser el usuario actual
+  //       setDirector_nombre(perfilUsuario.nombre);
+  //     } catch (err) {
+  //       console.error("Error al cargar el usuario actual:", err);
+  //       setError("No se pudo cargar el usuario actual. Por favor, recarga la página.");
+  //     }
+  //   };
     
-    cargarUsuarioActual();
-  }, []);
+  //   cargarUsuarioActual();
+  // }, []);
+
+  //manejador para validar el cambio en el campo de presupuesto
+  const handlePresupuestoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setPresupuesto_aprobado(value);
+    
+    // Validar que sea un número positivo
+    if (value && parseFloat(value) <= 0) {
+      setPresupuestoError('El presupuesto debe ser un valor positivo');
+    } else {
+      setPresupuestoError(null);
+    }
+  };
+  
+  
+  //manejador para los cambios en el campo director
+  const handleDirectorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setDirector_nombre(value);
+    
+    if (value.trim() !== '') {
+      if (!validarDirectorNombre(value)) {
+        setDirectorError('El formato debe ser: Nombre Apellido o Nombre1 Nombre2 Apellido1 Apellido2');
+      } else {
+        setDirectorError(null);
+      }
+    } else {
+      setDirectorError(null);
+    }
+  };
 
   // Manejador para cambios en la fecha de inicio
   const handleFechaInicioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -123,6 +163,22 @@ const CrearProyecto: React.FC = () => {
       return;
     }
     
+    // Validar el director
+  if (!director_nombre.trim()) {
+    setError('El director del proyecto es obligatorio');
+    return;
+  }
+  
+  if (!validarDirectorNombre(director_nombre)) {
+    setError('El formato del nombre del director debe ser: Nombre Apellido o Nombre1 Nombre2 Apellido1 Apellido2');
+    return;
+  }
+
+  // Validar que el presupuesto si se ha ingresado
+  if (presupuesto_aprobado && parseFloat(presupuesto_aprobado) <= 0) {
+    setError('El presupuesto debe ser un valor positivo');
+    return;
+  }
     setIsLoading(true);
     
     try {
@@ -133,6 +189,7 @@ const CrearProyecto: React.FC = () => {
         id_tipo_proyecto: tipoProyecto.id_tipo_proyecto,
         id_estado_proyecto,
         // No incluimos id_director_proyecto, el backend usará el usuario actual
+        id_director_proyecto,
         presupuesto_aprobado: presupuesto_aprobado ? parseFloat(presupuesto_aprobado) : 0,
         fecha_inicio,
         fecha_fin,
@@ -263,14 +320,21 @@ const CrearProyecto: React.FC = () => {
           <Form.Group controlId="director_nombre" className="mb-4">
             <Form.Label className="fw-semibold">Director del Proyecto <span className="text-danger">*</span></Form.Label>
             <Form.Control
-              type="text"
+              type='text'
+              placeholder="Ej: Juan Pérez o Juan Carlos Pérez González"
               size="lg"
               value={director_nombre}
-              readOnly
-              className="bg-light"
+              onChange={handleDirectorChange}
+              isInvalid={!!directorError}
+              required
             />
+            {directorError && (
+              <Form.Control.Feedback type="invalid">
+                {directorError}
+              </Form.Control.Feedback>
+            )}
             <Form.Text className="text-muted">
-              Como usuario actual, serás asignado automáticamente como director de este proyecto.
+            Ingrese al menos un nombre y un apellido, máximo dos nombres y dos apellidos.
             </Form.Text>
           </Form.Group>
 
@@ -279,11 +343,21 @@ const CrearProyecto: React.FC = () => {
             <Form.Control
               type="number"
               step="0.01"
+              min="0.01" 
               placeholder="Ingrese el presupuesto"
               size="lg"
               value={presupuesto_aprobado}
-              onChange={(e) => setPresupuesto_aprobado(e.target.value)}
+              onChange={handlePresupuestoChange}
+              isInvalid={!!presupuestoError}
             />
+            {presupuestoError && (
+              <Form.Control.Feedback type="invalid">
+                {presupuestoError}
+              </Form.Control.Feedback>
+            )}
+            <Form.Text className="text-muted">
+              El presupuesto debe ser un valor positivo
+            </Form.Text>
           </Form.Group>
 
           <div className="mt-5 mb-4 border-top pt-4">
