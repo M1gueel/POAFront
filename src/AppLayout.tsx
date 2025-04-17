@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Container, Offcanvas } from 'react-bootstrap';
 import { useAuth } from './context/AuthContext';
@@ -10,17 +10,25 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   // Estado para controlar si el sidebar está colapsado (en pantallas grandes)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   
-  const { usuario, logout, isAuthenticated } = useAuth();
+  const { usuario, isAuthenticated } = useAuth();
   const location = useLocation();
   
   const handleCloseSidebar = () => setShowSidebar(false);
-  const handleShowSidebar = () => setShowSidebar(true);
   const toggleSidebar = () => setIsSidebarCollapsed(!isSidebarCollapsed);
   
   // Determinar si estamos en una ruta pública
   // const isPublicRoute = ['/login', '/register'].includes(location.pathname);
   const isPublicRoute = ['/login'].includes(location.pathname);
   
+  // 🌌 Cambiar el fondo del body solo en login
+  useEffect(() => {
+    if (isPublicRoute) {
+      document.body.style.backgroundColor = '#01050E';
+    } else {
+      document.body.style.backgroundColor = ''; // Reset (usa lo que tengas por defecto)
+    }
+  }, [isPublicRoute]);
+
   return (
     <div className="d-flex">
       {/* Sidebar para pantallas grandes - solo se muestra en rutas protegidas */}

@@ -4,11 +4,13 @@
     display: flex;
     justify-content: flex-end;
     align-items: center;
-    min-width: 320px;
-    min-height: 100vh;
-    background-image: url('https://img.freepik.com/fotos-premium/fondo-ondas-moradas-blancas-fondo-ondas-blancas_916191-5569.jpg');
-    background-size: cover;
-    background-position: center;
+    width: 100vw;
+    height: 100vh;
+    background-color: #01050E;
+    background-image: url('https://img.freepik.com/premium-photo/creative-digital-polygonal-open-padlock-hologram-blue-background-with-mock-up-place-safety-protection-security-concept-3d-rendering_670147-76060.jpg');
+    background-size: contain;
+    background-position: 30% center;
+    background-repeat: no-repeat;
     padding-right: 80px;
     /* Espaciado entre la card y el borde derecho */
 }
@@ -41,14 +43,14 @@
 .login-title {
     font-size: 2.5em;
     margin-bottom: 0.5em;
-    color: #715BDA;
+    color: #021F59;
     text-align: center;
 }
 
 .login-subtitle {
     font-size: 2em;
     margin-bottom: 1.5em;
-    color: #715BDA;
+    color: #021F59;
     text-align: left;
 }
 
@@ -83,7 +85,7 @@
     padding: 0.8em;
     font-size: 1.1em;
     font-weight: 500;
-    background-color: #715BDA;
+    background-color: #021F59;
     color: #fff;
     cursor: pointer;
     transition: background-color 0.3s;
@@ -95,7 +97,7 @@
 }
 
 .submit-button:hover {
-    background-color: #5a47c4;
+    background-color: #011843;
 }
 
 .no-account-container {
@@ -111,13 +113,13 @@
 .no-account-link {
     display: inline;
     font-weight: 500;
-    color: #715BDA;
+    color: #021F59;
     text-decoration: none;
     margin-left: 0.5em;
 }
 
 .no-account-link:hover {
-    color: #5a47c4;
+    color: #011843;
 }
 
 /* Media queries for responsive design */

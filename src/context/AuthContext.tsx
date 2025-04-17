@@ -1,21 +1,6 @@
 import { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-
-// Definir la interfaz de usuario
-interface Usuario {
-  nombre: string;
-  rol: string;
-}
-
-// Definir la interfaz del contexto de autenticación
-interface AuthContextType {
-  usuario: Usuario | null;
-  token: string | null;
-  isAuthenticated: boolean;
-  login: (token: string, userData: Usuario) => void;
-  logout: () => void;
-  loading: boolean;
-}
+import { Usuario, AuthContextType } from '../interfaces/user';
 
 // Crear el contexto
 const AuthContext = createContext<AuthContextType | undefined>(undefined);

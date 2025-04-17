@@ -3,11 +3,9 @@ import { Form, Button, Container, Card, FormText } from 'react-bootstrap';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { TipoProyecto, EstadoProyecto } from '../interfaces/project';
 import { projectAPI } from '../api/projectAPI';
-//TODO: revisar si se esta realizando la autenticacion correctamente con el authAPI
 import { userAPI } from '../api/userAPI';
 import { UserProfile } from '../interfaces/user';
-
-//TODO: revisar si el presupuesto maximo es correcto en el tipo de POA y no en el tipo proyecto
+import '../styles/NuevoProyecto.css'; // Importa el nuevo archivo CSS
 
 interface LocationState {
   tipoProyecto: TipoProyecto;
@@ -91,30 +89,12 @@ const CrearProyecto: React.FC = () => {
     cargarDatos();
   }, []);
 
-
   //función de validación para el nombre del director:
   const validarDirectorNombre = (nombre: string): boolean => {
     // Patrón para validar: 1-2 nombres seguidos de 1-2 apellidos
     const pattern = /^[A-Za-zÀ-ÖØ-öø-ÿ]+ [A-Za-zÀ-ÖØ-öø-ÿ]+( [A-Za-zÀ-ÖØ-öø-ÿ]+)?( [A-Za-zÀ-ÖØ-öø-ÿ]+)?$/;
     return pattern.test(nombre.trim());
   };
-
-  // Efecto para cargar el usuario actual y su rol
-  // useEffect(() => {
-  //   const cargarUsuarioActual = async () => {
-  //     try {
-  //       const perfilUsuario = await userAPI.getPerfilUsuario();
-  //       setCurrentUser(perfilUsuario);
-  //       // El director va a ser el usuario actual
-  //       setDirector_nombre(perfilUsuario.nombre);
-  //     } catch (err) {
-  //       console.error("Error al cargar el usuario actual:", err);
-  //       setError("No se pudo cargar el usuario actual. Por favor, recarga la página.");
-  //     }
-  //   };
-    
-  //   cargarUsuarioActual();
-  // }, []);
 
   //manejador para validar el cambio en el campo de presupuesto
   const handlePresupuestoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -124,11 +104,20 @@ const CrearProyecto: React.FC = () => {
     // Validar que sea un número positivo
     if (value && parseFloat(value) <= 0) {
       setPresupuestoError('El presupuesto debe ser un valor positivo');
+      return;
+    }
+    
+    // Validar que no exceda el presupuesto máximo del tipo de proyecto
+    if (value && tipoProyecto && tipoProyecto.presupuesto_maximo) {
+      if (parseFloat(value) > tipoProyecto.presupuesto_maximo) {
+        setPresupuestoError(`El presupuesto no puede exceder ${tipoProyecto.presupuesto_maximo.toLocaleString('es-CO')} para este tipo de proyecto`);
+      } else {
+        setPresupuestoError(null);
+      }
     } else {
       setPresupuestoError(null);
     }
   };
-  
   
   //manejador para los cambios en el campo director
   const handleDirectorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -164,21 +153,31 @@ const CrearProyecto: React.FC = () => {
     }
     
     // Validar el director
-  if (!id_director_proyecto.trim()) {
-    setError('El director del proyecto es obligatorio');
-    return;
-  }
-  
-  if (!validarDirectorNombre(id_director_proyecto)) {
-    setError('El formato del nombre del director debe ser: Nombre Apellido o Nombre1 Nombre2 Apellido1 Apellido2');
-    return;
-  }
+    if (!id_director_proyecto.trim()) {
+      setError('El director del proyecto es obligatorio');
+      return;
+    }
+    
+    if (!validarDirectorNombre(id_director_proyecto)) {
+      setError('El formato del nombre del director debe ser: Nombre Apellido o Nombre1 Nombre2 Apellido1 Apellido2');
+      return;
+    }
 
-  // Validar que el presupuesto si se ha ingresado
-  if (presupuesto_aprobado && parseFloat(presupuesto_aprobado) <= 0) {
-    setError('El presupuesto debe ser un valor positivo');
-    return;
-  }
+    // Validar que el presupuesto si se ha ingresado
+    if (presupuesto_aprobado) {
+      if (parseFloat(presupuesto_aprobado) <= 0) {
+        setError('El presupuesto debe ser un valor positivo');
+        return;
+      }
+      
+      // Validar que no exceda el presupuesto máximo del tipo de proyecto
+      if (tipoProyecto && tipoProyecto.presupuesto_maximo && 
+          parseFloat(presupuesto_aprobado) > tipoProyecto.presupuesto_maximo) {
+        setError(`El presupuesto no puede exceder ${tipoProyecto.presupuesto_maximo.toLocaleString('es-CO')} para este tipo de proyecto`);
+        return;
+      }
+    }
+    
     setIsLoading(true);
     
     try {
@@ -188,8 +187,6 @@ const CrearProyecto: React.FC = () => {
         titulo,
         id_tipo_proyecto: tipoProyecto.id_tipo_proyecto,
         id_estado_proyecto,
-        // fecha_creacion: new Date().toISOString(),
-        // No incluimos id_director_proyecto, el backend usará el usuario actual
         id_director_proyecto,
         presupuesto_aprobado: presupuesto_aprobado ? parseFloat(presupuesto_aprobado) : 0,
         fecha_inicio,
@@ -220,36 +217,36 @@ const CrearProyecto: React.FC = () => {
   };
 
   return (
-    <Container className="d-flex justify-content-center align-items-start py-5" style={{ minHeight: '100vh' }}>
-      <Card className="p-5 shadow-lg" style={{ width: '80%', maxWidth: '900px' }}>
-        <div className="text-center mb-4 bg-primary bg-gradient text-white p-3 rounded-3 shadow-sm">
-          <h2 className="mb-0 fw-bold">Nuevo Proyecto</h2>
-          {tipoProyecto && <p className="mt-2 mb-0">Tipo: {tipoProyecto.nombre}</p>}
+    <div className="nuevo-proyecto-wrapper">
+      <Card className="nuevo-proyecto-card">
+        <div className="nuevo-proyecto-header">
+          <h2 className="nuevo-proyecto-title">Nuevo Proyecto</h2>
+          {tipoProyecto && <p className="nuevo-proyecto-subtitle">Tipo: {tipoProyecto.nombre}</p>}
         </div>
         
         {error && (
-          <div className="alert alert-danger" role="alert">
+          <div className="error-message" role="alert">
             {error}
           </div>
         )}
         
         <Form className="py-3" onSubmit={handleSubmit}>
-          <Form.Group controlId="tipo_proyecto" className="mb-4">
-            <Form.Label className="fw-semibold">Tipo de Proyecto <span className="text-danger">*</span></Form.Label>
+          <Form.Group controlId="tipo_proyecto" className="form-group-custom">
+            <Form.Label className="form-label-custom">Tipo de Proyecto <span className="required-field">*</span></Form.Label>
             <Form.Control
               type="text"
               size="lg"
               value={tipoProyecto?.nombre || ''}
               readOnly
-              className="bg-light"
+              className="form-control-custom form-control-readonly"
             />
-            <Form.Text className="text-muted">
+            <Form.Text className="form-text-custom">
               El tipo de proyecto no puede ser modificado después de seleccionado.
             </Form.Text>
           </Form.Group>
           
-          <Form.Group controlId="titulo" className="mb-4">
-            <Form.Label className="fw-semibold">Título <span className="text-danger">*</span></Form.Label>
+          <Form.Group controlId="titulo" className="form-group-custom">
+            <Form.Label className="form-label-custom">Título <span className="required-field">*</span></Form.Label>
             <Form.Control
               type="text"
               placeholder="Ingrese el título"
@@ -257,50 +254,53 @@ const CrearProyecto: React.FC = () => {
               value={titulo}
               onChange={(e) => setTitulo(e.target.value)}
               required
+              className="form-control-custom"
             />
           </Form.Group>
 
-          <Form.Group controlId="fecha_inicio" className="mb-4">
-            <Form.Label className="fw-semibold">Fecha de Inicio <span className="text-danger">*</span></Form.Label>
+          <Form.Group controlId="fecha_inicio" className="form-group-custom">
+            <Form.Label className="form-label-custom">Fecha de Inicio <span className="required-field">*</span></Form.Label>
             <Form.Control
               type="date"
               size="lg"
               value={fecha_inicio}
               onChange={handleFechaInicioChange}
               required
+              className="form-control-custom"
             />
-            <Form.Text className="text-muted">
+            <Form.Text className="form-text-custom">
               A partir de esta fecha se generará el código del proyecto.
             </Form.Text>
           </Form.Group>
 
-          <Form.Group controlId="codigo_proyecto" className="mb-4">
-            <Form.Label className="fw-semibold">Código del Proyecto <span className="text-danger">*</span></Form.Label>
+          <Form.Group controlId="codigo_proyecto" className="form-group-custom">
+            <Form.Label className="form-label-custom">Código del Proyecto <span className="required-field">*</span></Form.Label>
             <Form.Control
               type="text"
               placeholder="Se generará automáticamente desde la fecha de inicio"
               size="lg"
               value={codigo_proyecto}
               readOnly
-              className="bg-light"
+              className="form-control-custom form-control-readonly"
             />
-            <Form.Text className="text-muted">
+            <Form.Text className="form-text-custom">
               El código se genera automáticamente basado en el tipo de proyecto y la fecha de inicio.
             </Form.Text>
           </Form.Group>
 
-          <Form.Group controlId="fecha_fin" className="mb-4">
-            <Form.Label className="fw-semibold">Fecha de Fin</Form.Label>
+          <Form.Group controlId="fecha_fin" className="form-group-custom">
+            <Form.Label className="form-label-custom">Fecha de Fin</Form.Label>
             <Form.Control
               type="date"
               size="lg"
               value={fecha_fin}
               onChange={(e) => setFecha_fin(e.target.value)}
+              className="form-control-custom"
             />
           </Form.Group>
 
-          <Form.Group controlId="id_estado_proyecto" className="mb-4">
-            <Form.Label className="fw-semibold">Estado del Proyecto <span className="text-danger">*</span></Form.Label>
+          <Form.Group controlId="id_estado_proyecto" className="form-group-custom">
+            <Form.Label className="form-label-custom">Estado del Proyecto <span className="required-field">*</span></Form.Label>
             <Form.Control
               as="select"
               size="lg"
@@ -308,6 +308,7 @@ const CrearProyecto: React.FC = () => {
               onChange={(e) => setId_estado_proyecto(e.target.value)}
               disabled={isLoading}
               required
+              className="form-control-custom"
             >
               <option value="">Seleccione...</option>
               {estadosProyecto.map(estado => (
@@ -318,8 +319,8 @@ const CrearProyecto: React.FC = () => {
             </Form.Control>
           </Form.Group>
 
-          <Form.Group controlId="id_director_proyecto" className="mb-4">
-            <Form.Label className="fw-semibold">Director del Proyecto <span className="text-danger">*</span></Form.Label>
+          <Form.Group controlId="id_director_proyecto" className="form-group-custom">
+            <Form.Label className="form-label-custom">Director del Proyecto <span className="required-field">*</span></Form.Label>
             <Form.Control
               type='text'
               placeholder="Ej: Juan Pérez o Juan Carlos Pérez González"
@@ -328,19 +329,20 @@ const CrearProyecto: React.FC = () => {
               onChange={handleDirectorChange}
               isInvalid={!!directorError}
               required
+              className="form-control-custom"
             />
             {directorError && (
               <Form.Control.Feedback type="invalid">
                 {directorError}
               </Form.Control.Feedback>
             )}
-            <Form.Text className="text-muted">
-            Ingrese al menos un nombre y un apellido, máximo dos nombres y dos apellidos.
+            <Form.Text className="form-text-custom">
+              Ingrese al menos un nombre y un apellido, máximo dos nombres y dos apellidos.
             </Form.Text>
           </Form.Group>
 
-          <Form.Group controlId="presupuesto_aprobado" className="mb-4">
-            <Form.Label className="fw-semibold">Presupuesto Aprobado</Form.Label>
+          <Form.Group controlId="presupuesto_aprobado" className="form-group-custom">
+            <Form.Label className="form-label-custom">Presupuesto Aprobado</Form.Label>
             <Form.Control
               type="number"
               step="0.01"
@@ -350,68 +352,75 @@ const CrearProyecto: React.FC = () => {
               value={presupuesto_aprobado}
               onChange={handlePresupuestoChange}
               isInvalid={!!presupuestoError}
+              className="form-control-custom"
             />
             {presupuestoError && (
               <Form.Control.Feedback type="invalid">
                 {presupuestoError}
               </Form.Control.Feedback>
             )}
-            <Form.Text className="text-muted">
-              El presupuesto debe ser un valor positivo
+            <Form.Text className="form-text-custom">
+              {tipoProyecto?.presupuesto_maximo ? 
+                `El presupuesto debe ser un valor positivo y no debe exceder ${tipoProyecto.presupuesto_maximo.toLocaleString('es-CO')}` : 
+                'El presupuesto debe ser un valor positivo'}
             </Form.Text>
           </Form.Group>
 
-          <div className="mt-5 mb-4 border-top pt-4">
-            <h4 className="mb-3">Datos de Prórroga <span className="text-muted fs-6">(Opcional)</span></h4>  
+          <div className="prorroga-section">
+            <h4 className="prorroga-title">Datos de Prórroga <span className="text-muted fs-6">(Opcional)</span></h4>  
 
-            <Form.Group controlId="fecha_prorroga" className="mb-4">
-              <Form.Label className="fw-semibold">Fecha de Prórroga <span className="text-muted">(Opcional)</span></Form.Label>
+            <Form.Group controlId="fecha_prorroga" className="form-group-custom">
+              <Form.Label className="form-label-custom">Fecha de Prórroga <span className="text-muted">(Opcional)</span></Form.Label>
               <Form.Control
                 type="date"
                 size="lg"
                 value={fecha_prorroga}
                 onChange={(e) => setFecha_prorroga(e.target.value)}
+                className="form-control-custom"
               />
             </Form.Group>
 
-            <Form.Group controlId="fecha_prorroga_inicio" className="mb-4">
-              <Form.Label className="fw-semibold">Fecha de Inicio de Prórroga <span className="text-muted">(Opcional)</span></Form.Label>
+            <Form.Group controlId="fecha_prorroga_inicio" className="form-group-custom">
+              <Form.Label className="form-label-custom">Fecha de Inicio de Prórroga <span className="text-muted">(Opcional)</span></Form.Label>
               <Form.Control
                 type="date"
                 size="lg"
                 value={fecha_prorroga_inicio}
                 onChange={(e) => setFecha_prorroga_inicio(e.target.value)}
+                className="form-control-custom"
               />
             </Form.Group>
 
-            <Form.Group controlId="fecha_prorroga_fin" className="mb-4">
-              <Form.Label className="fw-semibold">Fecha de Fin de Prórroga <span className="text-muted">(Opcional)</span></Form.Label>
+            <Form.Group controlId="fecha_prorroga_fin" className="form-group-custom">
+              <Form.Label className="form-label-custom">Fecha de Fin de Prórroga <span className="text-muted">(Opcional)</span></Form.Label>
               <Form.Control
                 type="date"
                 size="lg"
                 value={fecha_prorroga_fin}
                 onChange={(e) => setFecha_prorroga_fin(e.target.value)}
+                className="form-control-custom"
               />
             </Form.Group>
 
-            <Form.Group controlId="tiempo_prorroga_meses" className="mb-4">
-              <Form.Label className="fw-semibold">Tiempo de Prórroga (meses) <span className="text-muted">(Opcional)</span></Form.Label>
+            <Form.Group controlId="tiempo_prorroga_meses" className="form-group-custom">
+              <Form.Label className="form-label-custom">Tiempo de Prórroga (meses) <span className="text-muted">(Opcional)</span></Form.Label>
               <Form.Control
                 type="number"
                 placeholder="Ingrese el tiempo de prórroga"
                 size="lg"
                 value={tiempo_prorroga_meses}
                 onChange={(e) => setTiempo_prorroga_meses(e.target.value)}
+                className="form-control-custom"
               />
             </Form.Group>
           </div>        
         
-          <div className="text-center mt-5 d-flex justify-content-center gap-4">
+          <div className="button-group">
             <Button 
               variant="secondary" 
               type="button" 
               size="lg" 
-              className="px-4 py-2"
+              className="btn-custom btn-secondary-custom"
               onClick={() => navigate('/tipos-proyecto')}
             >
               Volver
@@ -420,7 +429,7 @@ const CrearProyecto: React.FC = () => {
               variant="primary" 
               type="submit" 
               size="lg" 
-              className="px-4 py-2"
+              className="btn-custom btn-primary-custom"
               disabled={isLoading}
             >
               {isLoading ? 'Cargando...' : 'Crear Proyecto'}
@@ -428,7 +437,7 @@ const CrearProyecto: React.FC = () => {
           </div>
         </Form>
       </Card>
-    </Container>
+    </div>
   );
 };
 

@@ -26,15 +26,6 @@ function App() {
             <Route path="/perfil" element={<Perfil />} />
             <Route path="/crear-proyecto" element={<CrearProyecto />} />
             <Route path="/tipos-proyecto" element={<TiposProyecto />} />
-
-
-
-            {/* Agrega todas tus otras rutas aquí sin necesidad de protegerlas individualmente */}
-            {/* <Route path="/proyectos" element={<ListaProyectos />} /> */}
-            {/* <Route path="/perfil" element={<PerfilUsuario />} /> */}
-            
-            {/* Ruta para cualquier otra dirección no definida */}
-            {/* <Route path="*" element={<PaginaNoEncontrada />} /> */}
           </Routes>
         </AppLayout>
       </AuthProvider>
