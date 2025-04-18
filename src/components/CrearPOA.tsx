@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Form, Button, Container, Card, Row, Col, Table } from 'react-bootstrap';
+import { Form, Button, Container, Card, Row, Col, Table, Modal } from 'react-bootstrap';
 import { Proyecto } from '../interfaces/project';
 import { EstadoPOA, TipoPOA, Periodo } from '../interfaces/poa';
-import { projectAPI } from '../api/projectAPI';
 import { poaAPI } from '../api/poaAPI';
-import PeriodoModal from './PeriodoModal';
+import { projectAPI } from '../api/projectAPI';
 
 const CrearPOA: React.FC = () => {
   // Estados para campos del formulario - actualizados conforme a la tabla SQL
@@ -30,13 +29,20 @@ const CrearPOA: React.FC = () => {
   const [proyectosFiltrados, setProyectosFiltrados] = useState<Proyecto[]>([]);
   const [busquedaProyecto, setBusquedaProyecto] = useState('');
   const [mostrarBusqueda, setMostrarBusqueda] = useState(false);
-
-  // Estado para el proyecto seleccionado completo (para pasar al modal)
+  
+  // Estado para el proyecto seleccionado
   const [proyectoSeleccionado, setProyectoSeleccionado] = useState<Proyecto | null>(null);
-  const [tipoPOASeleccionado, setTipoPOASeleccionado] = useState<TipoPOA | null>(null);
 
   // Estado para modal de creación de periodo
   const [showCrearPeriodo, setShowCrearPeriodo] = useState(false);
+  const [nuevoPeriodo, setNuevoPeriodo] = useState<Partial<Periodo>>({
+    codigo_periodo: '',
+    nombre_periodo: '',
+    fecha_inicio: '',
+    fecha_fin: '',
+    anio: '',
+    mes: ''
+  });
   
   // Estados para mostrar mensajes de carga o error
   const [isLoading, setIsLoading] = useState(false);
@@ -49,19 +55,22 @@ const CrearPOA: React.FC = () => {
       setError(null);
       
       try {
-        // Obtener proyectos de la API
+        // Obtener proyectos desde la API
         const proyectosData = await projectAPI.getProyectos();
         setProyectos(proyectosData);
         setProyectosFiltrados(proyectosData);
 
-        // Obtener estados de POA
+        // Cargar estados POA desde la API
         const estadosData = await poaAPI.getEstadosPOA();
         setEstadosPoa(estadosData);
         
-        // Obtener tipos de POA
+        // Cargar tipos POA desde la API
         const tiposData = await poaAPI.getTiposPOA();
         setTiposPoa(tiposData);
         
+        // Cargar periodos desde la API
+        const periodosData = await poaAPI.getPeriodos();
+        setPeriodos(periodosData);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error desconocido');
         console.error(err);
@@ -72,17 +81,6 @@ const CrearPOA: React.FC = () => {
     
     cargarDatos();
   }, []);
-
-  // Efecto para actualizar el presupuesto máximo cuando se selecciona un tipo de POA
-  useEffect(() => {
-    if (id_tipo_poa) {
-      const tipoPOASeleccionado = tiposPoa.find(tipo => tipo.id_tipo_poa === id_tipo_poa);
-      if (tipoPOASeleccionado) {
-        setPresupuestoAsignado(tipoPOASeleccionado.presupuesto_maximo.toString());
-        setTipoPOASeleccionado(tipoPOASeleccionado);
-      }
-    }
-  }, [id_tipo_poa, tiposPoa]);
 
   // Filtrar proyectos según la búsqueda
   useEffect(() => {
@@ -119,79 +117,59 @@ const CrearPOA: React.FC = () => {
     return () => clearTimeout(timeoutId);
   }, [busquedaProyecto, proyectos]);
 
-  // Auto-generar código POA
-  useEffect(() => {
-    if (id_proyecto && id_tipo_poa && anio_ejecucion) {
-      const proyectoSeleccionado = proyectos.find(p => p.id_proyecto === id_proyecto);
-      const tipoSeleccionado = tiposPoa.find(t => t.id_tipo_poa === id_tipo_poa);
-      
-      if (proyectoSeleccionado && tipoSeleccionado) {
-        // Formato: CÓDIGO-TIPO-AÑO-SECUENCIAL (el secuencial sería asignado por el backend)
-        const codigoBase = `${proyectoSeleccionado.codigo_proyecto}-${tipoSeleccionado.codigo_tipo}-${anio_ejecucion}`;
-        setCodigoPoa(`${codigoBase}-001`); // El secuencial sería generado por el backend
-      }
-    }
-  }, [id_proyecto, id_tipo_poa, anio_ejecucion, proyectos, tiposPoa]);
-
-  // Seleccionar un proyecto de la búsqueda
-  const seleccionarProyecto = (proyecto: Proyecto) => {
+  // Seleccionar un proyecto de la búsqueda y establecer datos automáticamente
+  const seleccionarProyecto = async (proyecto: Proyecto) => {
     setIdProyecto(proyecto.id_proyecto);
-    setProyectoSeleccionado(proyecto);
     setBusquedaProyecto(`${proyecto.codigo_proyecto} - ${proyecto.titulo}`);
     setMostrarBusqueda(false);
+    setProyectoSeleccionado(proyecto);
     
-    // Si ya hay un tipo POA seleccionado, autoseleccionar según el tipo de proyecto
-    if (proyecto.id_tipo_proyecto && tiposPoa.length > 0) {
-      const tipoCorrespondiente = tiposPoa.find(
-        tipo => tipo.codigo_tipo === proyecto.id_tipo_proyecto
-      );
-      if (tipoCorrespondiente) {
-        setIdTipoPoa(tipoCorrespondiente.id_tipo_poa);
+    try {
+      // Establecer el código POA basado en el código del proyecto
+      setCodigoPoa(`${proyecto.codigo_proyecto}-POA`);
+      
+      // Establecer el año de ejecución basado en la fecha de inicio del proyecto
+      if (proyecto.fecha_inicio) {
+        const anio = new Date(proyecto.fecha_inicio).getFullYear().toString();
+        setAnioEjecucion(anio);
       }
-    }
-    
-    // Obtener año de ejecución de la fecha de inicio del proyecto
-    if (proyecto.fecha_inicio) {
-      const anioInicio = new Date(proyecto.fecha_inicio).getFullYear().toString();
-      setAnioEjecucion(anioInicio);
+      
+      // Obtener y establecer tipo POA basado en el tipo de proyecto
+      if (proyecto.id_tipo_proyecto) {
+        const tipoPoaCorrespondiente = await poaAPI.getTipoPOAByTipoProyecto(proyecto.nombre_tipo_proyecto || '');
+        if (tipoPoaCorrespondiente) {
+          setIdTipoPoa(tipoPoaCorrespondiente.id_tipo_poa);
+          // Establecer presupuesto máximo del tipo POA
+          setPresupuestoAsignado(tipoPoaCorrespondiente.presupuesto_maximo.toString());
+        }
+      }
+    } catch (err) {
+      console.error('Error al procesar el proyecto seleccionado:', err);
+      setError('Error al cargar datos automáticos del proyecto');
     }
   };
 
-  // Manejar guardado de nuevos periodos
-  const handleGuardarPeriodo = (periodosGuardados: Periodo[]) => {
-    // Actualizar la lista de periodos
-    setPeriodos(prevPeriodos => [...prevPeriodos, ...periodosGuardados]);
+  // Actualizar campos de fecha cuando se selecciona un periodo
+  const handleSeleccionPeriodo = (e: React.ChangeEvent<any>) => {
+    const periodoId = (e.target as HTMLSelectElement).value;
+    setIdPeriodo(periodoId);
     
-    // Seleccionar el primer periodo guardado
-    if (periodosGuardados.length > 0) {
-      const primerPeriodo = periodosGuardados[0];
-      setIdPeriodo(primerPeriodo.id_periodo);
-      setFechaInicio(primerPeriodo.fecha_inicio);
-      setFechaFin(primerPeriodo.fecha_fin);
-      if (primerPeriodo.anio) {
-        setAnioEjecucion(primerPeriodo.anio);
+    if (periodoId) {
+      const periodoSeleccionado = periodos.find(p => p.id_periodo === periodoId);
+      if (periodoSeleccionado) {
+        setFechaInicio(periodoSeleccionado.fecha_inicio);
+        setFechaFin(periodoSeleccionado.fecha_fin);
       }
     }
-    
-    setShowCrearPeriodo(false);
   };
 
-  // Manejar envío del formulario
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
+  // Manejo del envío del formulario
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     
-    // Validar campos requeridos según la estructura de la tabla SQL
-    if (!id_proyecto || !id_periodo || !id_estado_poa || !id_tipo_poa || !codigo_poa || !anio_ejecucion || !presupuesto_asignado) {
-      setError('Por favor complete todos los campos obligatorios');
-      return;
-    }
-    
-    // Validar que el presupuesto esté dentro del rango permitido
-    const presupuestoNum = parseFloat(presupuesto_asignado);
-    const tipoPOASeleccionado = tiposPoa.find(tipo => tipo.id_tipo_poa === id_tipo_poa);
-    
-    if (tipoPOASeleccionado && presupuestoNum > tipoPOASeleccionado.presupuesto_maximo) {
-      setError(`El presupuesto excede el máximo permitido para este tipo de POA (${tipoPOASeleccionado.presupuesto_maximo})`);
+    // Validaciones básicas
+    if (!id_proyecto || !id_periodo || !id_estado_poa || !codigo_poa || !anio_ejecucion) {
+      setError('Todos los campos marcados con * son obligatorios');
       return;
     }
     
@@ -199,34 +177,100 @@ const CrearPOA: React.FC = () => {
     setError(null);
     
     try {
-      // Datos a enviar al backend
+      // Datos a enviar para crear POA
       const datosPOA = {
         id_proyecto,
         id_periodo,
-        id_estado_poa,
         id_tipo_poa,
         codigo_poa,
         anio_ejecucion,
-        presupuesto_asignado: presupuestoNum,
-        // La fecha_creacion se establecerá en el backend con GETDATE()
-        // El id_poa se generará automáticamente con NEWID()
+        presupuesto_asignado: parseFloat(presupuesto_asignado),
       };
       
-      // Aquí iría la llamada a la API para guardar el POA
-      console.log('Enviando datos del POA:', datosPOA);
+      // Llamar a la API para crear el POA
+      const nuevoPOA = await poaAPI.crearPOA(datosPOA);
       
-      // Mock de respuesta exitosa
+      // Mostrar mensaje de éxito y resetear el formulario o redirigir
       alert('POA creado con éxito');
       
-      // Redireccionar o limpiar formulario
-      // window.location.href = `/poa/${poaCreado.id_poa}`;
-      
+      // Reset del formulario o redirección
+      // window.location.href = '/poas'; // Descomenta para redirigir
     } catch (err) {
-      const mensajeError = err instanceof Error ? err.message : 'Error al crear el POA';
-      setError(mensajeError);
-      console.error('Error:', err);
+      setError(err instanceof Error ? err.message : 'Error al crear el POA');
+      console.error(err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Manejar cambios en el presupuesto asignado (solo valores positivos)
+  const handlePresupuestoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const valor = e.target.value;
+    // Verificar que sea un número positivo o vacío
+    if (valor === '' || (parseFloat(valor) >= 0)) {
+      setPresupuestoAsignado(valor);
+    }
+  };
+
+  // Manejar la apertura del modal de creación de periodo
+  const handleAbrirModalPeriodo = () => {
+    // Inicializar con fechas por defecto
+    const hoy = new Date();
+    const inicioAnio = new Date(hoy.getFullYear(), 0, 1).toISOString().split('T')[0];
+    const finAnio = new Date(hoy.getFullYear(), 11, 31).toISOString().split('T')[0];
+    
+    setNuevoPeriodo({
+      codigo_periodo: `${hoy.getFullYear()}-B${Math.floor(Math.random() * 9) + 1}`,
+      nombre_periodo: `Nuevo Periodo ${hoy.getFullYear()}`,
+      fecha_inicio: inicioAnio,
+      fecha_fin: finAnio,
+      anio: hoy.getFullYear().toString(),
+      mes: 'Enero-Diciembre'
+    });
+    
+    setShowCrearPeriodo(true);
+  };
+
+  // Manejar cambios en el formulario de nuevo periodo
+  const handleChangePeriodo = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setNuevoPeriodo(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Guardar nuevo periodo
+  const handleGuardarPeriodo = async () => {
+    // Validación básica
+    if (!nuevoPeriodo.codigo_periodo || !nuevoPeriodo.nombre_periodo || !nuevoPeriodo.fecha_inicio || !nuevoPeriodo.fecha_fin) {
+      alert('Todos los campos son obligatorios');
+      return;
+    }
+
+    try {
+      // Llamar a la API para crear nuevo periodo
+      const periodoCrado = await poaAPI.crearPeriodo({
+        codigo_periodo: nuevoPeriodo.codigo_periodo!,
+        nombre_periodo: nuevoPeriodo.nombre_periodo!,
+        fecha_inicio: nuevoPeriodo.fecha_inicio!,
+        fecha_fin: nuevoPeriodo.fecha_fin!,
+        anio: nuevoPeriodo.anio,
+        mes: nuevoPeriodo.mes
+      });
+      
+      // Actualizar lista de periodos
+      setPeriodos([...periodos, periodoCrado]);
+      
+      // Cerrar modal
+      setShowCrearPeriodo(false);
+      
+      // Opcional: seleccionar el nuevo periodo
+      setIdPeriodo(periodoCrado.id_periodo);
+      
+      alert('Periodo creado con éxito');
+    } catch (err) {
+      alert('Error al crear periodo: ' + (err instanceof Error ? err.message : 'Error desconocido'));
     }
   };
 
@@ -304,24 +348,59 @@ const CrearPOA: React.FC = () => {
               </Col>
             </Row>
             
-            {/* Sección de Tipo POA */}
+            {/* Sección de Periodo con opción para crear nuevo */}
+            <Row>
+              <Col md={12} className="mb-4">
+                <Form.Group controlId="id_periodo">
+                  <Form.Label className="fw-semibold">Periodo <span className="text-danger">*</span></Form.Label>
+                  <div className="d-flex">
+                    <Form.Control
+                      as="select"
+                      value={id_periodo}
+                      onChange={handleSeleccionPeriodo}
+                      className="form-control-lg"
+                      disabled={isLoading}
+                    >
+                      <option value="">Seleccione...</option>
+                      {periodos.map(periodo => (
+                        <option key={periodo.id_periodo} value={periodo.id_periodo}>
+                          {periodo.nombre_periodo} ({periodo.fecha_inicio} al {periodo.fecha_fin})
+                        </option>
+                      ))}
+                    </Form.Control>
+                    <Button 
+                      variant="outline-primary" 
+                      className="ms-2"
+                      onClick={handleAbrirModalPeriodo}
+                    >
+                      <i className="bi bi-plus-circle"></i> Nuevo
+                    </Button>
+                  </div>
+                </Form.Group>
+              </Col>
+            </Row>
+            
+            {/* Sección de Tipo POA - Ahora se selecciona automáticamente */}
             <Row>
               <Col md={6} className="mb-4">
                 <Form.Group controlId="id_tipo_poa">
                   <Form.Label className="fw-semibold">Tipo de POA <span className="text-danger">*</span></Form.Label>
-                  <Form.Select
+                  <Form.Control
+                    as="select"
                     value={id_tipo_poa}
-                    onChange={(e) => setIdTipoPoa(e.target.value)}
+                    disabled={true} // Disabled porque se selecciona automáticamente
                     className="form-control-lg"
-                    disabled={isLoading}
                   >
-                    <option value="">Seleccione...</option>
+                    <option value="">Seleccione un proyecto primero...</option>
                     {tiposPoa.map(tipo => (
                       <option key={tipo.id_tipo_poa} value={tipo.id_tipo_poa}>
                         {tipo.codigo_tipo} - {tipo.nombre} (Máx. {tipo.presupuesto_maximo})
                       </option>
                     ))}
-                  </Form.Select>
+                  </Form.Control>
+                  <Form.Text className="text-muted">
+                    Se selecciona automáticamente según el tipo de proyecto
+                  </Form.Text>
                 </Form.Group>
               </Col>
               
@@ -345,165 +424,170 @@ const CrearPOA: React.FC = () => {
               </Col>
             </Row>
             
-            {/* Sección de Periodo con opción para crear nuevo */}
+            {/* Sección de detalles del POA */}
             <Row>
-              <Col md={12} className="mb-4">
-                <Form.Group controlId="id_periodo">
-                  <Form.Label className="fw-semibold">Periodo <span className="text-danger">*</span></Form.Label>
-                  <div className="d-flex">
-                    <Form.Select
-                      value={id_periodo}
-                      onChange={(e) => {
-                        const periodoId = e.target.value;
-                        setIdPeriodo(periodoId);
-                        
-                        if (periodoId) {
-                          const periodoSeleccionado = periodos.find(p => p.id_periodo === periodoId);
-                          if (periodoSeleccionado) {
-                            setFechaInicio(periodoSeleccionado.fecha_inicio);
-                            setFechaFin(periodoSeleccionado.fecha_fin);
-                            if (periodoSeleccionado.anio) {
-                              setAnioEjecucion(periodoSeleccionado.anio);
-                            }
-                          }
-                        }
-                      }}
-                      className="form-control-lg"
-                      disabled={isLoading}
-                    >
-                      <option value="">Seleccione...</option>
-                      {periodos.map(periodo => (
-                        <option key={periodo.id_periodo} value={periodo.id_periodo}>
-                          {periodo.nombre_periodo} ({periodo.fecha_inicio} al {periodo.fecha_fin})
-                        </option>
-                      ))}
-                    </Form.Select>
-                    <Button 
-                      variant="outline-primary" 
-                      className="ms-2"
-                      onClick={() => setShowCrearPeriodo(true)}
-                      disabled={!proyectoSeleccionado || !tipoPOASeleccionado}
-                    >
-                      <i className="bi bi-plus-circle me-1"></i> Nuevo Periodo
-                    </Button>
-                  </div>
-                  {(!proyectoSeleccionado || !tipoPOASeleccionado) && (
-                    <Form.Text className="text-muted">
-                      Debe seleccionar un proyecto y un tipo de POA antes de crear un nuevo periodo.
-                    </Form.Text>
-                  )}
-                </Form.Group>
-              </Col>
-            </Row>
-            
-            {/* Sección de Fechas y presupuesto */}
-            <Row>
-              <Col md={4} className="mb-4">
-                <Form.Group controlId="anio_ejecucion">
-                  <Form.Label className="fw-semibold">Año de Ejecución <span className="text-danger">*</span></Form.Label>
-                  <Form.Control
-                    type="text"
-                    value={anio_ejecucion}
-                    onChange={(e) => setAnioEjecucion(e.target.value)}
-                    className="form-control-lg"
-                    disabled={isLoading}
-                    placeholder="Ej: 2024"
-                  />
-                </Form.Group>
-              </Col>
-              
               <Col md={4} className="mb-4">
                 <Form.Group controlId="codigo_poa">
                   <Form.Label className="fw-semibold">Código POA <span className="text-danger">*</span></Form.Label>
                   <Form.Control
                     type="text"
                     value={codigo_poa}
-                    onChange={(e) => setCodigoPoa(e.target.value)}
+                    readOnly
                     className="form-control-lg"
-                    disabled={isLoading}
-                    placeholder="Se generará automáticamente"
+                    placeholder="Se generará automáticamente al seleccionar proyecto"
                   />
+                  <Form.Text className="text-muted">
+                    Se genera automáticamente basado en el código del proyecto
+                  </Form.Text>
+                </Form.Group>
+              </Col>
+              
+              <Col md={4} className="mb-4">
+                <Form.Group controlId="anio_ejecucion">
+                  <Form.Label className="fw-semibold">Año de Ejecución <span className="text-danger">*</span></Form.Label>
+                  <Form.Control
+                    type="text"
+                    value={anio_ejecucion}
+                    readOnly
+                    placeholder="Se completará automáticamente"
+                    className="form-control-lg"
+                  />
+                  <Form.Text className="text-muted">
+                    Se establece según la fecha de inicio del proyecto
+                  </Form.Text>
                 </Form.Group>
               </Col>
               
               <Col md={4} className="mb-4">
                 <Form.Group controlId="presupuesto_asignado">
-                  <Form.Label className="fw-semibold">Presupuesto Asignado <span className="text-danger">*</span></Form.Label>
+                  <Form.Label className="fw-semibold">Presupuesto Asignado ($) <span className="text-danger">*</span></Form.Label>
                   <Form.Control
                     type="number"
-                    value={presupuesto_asignado}
-                    onChange={(e) => setPresupuestoAsignado(e.target.value)}
-                    className="form-control-lg"
-                    disabled={isLoading}
-                    placeholder="0.00"
                     step="0.01"
-                  />
-                  {tipoPOASeleccionado && (
-                    <Form.Text className="text-muted">
-                      Máximo permitido: {tipoPOASeleccionado.presupuesto_maximo}
-                    </Form.Text>
-                  )}
-                </Form.Group>
-              </Col>
-            </Row>
-            
-            {/* Fechas de inicio y fin del periodo seleccionado */}
-            <Row>
-              <Col md={6} className="mb-4">
-                <Form.Group controlId="fecha_inicio">
-                  <Form.Label className="fw-semibold">Fecha de Inicio del Periodo</Form.Label>
-                  <Form.Control
-                    type="date"
-                    value={fecha_inicio}
+                    min="0"
+                    value={presupuesto_asignado}
+                    onChange={handlePresupuestoChange}
                     className="form-control-lg"
-                    disabled={true}
                   />
-                </Form.Group>
-              </Col>
-              
-              <Col md={6} className="mb-4">
-                <Form.Group controlId="fecha_fin">
-                  <Form.Label className="fw-semibold">Fecha de Fin del Periodo</Form.Label>
-                  <Form.Control
-                    type="date"
-                    value={fecha_fin}
-                    className="form-control-lg"
-                    disabled={true}
-                  />
+                  <Form.Text className="text-muted">
+                    Se establece según el presupuesto máximo del tipo de POA
+                  </Form.Text>
                 </Form.Group>
               </Col>
             </Row>
             
             {/* Botones de acción */}
-            <div className="d-flex justify-content-end mt-4">
-              <Button variant="secondary" className="me-2" type="button">
-                Cancelar
-              </Button>
-              <Button 
-                variant="primary" 
-                type="submit" 
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                    Guardando...
-                  </>
-                ) : 'Crear POA'}
-              </Button>
-            </div>
+            <Row className="mt-4">
+              <Col className="d-flex justify-content-end">
+                <Button variant="secondary" className="me-2" size="lg">
+                  Cancelar
+                </Button>
+                <Button variant="primary" type="submit" size="lg" disabled={isLoading}>
+                  {isLoading ? 'Guardando...' : 'Guardar POA'}
+                </Button>
+              </Col>
+            </Row>
           </Form>
         </Card.Body>
       </Card>
       
-      {/* Modal para crear períodos */}
-      <PeriodoModal
-        show={showCrearPeriodo}
-        onHide={() => setShowCrearPeriodo(false)}
-        onSave={handleGuardarPeriodo}
-        proyectoSeleccionado={proyectoSeleccionado}
-        tipoPOASeleccionado={tipoPOASeleccionado}
-      />
+      {/* Modal para crear nuevo periodo */}
+      <Modal show={showCrearPeriodo} onHide={() => setShowCrearPeriodo(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Crear Nuevo Periodo</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form>
+            <Form.Group className="mb-3" controlId="nuevoPeriodoCodigo">
+              <Form.Label>Código del Periodo</Form.Label>
+              <Form.Control
+                type="text"
+                name="codigo_periodo"
+                value={nuevoPeriodo.codigo_periodo}
+                onChange={handleChangePeriodo}
+                placeholder="Ej: 2024-B1"
+                required
+              />
+            </Form.Group>
+            
+            <Form.Group className="mb-3" controlId="nuevoPeriodoNombre">
+              <Form.Label>Nombre del Periodo</Form.Label>
+              <Form.Control
+                type="text"
+                name="nombre_periodo"
+                value={nuevoPeriodo.nombre_periodo}
+                onChange={handleChangePeriodo}
+                placeholder="Ej: Primer Periodo 2024"
+                required
+              />
+            </Form.Group>
+            
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3" controlId="nuevoPeriodoFechaInicio">
+                  <Form.Label>Fecha de Inicio</Form.Label>
+                  <Form.Control
+                    type="date"
+                    name="fecha_inicio"
+                    value={nuevoPeriodo.fecha_inicio}
+                    onChange={handleChangePeriodo}
+                    required
+                  />
+                </Form.Group>
+              </Col>
+              
+              <Col md={6}>
+                <Form.Group className="mb-3" controlId="nuevoPeriodoFechaFin">
+                  <Form.Label>Fecha de Fin</Form.Label>
+                  <Form.Control
+                    type="date"
+                    name="fecha_fin"
+                    value={nuevoPeriodo.fecha_fin}
+                    onChange={handleChangePeriodo}
+                    required
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+            
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3" controlId="nuevoPeriodoAnio">
+                  <Form.Label>Año</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="anio"
+                    value={nuevoPeriodo.anio}
+                    onChange={handleChangePeriodo}
+                    placeholder="Ej: 2024"
+                  />
+                </Form.Group>
+              </Col>
+              
+              <Col md={6}>
+                <Form.Group className="mb-3" controlId="nuevoPeriodoMes">
+                  <Form.Label>Meses</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="mes"
+                    value={nuevoPeriodo.mes}
+                    onChange={handleChangePeriodo}
+                    placeholder="Ej: Enero-Marzo"
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowCrearPeriodo(false)}>
+            Cancelar
+          </Button>
+          <Button variant="primary" onClick={handleGuardarPeriodo}>
+            Guardar Periodo
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </Container>
   );
 };

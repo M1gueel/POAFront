@@ -87,7 +87,7 @@ export const poaAPI = {
     
     //TODO: Se necesita un endpoint para evitar esto
     // Función para obtener el tipo POA correspondiente a un tipo de proyecto
-    getTipoPOAByTipoProyecto: async (tipoProyectoNombre: string): Promise<TipoPOA | undefined> => {
+    getTipoPOAByTipoProyecto: async (codigo_tipo: string): Promise<TipoPOA | undefined> => {
         // Obtener todos los tipos de POA
         const tiposPOA = await poaAPI.getTiposPOA();
         
@@ -95,7 +95,8 @@ export const poaAPI = {
         // Esta lógica dependerá de cómo se relacionan en tu sistema
         // Por ejemplo, si los nombres son iguales o siguen algún patrón
         return tiposPOA.find(tipoPOA => 
-            tipoPOA.nombre.toLowerCase().includes(tipoProyectoNombre.toLowerCase())
+            // tipoPOA.nombre.toLowerCase().includes(tipoProyectoNombre.toLowerCase())
+            tipoPOA.codigo_tipo.toLowerCase().includes(codigo_tipo.toLowerCase())
         );
     }
 };

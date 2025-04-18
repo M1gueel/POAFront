@@ -49,9 +49,5 @@ export const projectAPI = {
         });
     }
     return proyectos;
-    },
-
-      
-
-
+    },    
 };
