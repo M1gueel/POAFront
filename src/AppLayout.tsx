@@ -37,7 +37,9 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
           className="d-none d-lg-flex flex-column bg-dark text-white" 
           style={{ 
             width: isSidebarCollapsed ? '70px' : '280px', 
-            minHeight: '100vh',
+            height: '100vh',
+            position: 'sticky',
+            top: 0,
             transition: 'width 0.3s ease'
           }}
         >

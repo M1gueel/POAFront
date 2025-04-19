@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Nav, Button } from 'react-bootstrap';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { TipoProyecto } from '../interfaces/project';
 import { SidebarContentProps } from '../interfaces/bar';
-
+import { TableProperties, FolderKanban, FileChartLine, CircleUserRound, UserPlus, LogOut, Icon } from 'lucide-react';
+import { owl } from '@lucide/lab';
 
 const SidebarContent: React.FC<SidebarContentProps> = ({ 
   usuario, 
@@ -13,6 +13,7 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
   toggleSidebar 
 }) => {
   const { logout } = useAuth();
+  const [showTiposProyecto, setShowTiposProyecto] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -27,24 +28,34 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
     if (onItemClick) onItemClick();
   };
 
+  // Tamaño estándar para los iconos
+  const iconSize = 18;
+
   return (
     <React.Fragment>
-      {/* Botón de toggle en la parte superior */}
+      {/* Encabezado - Ajustado para mostrar/ocultar "SGP" basado en el estado colapsado */}
       <div className="d-flex align-items-center justify-content-between p-3 border-bottom">
         <div 
-          className="fs-4 fw-semibold text-decoration-none text-white"
+          className="fs-4 fw-semibold text-decoration-none text-white d-flex align-items-center"
           onClick={() => handleNavigate("/dashboard")}
           style={{ cursor: 'pointer' }}
         >
-          SGP
+          <Icon iconNode={owl} size={24} className="me-2" />
+          {!isSidebarCollapsed && "SGP"}
         </div>
+      </div>
+      
+      {/* Botón de toggle separado en su propia fila */}
+      <div className="d-flex justify-content-center p-2 border-bottom">
         <Button 
           variant="outline-light" 
           size="sm" 
           onClick={toggleSidebar}
           className="d-none d-lg-block"
+          style={{ width: isSidebarCollapsed ? '40px' : 'auto' }}
         >
-          <i className={`bi bi-chevron-${isSidebarCollapsed ? 'right' : 'left'}`}></i>
+          <TableProperties size={iconSize} />
+          {!isSidebarCollapsed && <span className="ms-2">Contraer</span>}
         </Button>
       </div>
       
@@ -55,24 +66,13 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
           <Nav className="flex-column mt-3">
             <div className="px-3 mb-2 text-secondary text-uppercase small">Proyectos</div>
             
-            {/* Sección Proyectos */}
-            {/* <Nav.Item>
-              <Nav.Link 
-                className={`text-white ${isActive("/tipos-proyecto")}`}
-                onClick={() => handleNavigate("/tipos-proyecto")}
-              >
-                <i className="bi bi-folder me-2"></i>
-                Listar Proyectos
-              </Nav.Link>
-            </Nav.Item> */}
-            
-            {/* Nuevo Proyecto - Ahora con función para mostrar/ocultar tipos */}
+            {/* Nuevo Proyecto */}
             <Nav.Item>
               <Nav.Link 
                 className={`text-white ${isActive("/tipos-proyecto")}`}
                 onClick={() => handleNavigate("/tipos-proyecto")}
               >
-                <i className="bi bi-plus-circle me-2"></i>
+                <FolderKanban size={iconSize} className="me-2" />
                 Nuevo Proyecto
               </Nav.Link>
             </Nav.Item>
@@ -85,7 +85,7 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
                 className={`text-white ${isActive("/crearPOA")}`}
                 onClick={() => handleNavigate("/crearPOA")}
               >
-                <i className="bi bi-file-earmark-plus me-2"></i>
+                <FileChartLine size={iconSize} className="me-2" />
                 Nuevo POA
               </Nav.Link>
             </Nav.Item>
@@ -98,20 +98,20 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
                     className={`text-white ${isActive("/perfil")}`}
                     onClick={() => handleNavigate("/perfil")}
                   >
-                    <i className="bi bi-person-circle me-2"></i>
+                    <CircleUserRound size={iconSize} className="me-2" />
                     Perfil
                   </Nav.Link>
                 </Nav.Item>
             </div>
-            {/* TODO: El registro de usuarios solo lo puede hacer el administrador */}
+            {/* Registro de usuarios */}
             <div className='mt-auto'>
               <Nav.Item>
                 <Nav.Link
                 className={`text-white ${isActive("/register")}`}
                 onClick={() => handleNavigate("/register")}
                 > 
-                  <i className='bi bi-person-circle me-2'></i>
-                    Registrar usuario
+                  <UserPlus size={iconSize} className="me-2" />
+                  Registrar usuario
                 </Nav.Link>
               </Nav.Item>
             </div>
@@ -133,7 +133,7 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
                   logout();
                 }}
               >
-                <i className="bi bi-box-arrow-right me-2"></i>
+                <LogOut size={iconSize} className="me-2" />
                 Cerrar Sesión
               </Button>
             </div>
@@ -150,17 +150,17 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
               onClick={() => handleNavigate("/proyectos")}
               title="Listar Proyectos"
             >
-              <i className="bi bi-folder"></i>
+              <FolderKanban size={iconSize} />
             </Nav.Link>
           </Nav.Item>
           <Nav.Item>
             <Nav.Link 
-              className="text-white"
-              onClick={() => setShowTiposProyecto(!showTiposProyecto)}
+              className={`text-white ${isActive("/tipos-proyecto")}`}
+              onClick={() => handleNavigate("/tipos-proyecto")}
               style={{ cursor: 'pointer' }}
               title="Nuevo Proyecto"
             >
-              <i className="bi bi-plus-circle"></i>
+              <FolderKanban size={iconSize} />
             </Nav.Link>
           </Nav.Item>
           <Nav.Item>
@@ -169,7 +169,7 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
               onClick={() => handleNavigate("/CrearPOA")}
               title="Nuevo POA"
             >
-              <i className="bi bi-file-earmark-plus"></i>
+              <FileChartLine size={iconSize} />
             </Nav.Link>
           </Nav.Item>
           <div className="mt-auto mb-3">
@@ -179,7 +179,7 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
                 onClick={() => handleNavigate("/perfil")}
                 title="Perfil"
               >
-                <i className="bi bi-person-circle"></i>
+                <CircleUserRound size={iconSize} />
               </Nav.Link>
             </Nav.Item>
             <Nav.Item>
@@ -188,7 +188,7 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
                 onClick={() => logout()}
                 title="Cerrar Sesión"
               >
-                <i className="bi bi-box-arrow-right"></i>
+                <LogOut size={iconSize} />
               </Nav.Link>
             </Nav.Item>
           </div>

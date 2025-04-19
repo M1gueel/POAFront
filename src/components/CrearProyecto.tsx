@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Form, Button, Container, Card, FormText } from 'react-bootstrap';
+import { Form, Button, Card, Collapse } from 'react-bootstrap';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { TipoProyecto, EstadoProyecto } from '../interfaces/project';
 import { projectAPI } from '../api/projectAPI';
-import { userAPI } from '../api/userAPI';
 import { UserProfile } from '../interfaces/user';
-import '../styles/NuevoProyecto.css'; // Importa el nuevo archivo CSS
+import '../styles/NuevoProyecto.css';
 
 interface LocationState {
   tipoProyecto: TipoProyecto;
@@ -31,6 +31,9 @@ const CrearProyecto: React.FC = () => {
   const [fecha_prorroga_inicio, setFecha_prorroga_inicio] = useState('');
   const [fecha_prorroga_fin, setFecha_prorroga_fin] = useState('');
   const [tiempo_prorroga_meses, setTiempo_prorroga_meses] = useState('');
+  
+  // Estado para controlar la expansión de la sección de prórroga
+  const [prorrogaOpen, setProrrogaOpen] = useState(false);
   
   // Estados para las listas de opciones
   const [estadosProyecto, setEstadosProyecto] = useState<EstadoProyecto[]>([]);
@@ -191,12 +194,6 @@ const CrearProyecto: React.FC = () => {
         presupuesto_aprobado: presupuesto_aprobado ? parseFloat(presupuesto_aprobado) : 0,
         fecha_inicio,
         fecha_fin,
-        // Solo incluir campos de prórroga si tienen valor
-        ...(fecha_prorroga ? { fecha_prorroga } : {}),
-        ...(fecha_prorroga_inicio ? { fecha_prorroga_inicio } : {}),
-        ...(fecha_prorroga_fin ? { fecha_prorroga_fin } : {}),
-        ...(tiempo_prorroga_meses ? { tiempo_prorroga_meses: parseInt(tiempo_prorroga_meses) } : {}),
-        // El backend agregará la fecha de creación
       };
       
       console.log("Enviando datos:", proyectoData); // Para depuración
@@ -258,66 +255,78 @@ const CrearProyecto: React.FC = () => {
             />
           </Form.Group>
 
-          <Form.Group controlId="fecha_inicio" className="form-group-custom">
-            <Form.Label className="form-label-custom">Fecha de Inicio <span className="required-field">*</span></Form.Label>
-            <Form.Control
-              type="date"
-              size="lg"
-              value={fecha_inicio}
-              onChange={handleFechaInicioChange}
-              required
-              className="form-control-custom"
-            />
-            <Form.Text className="form-text-custom">
-              A partir de esta fecha se generará el código del proyecto.
-            </Form.Text>
-          </Form.Group>
+          {/* Fila con Fecha de Inicio y Fecha de Fin */}
+          <div className="row">
+            <div className="col-md-6">
+              <Form.Group controlId="fecha_inicio" className="form-group-custom">
+                <Form.Label className="form-label-custom">Fecha de Inicio <span className="required-field">*</span></Form.Label>
+                <Form.Control
+                  type="date"
+                  size="lg"
+                  value={fecha_inicio}
+                  onChange={handleFechaInicioChange}
+                  required
+                  className="form-control-custom"
+                />
+                <Form.Text className="form-text-custom">
+                  A partir de esta fecha se generará el código del proyecto.
+                </Form.Text>
+              </Form.Group>
+            </div>
+            <div className="col-md-6">
+              <Form.Group controlId="fecha_fin" className="form-group-custom">
+                <Form.Label className="form-label-custom">Fecha de Fin</Form.Label>
+                <Form.Control
+                  type="date"
+                  size="lg"
+                  value={fecha_fin}
+                  onChange={(e) => setFecha_fin(e.target.value)}
+                  className="form-control-custom"
+                />
+              </Form.Group>
+            </div>
+          </div>
 
-          <Form.Group controlId="codigo_proyecto" className="form-group-custom">
-            <Form.Label className="form-label-custom">Código del Proyecto <span className="required-field">*</span></Form.Label>
-            <Form.Control
-              type="text"
-              placeholder="Se generará automáticamente desde la fecha de inicio"
-              size="lg"
-              value={codigo_proyecto}
-              readOnly
-              className="form-control-custom form-control-readonly"
-            />
-            <Form.Text className="form-text-custom">
-              El código se genera automáticamente basado en el tipo de proyecto y la fecha de inicio.
-            </Form.Text>
-          </Form.Group>
-
-          <Form.Group controlId="fecha_fin" className="form-group-custom">
-            <Form.Label className="form-label-custom">Fecha de Fin</Form.Label>
-            <Form.Control
-              type="date"
-              size="lg"
-              value={fecha_fin}
-              onChange={(e) => setFecha_fin(e.target.value)}
-              className="form-control-custom"
-            />
-          </Form.Group>
-
-          <Form.Group controlId="id_estado_proyecto" className="form-group-custom">
-            <Form.Label className="form-label-custom">Estado del Proyecto <span className="required-field">*</span></Form.Label>
-            <Form.Control
-              as="select"
-              size="lg"
-              value={id_estado_proyecto}
-              onChange={(e) => setId_estado_proyecto(e.target.value)}
-              disabled={isLoading}
-              required
-              className="form-control-custom"
-            >
-              <option value="">Seleccione...</option>
-              {estadosProyecto.map(estado => (
-                <option key={estado.id_estado_proyecto} value={estado.id_estado_proyecto}>
-                  {estado.nombre}
-                </option>
-              ))}
-            </Form.Control>
-          </Form.Group>
+          {/* Fila con Código del Proyecto y Estado del Proyecto */}
+          <div className="row">
+            <div className="col-md-6">
+              <Form.Group controlId="codigo_proyecto" className="form-group-custom">
+                <Form.Label className="form-label-custom">Código del Proyecto <span className="required-field">*</span></Form.Label>
+                <Form.Control
+                  type="text"
+                  placeholder="Se generará automáticamente"
+                  size="lg"
+                  value={codigo_proyecto}
+                  readOnly
+                  className="form-control-custom form-control-readonly"
+                />
+                <Form.Text className="form-text-custom">
+                  Código automático según tipo de proyecto y fecha de inicio.
+                </Form.Text>
+              </Form.Group>
+            </div>
+            <div className="col-md-6">
+              <Form.Group controlId="id_estado_proyecto" className="form-group-custom">
+                <Form.Label className="form-label-custom">Estado del Proyecto <span className="required-field">*</span></Form.Label>
+                <Form.Control
+                  as="select"
+                  size="lg"
+                  value={id_estado_proyecto}
+                  onChange={(e) => setId_estado_proyecto(e.target.value)}
+                  disabled={isLoading}
+                  required
+                  className="form-control-custom"
+                >
+                  <option value="">Seleccione...</option>
+                  {estadosProyecto.map(estado => (
+                    <option key={estado.id_estado_proyecto} value={estado.id_estado_proyecto}>
+                      {estado.nombre}
+                    </option>
+                  ))}
+                </Form.Control>
+              </Form.Group>
+            </div>
+          </div>
 
           <Form.Group controlId="id_director_proyecto" className="form-group-custom">
             <Form.Label className="form-label-custom">Director del Proyecto <span className="required-field">*</span></Form.Label>
@@ -366,53 +375,67 @@ const CrearProyecto: React.FC = () => {
             </Form.Text>
           </Form.Group>
 
+          {/* Sección de prórroga colapsable */}
           <div className="prorroga-section">
-            <h4 className="prorroga-title">Datos de Prórroga <span className="text-muted fs-6">(Opcional)</span></h4>  
+            <h4 
+              className="prorroga-title" 
+              onClick={() => setProrrogaOpen(!prorrogaOpen)}
+              style={{ cursor: 'pointer' }}
+            >
+              Datos de Prórroga <span className="text-muted fs-6">(Opcional)</span>
+              <span className="ms-2 d-inline-flex align-items-center">
+                {prorrogaOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+              </span>
+            </h4>  
+            
+            <Collapse in={prorrogaOpen}>
+              <div>
+                <Form.Group controlId="fecha_prorroga" className="form-group-custom">
+                  <Form.Label className="form-label-custom">Fecha de Prórroga <span className="text-muted">(Opcional)</span></Form.Label>
+                  <Form.Control
+                    type="date"
+                    size="lg"
+                    value={fecha_prorroga}
+                    onChange={(e) => setFecha_prorroga(e.target.value)}
+                    className="form-control-custom"
+                  />
+                </Form.Group>
 
-            <Form.Group controlId="fecha_prorroga" className="form-group-custom">
-              <Form.Label className="form-label-custom">Fecha de Prórroga <span className="text-muted">(Opcional)</span></Form.Label>
-              <Form.Control
-                type="date"
-                size="lg"
-                value={fecha_prorroga}
-                onChange={(e) => setFecha_prorroga(e.target.value)}
-                className="form-control-custom"
-              />
-            </Form.Group>
+                <Form.Group controlId="fecha_prorroga_inicio" className="form-group-custom">
+                  <Form.Label className="form-label-custom">Fecha de Inicio de Prórroga <span className="text-muted">(Opcional)</span></Form.Label>
+                  <Form.Control
+                    type="date"
+                    size="lg"
+                    value={fecha_prorroga_inicio}
+                    onChange={(e) => setFecha_prorroga_inicio(e.target.value)}
+                    className="form-control-custom"
+                  />
+                </Form.Group>
 
-            <Form.Group controlId="fecha_prorroga_inicio" className="form-group-custom">
-              <Form.Label className="form-label-custom">Fecha de Inicio de Prórroga <span className="text-muted">(Opcional)</span></Form.Label>
-              <Form.Control
-                type="date"
-                size="lg"
-                value={fecha_prorroga_inicio}
-                onChange={(e) => setFecha_prorroga_inicio(e.target.value)}
-                className="form-control-custom"
-              />
-            </Form.Group>
+                <Form.Group controlId="fecha_prorroga_fin" className="form-group-custom">
+                  <Form.Label className="form-label-custom">Fecha de Fin de Prórroga <span className="text-muted">(Opcional)</span></Form.Label>
+                  <Form.Control
+                    type="date"
+                    size="lg"
+                    value={fecha_prorroga_fin}
+                    onChange={(e) => setFecha_prorroga_fin(e.target.value)}
+                    className="form-control-custom"
+                  />
+                </Form.Group>
 
-            <Form.Group controlId="fecha_prorroga_fin" className="form-group-custom">
-              <Form.Label className="form-label-custom">Fecha de Fin de Prórroga <span className="text-muted">(Opcional)</span></Form.Label>
-              <Form.Control
-                type="date"
-                size="lg"
-                value={fecha_prorroga_fin}
-                onChange={(e) => setFecha_prorroga_fin(e.target.value)}
-                className="form-control-custom"
-              />
-            </Form.Group>
-
-            <Form.Group controlId="tiempo_prorroga_meses" className="form-group-custom">
-              <Form.Label className="form-label-custom">Tiempo de Prórroga (meses) <span className="text-muted">(Opcional)</span></Form.Label>
-              <Form.Control
-                type="number"
-                placeholder="Ingrese el tiempo de prórroga"
-                size="lg"
-                value={tiempo_prorroga_meses}
-                onChange={(e) => setTiempo_prorroga_meses(e.target.value)}
-                className="form-control-custom"
-              />
-            </Form.Group>
+                <Form.Group controlId="tiempo_prorroga_meses" className="form-group-custom">
+                  <Form.Label className="form-label-custom">Tiempo de Prórroga (meses) <span className="text-muted">(Opcional)</span></Form.Label>
+                  <Form.Control
+                    type="number"
+                    placeholder="Ingrese el tiempo de prórroga"
+                    size="lg"
+                    value={tiempo_prorroga_meses}
+                    onChange={(e) => setTiempo_prorroga_meses(e.target.value)}
+                    className="form-control-custom"
+                  />
+                </Form.Group>
+              </div>
+            </Collapse>
           </div>        
         
           <div className="button-group">

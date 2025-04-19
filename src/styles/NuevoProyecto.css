@@ -85,6 +85,15 @@
     font-weight: 600;
     margin-bottom: 1rem;
     color: #334155;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    transition: color 0.3s ease, transform 0.2s ease;
+  }
+
+  .prorroga-title:hover {
+    color: #021F59; /* azul elegante al pasar el mouse */
+    background-color: #e0ecff; /* azul suave */
+    transform: translateY(-2px);
   }
   
   .btn-custom {

@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@lucide/lab": "^0.1.2",
     "apppoas": "file:",
     "axios": "^1.8.4",
     "lucide-react": "^0.487.0",
