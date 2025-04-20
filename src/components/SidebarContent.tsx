@@ -13,7 +13,6 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
   toggleSidebar 
 }) => {
   const { logout } = useAuth();
-  const [showTiposProyecto, setShowTiposProyecto] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -144,15 +143,6 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
       {/* Cuando el sidebar está colapsado, mostrar solo íconos */}
       {isSidebarCollapsed && (
         <Nav className="flex-column align-items-center mt-3">
-          <Nav.Item>
-            <Nav.Link 
-              className={`text-white ${isActive("/proyectos")}`}
-              onClick={() => handleNavigate("/proyectos")}
-              title="Listar Proyectos"
-            >
-              <FolderKanban size={iconSize} />
-            </Nav.Link>
-          </Nav.Item>
           <Nav.Item>
             <Nav.Link 
               className={`text-white ${isActive("/tipos-proyecto")}`}

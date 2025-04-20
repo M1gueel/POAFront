@@ -4,6 +4,7 @@ import { Proyecto } from '../interfaces/project';
 import { EstadoPOA, TipoPOA, Periodo } from '../interfaces/poa';
 import { poaAPI } from '../api/poaAPI';
 import { projectAPI } from '../api/projectAPI';
+import '../styles/NuevoPOA.css';
 
 const CrearPOA: React.FC = () => {
   // Estados para campos del formulario - actualizados conforme a la tabla SQL
@@ -418,19 +419,17 @@ const handlePresupuestoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   };
 
   return (
-    <Container className="py-4">
-      <Card className="shadow-lg">
-        <Card.Header className="bg-primary bg-gradient text-white p-3">
-          <h2 className="mb-0 fw-bold text-center">Crear Nuevo POA</h2>
-        </Card.Header>
-        <Card.Body className="p-4">
-          {error && (
-            <div className="alert alert-danger" role="alert">
-              {error}
-            </div>
-          )}
+    <div className="nuevo-poa-wrapper">
+      <Card className="nuevo-poa-card">
+        <h2 className="nuevo-poa-title">Crear Nuevo POA</h2>
+        
+        {error && (
+          <div className="alert alert-danger" role="alert">
+            {error}
+          </div>
+        )}
           
-          <Form onSubmit={handleSubmit}>
+          <Form className="py-3" onSubmit={handleSubmit}>
             {/* Sección de Proyecto */}
             <Row>
               <Col md={12} className="mb-4">
@@ -698,7 +697,6 @@ const handlePresupuestoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
               </Col>
             </Row>
           </Form>
-        </Card.Body>
       </Card>
       
       {/* Modal para crear nuevo periodo */}
@@ -798,7 +796,7 @@ const handlePresupuestoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
           </Button>
         </Modal.Footer>
       </Modal>
-    </Container>
+    </div>
   );
 };
 
