@@ -33,6 +33,13 @@ const CrearPOA: React.FC = () => {
   // Estado para el proyecto seleccionado
   const [proyectoSeleccionado, setProyectoSeleccionado] = useState<Proyecto | null>(null);
 
+  // Estado para los periodos calculados del proyecto
+  const [periodosCalculados, setPeriodosCalculados] = useState<Periodo[]>([]);
+  
+  // Estado para el presupuesto máximo (desde el proyecto)
+  const [presupuestoMaximo, setPresupuestoMaximo] = useState<number>(0);
+  const [presupuestoError, setPresupuestoError] = useState<string | null>(null);
+
   // Estado para modal de creación de periodo
   const [showCrearPeriodo, setShowCrearPeriodo] = useState(false);
   const [nuevoPeriodo, setNuevoPeriodo] = useState<Partial<Periodo>>({
@@ -117,6 +124,71 @@ const CrearPOA: React.FC = () => {
     return () => clearTimeout(timeoutId);
   }, [busquedaProyecto, proyectos]);
 
+  // Calcular periodos fiscales basados en las fechas del proyecto
+  const calcularPeriodos = (fechaInicio: string, fechaFin: string): Periodo[] => {
+    if (!fechaInicio || !fechaFin) return [];
+    
+    const periodos: Periodo[] = [];
+    const fechaInicioObj = new Date(fechaInicio);
+    const fechaFinObj = new Date(fechaFin);
+    
+    // Año inicial
+    const anioInicio = fechaInicioObj.getFullYear();
+    const anioFin = fechaFinObj.getFullYear();
+    
+    // Iterar por cada año entre la fecha de inicio y fin
+    for (let anio = anioInicio; anio <= anioFin; anio++) {
+      let periodoInicio: Date;
+      let periodoFin: Date;
+      
+      // Para el primer año, usar la fecha de inicio del proyecto
+      if (anio === anioInicio) {
+        periodoInicio = new Date(fechaInicioObj);
+      } else {
+        // Para los años subsiguientes, iniciar el 1 de enero
+        periodoInicio = new Date(anio, 0, 1);
+      }
+      
+      // Para el último año, usar la fecha de fin del proyecto
+      if (anio === anioFin) {
+        periodoFin = new Date(fechaFinObj);
+      } else {
+        // Para los años anteriores al final, terminar el 31 de diciembre
+        periodoFin = new Date(anio, 11, 31);
+      }
+      
+      // Formatear fechas para guardar
+      const inicioStr = periodoInicio.toISOString().split('T')[0];
+      const finStr = periodoFin.toISOString().split('T')[0];
+      
+      // Determinar los meses del periodo
+      const mesInicio = periodoInicio.getMonth();
+      const mesFin = periodoFin.getMonth();
+      
+      const mesesNombres = [
+        'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+        'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+      ];
+      
+      const mesStr = mesInicio === 0 && mesFin === 11 
+        ? 'Enero-Diciembre' 
+        : `${mesesNombres[mesInicio]}-${mesesNombres[mesFin]}`;
+      
+      // Crear el objeto periodo
+      periodos.push({
+        id_periodo: `temp-${anio}`, // ID temporal, se reemplazará al guardar
+        codigo_periodo: `PER-${anio}`,
+        nombre_periodo: `Periodo Fiscal ${anio}`,
+        fecha_inicio: inicioStr,
+        fecha_fin: finStr,
+        anio: anio.toString(),
+        mes: mesStr
+      } as Periodo);
+    }
+    
+    return periodos;
+  };
+
   // Seleccionar un proyecto de la búsqueda y establecer datos automáticamente
   const seleccionarProyecto = async (proyecto: Proyecto) => {
     setIdProyecto(proyecto.id_proyecto);
@@ -139,9 +211,39 @@ const CrearPOA: React.FC = () => {
         const tipoPoaCorrespondiente = await poaAPI.getTipoPOAByTipoProyecto(proyecto.nombre_tipo_proyecto || '');
         if (tipoPoaCorrespondiente) {
           setIdTipoPoa(tipoPoaCorrespondiente.id_tipo_poa);
-          // Establecer presupuesto máximo del tipo POA
-          setPresupuestoAsignado(tipoPoaCorrespondiente.presupuesto_maximo.toString());
         }
+      }
+      
+      // Establecer el presupuesto máximo desde el presupuesto aprobado del proyecto
+      if (proyecto.presupuesto_aprobado) {
+        const presupuestoMax = proyecto.presupuesto_aprobado;
+        setPresupuestoMaximo(presupuestoMax);
+        // setPresupuestoAsignado(presupuestoMax.toFixed(2));
+        setPresupuestoAsignado(presupuestoMax.toString());
+        
+      }
+      
+      // Calcular periodos fiscales basados en fecha_inicio y fecha_fin del proyecto
+      if (proyecto.fecha_inicio && proyecto.fecha_fin) {
+        const periodosProyecto = calcularPeriodos(proyecto.fecha_inicio, proyecto.fecha_fin);
+        setPeriodosCalculados(periodosProyecto);
+        
+        // Actualizar periodos disponibles combinando los existentes con los calculados
+        const periodosActualizados = [...periodos];
+        // Añadir periodos calculados que no existan ya en la lista de periodos
+        periodosProyecto.forEach(periodoCalc => {
+          const existePeriodo = periodosActualizados.some(
+            p => p.anio === periodoCalc.anio && 
+                 new Date(p.fecha_inicio).getTime() <= new Date(periodoCalc.fecha_inicio).getTime() &&
+                 new Date(p.fecha_fin).getTime() >= new Date(periodoCalc.fecha_fin).getTime()
+          );
+          
+          if (!existePeriodo) {
+            periodosActualizados.push(periodoCalc);
+          }
+        });
+        
+        setPeriodos(periodosActualizados);
       }
     } catch (err) {
       console.error('Error al procesar el proyecto seleccionado:', err);
@@ -170,6 +272,12 @@ const CrearPOA: React.FC = () => {
     // Validaciones básicas
     if (!id_proyecto || !id_periodo || !id_estado_poa || !codigo_poa || !anio_ejecucion) {
       setError('Todos los campos marcados con * son obligatorios');
+      return;
+    }
+    
+    // Validar que el presupuesto asignado no exceda el presupuesto aprobado
+    if (parseFloat(presupuesto_asignado) > presupuestoMaximo) {
+      setError(`El presupuesto asignado no puede exceder el presupuesto aprobado del proyecto (${presupuestoMaximo.toFixed(2)})`);
       return;
     }
     
@@ -203,14 +311,49 @@ const CrearPOA: React.FC = () => {
     }
   };
 
-  // Manejar cambios en el presupuesto asignado (solo valores positivos)
-  const handlePresupuestoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const valor = e.target.value;
-    // Verificar que sea un número positivo o vacío
-    if (valor === '' || (parseFloat(valor) >= 0)) {
-      setPresupuestoAsignado(valor);
-    }
-  };
+
+// Manejar cambios en el presupuesto asignado (solo valores positivos con 2 decimales)
+const handlePresupuestoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const valor = e.target.value;
+  
+  // Permitir campo vacío para facilitar la edición
+  if (valor === '') {
+    setPresupuestoAsignado('');
+    setPresupuestoError(null);
+    return;
+  }
+  
+  // Validar que no contenga letras o caracteres no permitidos
+  if (/[a-zA-Z]|[^\d.-]/.test(valor)) {
+    setPresupuestoError('Solo se permiten números y punto decimal');
+    return;
+  }
+  
+  // Validar primero si es negativo o cero
+  if (valor.startsWith('-') || parseFloat(valor) <= 0) {
+    setPresupuestoAsignado(valor); // Actualiza el campo para mostrar lo que escribió
+    setPresupuestoError('El presupuesto debe ser un valor positivo');
+    return;
+  }
+  
+  // Si no es negativo, validar formato: solo números positivos con máximo 2 decimales
+  const regex = /^\d+(\.\d{0,2})?$/;
+  if (!regex.test(valor)) {
+    return; // No actualiza el campo si no cumple con el formato
+  }
+  
+  const valorNumerico = parseFloat(valor);
+  
+  // Validar que no exceda el presupuesto máximo
+  if (valorNumerico > presupuestoMaximo) {
+    setPresupuestoError(`El presupuesto no puede exceder ${presupuestoMaximo.toLocaleString('es-CO')}`);
+    setPresupuestoAsignado(valor);
+  } else {
+    // Si todo está bien, actualiza el valor y limpia errores
+    setPresupuestoAsignado(valor);
+    setPresupuestoError(null);
+  }
+};
 
   // Manejar la apertura del modal de creación de periodo
   const handleAbrirModalPeriodo = () => {
@@ -348,6 +491,32 @@ const CrearPOA: React.FC = () => {
               </Col>
             </Row>
             
+            {/* Información sobre el proyecto seleccionado */}
+            {proyectoSeleccionado && (
+              <Row className="mb-4">
+                <Col md={12}>
+                  <Card className="bg-light">
+                    <Card.Body>
+                      <h5 className="mb-3">Información del Proyecto Seleccionado</h5>
+                      <Row>
+                        <Col md={6}>
+                          <p><strong>Código:</strong> {proyectoSeleccionado.codigo_proyecto}</p>
+                          <p><strong>Título:</strong> {proyectoSeleccionado.titulo}</p>
+                          <p><strong>Fecha Inicio:</strong> {proyectoSeleccionado.fecha_inicio}</p>
+                        </Col>
+                        <Col md={6}>
+                          <p><strong>Fecha Fin:</strong> {proyectoSeleccionado.fecha_fin}</p>
+                          {/* <p><strong>Presupuesto Aprobado:</strong> ${proyectoSeleccionado.presupuesto_aprobado.toFixed(2)}</p> */}
+                          <p><strong>Presupuesto Aprobado:</strong> ${proyectoSeleccionado.presupuesto_aprobado}</p>
+                          <p><strong>Periodos Calculados:</strong> {periodosCalculados.length}</p>
+                        </Col>
+                      </Row>
+                    </Card.Body>
+                  </Card>
+                </Col>
+              </Row>
+            )}
+            
             {/* Sección de Periodo con opción para crear nuevo */}
             <Row>
               <Col md={12} className="mb-4">
@@ -359,23 +528,52 @@ const CrearPOA: React.FC = () => {
                       value={id_periodo}
                       onChange={handleSeleccionPeriodo}
                       className="form-control-lg"
-                      disabled={isLoading}
+                      disabled={isLoading || !proyectoSeleccionado}
                     >
                       <option value="">Seleccione...</option>
-                      {periodos.map(periodo => (
-                        <option key={periodo.id_periodo} value={periodo.id_periodo}>
-                          {periodo.nombre_periodo} ({periodo.fecha_inicio} al {periodo.fecha_fin})
-                        </option>
-                      ))}
+                      
+                      {/* Mostrar primero los periodos calculados */}
+                      {periodosCalculados.length > 0 && (
+                        <>
+                          <optgroup label="Periodos del Proyecto">
+                            {periodosCalculados.map((periodo, index) => (
+                              <option key={`calc-${periodo.id_periodo || index}`} value={periodo.id_periodo}>
+                                {periodo.nombre_periodo} ({periodo.fecha_inicio} al {periodo.fecha_fin})
+                              </option>
+                            ))}
+                          </optgroup>
+                          <optgroup label="Otros Periodos">
+                            </optgroup>
+                        </>
+                      )}
+                      
+                      {/* Mostrar los periodos existentes que no son del cálculo */}
+                      {periodos
+                        .filter(p => !periodosCalculados.some(pc => pc.anio === p.anio))
+                        .map(periodo => (
+                          <option key={periodo.id_periodo} value={periodo.id_periodo}>
+                            {periodo.nombre_periodo} ({periodo.fecha_inicio} al {periodo.fecha_fin})
+                          </option>
+                        ))}
+                      
+                      {/* {periodosCalculados.length > 0 && (
+                        </>
+                      )} */}
                     </Form.Control>
                     <Button 
                       variant="outline-primary" 
                       className="ms-2"
                       onClick={handleAbrirModalPeriodo}
+                      disabled={!proyectoSeleccionado}
                     >
                       <i className="bi bi-plus-circle"></i> Nuevo
                     </Button>
                   </div>
+                  {!proyectoSeleccionado && (
+                    <Form.Text className="text-muted">
+                      Primero seleccione un proyecto para ver los periodos disponibles
+                    </Form.Text>
+                  )}
                 </Form.Group>
               </Col>
             </Row>
@@ -411,7 +609,7 @@ const CrearPOA: React.FC = () => {
                     value={id_estado_poa}
                     onChange={(e) => setIdEstadoPoa(e.target.value)}
                     className="form-control-lg"
-                    disabled={isLoading}
+                    disabled={isLoading || !proyectoSeleccionado}
                   >
                     <option value="">Seleccione...</option>
                     {estadosPoa.map(estado => (
@@ -462,16 +660,23 @@ const CrearPOA: React.FC = () => {
                 <Form.Group controlId="presupuesto_asignado">
                   <Form.Label className="fw-semibold">Presupuesto Asignado ($) <span className="text-danger">*</span></Form.Label>
                   <Form.Control
-                    type="number"
-                    step="0.01"
-                    min="0"
+                    type="text" // Cambiado a text para permitir validaciones personalizadas
+                    placeholder="Ingrese el presupuesto"
                     value={presupuesto_asignado}
                     onChange={handlePresupuestoChange}
+                    isInvalid={!!presupuestoError}
                     className="form-control-lg"
                   />
-                  <Form.Text className="text-muted">
-                    Se establece según el presupuesto máximo del tipo de POA
-                  </Form.Text>
+                  {presupuestoError && (
+                    <Form.Control.Feedback type="invalid">
+                      {presupuestoError}
+                    </Form.Control.Feedback>
+                  )}
+                  {proyectoSeleccionado && (
+                    <Form.Text className="text-muted">
+                      Máximo disponible: ${presupuestoMaximo.toLocaleString('es-CO')} (Presupuesto aprobado del proyecto)
+                    </Form.Text>
+                  )}
                 </Form.Group>
               </Col>
             </Row>
@@ -482,7 +687,12 @@ const CrearPOA: React.FC = () => {
                 <Button variant="secondary" className="me-2" size="lg">
                   Cancelar
                 </Button>
-                <Button variant="primary" type="submit" size="lg" disabled={isLoading}>
+                <Button 
+                  variant="primary" 
+                  type="submit" 
+                  size="lg" 
+                  disabled={isLoading || !proyectoSeleccionado}
+                >
                   {isLoading ? 'Guardando...' : 'Guardar POA'}
                 </Button>
               </Col>

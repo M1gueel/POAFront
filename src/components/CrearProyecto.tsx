@@ -6,6 +6,7 @@ import { TipoProyecto, EstadoProyecto } from '../interfaces/project';
 import { projectAPI } from '../api/projectAPI';
 import { UserProfile } from '../interfaces/user';
 import '../styles/NuevoProyecto.css';
+//  TODO: controlar que sean solo dos decimas en el presupuesto aprobado
 
 interface LocationState {
   tipoProyecto: TipoProyecto;
