@@ -43,9 +43,10 @@ export const poaAPI = {
         // Añadir fecha de creación automáticamente
         const datosAEnviar = {
             ...poaData,
-            fecha_creacion: new Date().toISOString().split('T')[0] // Formato YYYY-MM-DD
+            fecha_creacion: new Date().toISOString().split('T')[0], // Formato YYYY-MM-DD
         };
         
+        console.log("POA data being sent to API:", poaData);
         const response = await API.post('/poas/', datosAEnviar);
         return response.data;
     },

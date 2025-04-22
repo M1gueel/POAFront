@@ -1,7 +1,6 @@
 export interface POA {
   id_poa: string;
   id_proyecto: string;
-  id_periodo: string;
   codigo_poa: string;
   fecha_creacion: string;
   id_estado_poa: string;
@@ -34,4 +33,10 @@ export  interface Periodo {
   fecha_fin: string;
   anio?: string;
   mes?: string;
+}
+
+export interface PoaPeriodo {
+  id_poa_periodo: string;
+  id_poa: string;
+  id_periodo: string;
 }
