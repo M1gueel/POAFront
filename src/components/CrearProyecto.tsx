@@ -28,6 +28,8 @@ const CrearProyecto: React.FC = () => {
   const [presupuestoError, setPresupuestoError] = useState<string | null>(null);
   const [fecha_inicio, setFecha_inicio] = useState('');
   const [fecha_fin, setFecha_fin] = useState('');
+  const [fechaFinError, setFechaFinError] = useState<string | null>(null);
+  const [fechaFinMaxima, setFechaFinMaxima] = useState<string>('');
   const [fecha_prorroga, setFecha_prorroga] = useState('');
   const [fecha_prorroga_inicio, setFecha_prorroga_inicio] = useState('');
   const [fecha_prorroga_fin, setFecha_prorroga_fin] = useState('');
@@ -66,6 +68,40 @@ const CrearProyecto: React.FC = () => {
     }
   };
 
+  // Función para calcular la fecha máxima permitida
+  const calcularFechaFinMaxima = (fechaInicio: string, duracionMeses: number): string => {
+    if (!fechaInicio || !duracionMeses) return '';
+    
+    const fechaInicioObj = new Date(fechaInicio);
+    const fechaFinObj = new Date(fechaInicioObj);
+    
+    // Establecer el día exacto después de añadir los meses
+    fechaFinObj.setMonth(fechaInicioObj.getMonth() + duracionMeses);
+    
+    // Ajustar para asegurarnos que sea el mismo día del mes (o el último día si el mes destino es más corto)
+    if (fechaFinObj.getDate() !== fechaInicioObj.getDate()) {
+      // Si estamos en un día diferente, significa que el mes destino no tiene ese día
+      // Volvemos al último día del mes anterior
+      fechaFinObj.setDate(0);
+    }
+    
+    // Formatear a YYYY-MM-DD para el valor del input date
+    return fechaFinObj.toISOString().split('T')[0];
+  };
+
+  // Efecto para calcular la fecha fin automáticamente cuando cambia la fecha de inicio
+  useEffect(() => {
+    if (fecha_inicio && tipoProyecto?.duracion_meses) {
+      const nuevaFechaFinMaxima = calcularFechaFinMaxima(fecha_inicio, tipoProyecto.duracion_meses);
+      setFechaFinMaxima(nuevaFechaFinMaxima);
+      
+      // Actualizar automáticamente la fecha fin si no está establecida o si excede el límite
+      if (!fecha_fin || new Date(fecha_fin) > new Date(nuevaFechaFinMaxima)) {
+        setFecha_fin(nuevaFechaFinMaxima);
+      }
+    }
+  }, [fecha_inicio, tipoProyecto]);
+
   // Efecto para cargar los datos al montar el componente
   useEffect(() => {
     const cargarDatos = async () => {
@@ -77,10 +113,8 @@ const CrearProyecto: React.FC = () => {
         const estadosData = await projectAPI.getEstadosProyecto();
         setEstadosProyecto(estadosData);
         
-        // Seleccionar el primer estado por defecto si existe
-        if (estadosData.length > 0) {
-          setId_estado_proyecto(estadosData[0].id_estado_proyecto);
-        }
+        // Siempre establecer el estado inicial a vacío para mostrar "Seleccione..."
+        setId_estado_proyecto('');
         
         setIsLoading(false);
       } catch (err) {
@@ -144,6 +178,34 @@ const CrearProyecto: React.FC = () => {
     const nuevaFecha = e.target.value;
     setFecha_inicio(nuevaFecha);
     actualizarCodigoProyectoDesdefecha(nuevaFecha);
+    
+    // Resetear la fecha de fin
+    setFecha_fin('');
+    setFechaFinError(null);
+  };
+
+  // Manejador para cambios en la fecha de fin
+  const handleFechaFinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const nuevaFechaFin = e.target.value;
+    setFecha_fin(nuevaFechaFin);
+    
+    // Validar que la fecha fin no exceda la duración máxima del proyecto
+    if (nuevaFechaFin && fechaFinMaxima && new Date(nuevaFechaFin) > new Date(fechaFinMaxima)) {
+      setFechaFinError(`La fecha de fin no puede exceder ${new Date(fechaFinMaxima).toLocaleDateString('es-CO')} (${tipoProyecto?.duracion_meses} meses desde la fecha de inicio)`);
+    } else {
+      setFechaFinError(null);
+    }
+  };
+  
+  // Formateador de fechas para mostrar en español
+  const formatearFecha = (fechaStr: string): string => {
+    if (!fechaStr) return '';
+    const fecha = new Date(fechaStr);
+    return fecha.toLocaleDateString('es-CO', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
   };
 
   // Función para manejar el envío del formulario
@@ -182,6 +244,12 @@ const CrearProyecto: React.FC = () => {
       }
     }
     
+    // Validar fecha de fin
+    if (fecha_fin && fechaFinMaxima && new Date(fecha_fin) > new Date(fechaFinMaxima)) {
+      setError(`La fecha de fin no puede exceder ${formatearFecha(fechaFinMaxima)} (${tipoProyecto?.duracion_meses} meses desde la fecha de inicio)`);
+      return;
+    }
+    
     setIsLoading(true);
     
     try {
@@ -204,7 +272,7 @@ const CrearProyecto: React.FC = () => {
       
       // Mostrar mensaje de éxito
       alert('Proyecto creado con éxito');
-      navigate('/proyectos');
+      navigate('/crearPOA');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Error al crear el proyecto';
       console.error(errorMessage, err);
@@ -219,7 +287,14 @@ const CrearProyecto: React.FC = () => {
       <Card className="nuevo-proyecto-card">
         <div className="nuevo-proyecto-header">
           <h2 className="nuevo-proyecto-title">Nuevo Proyecto</h2>
-          {tipoProyecto && <p className="nuevo-proyecto-subtitle">Tipo: {tipoProyecto.nombre}</p>}
+          {tipoProyecto && (
+            <p className="nuevo-proyecto-subtitle">
+              Tipo: {tipoProyecto.nombre}
+              {tipoProyecto.duracion_meses && (
+                <span className="ms-2 text-muted">(Duración máxima: {tipoProyecto.duracion_meses} meses)</span>
+              )}
+            </p>
+          )}
         </div>
         
         {error && (
@@ -270,7 +345,7 @@ const CrearProyecto: React.FC = () => {
                   className="form-control-custom"
                 />
                 <Form.Text className="form-text-custom">
-                  A partir de esta fecha se generará el código del proyecto.
+                  A partir de esta fecha se generará el código del proyecto y se calculará la fecha máxima de fin.
                 </Form.Text>
               </Form.Group>
             </div>
@@ -281,9 +356,21 @@ const CrearProyecto: React.FC = () => {
                   type="date"
                   size="lg"
                   value={fecha_fin}
-                  onChange={(e) => setFecha_fin(e.target.value)}
+                  onChange={handleFechaFinChange}
+                  max={fechaFinMaxima}
+                  isInvalid={!!fechaFinError}
                   className="form-control-custom"
                 />
+                {fechaFinError && (
+                  <Form.Control.Feedback type="invalid">
+                    {fechaFinError}
+                  </Form.Control.Feedback>
+                )}
+                {tipoProyecto?.duracion_meses && fecha_inicio && (
+                  <Form.Text className="form-text-custom">
+                    Máximo {tipoProyecto.duracion_meses} meses desde la fecha de inicio ({formatearFecha(fechaFinMaxima)})
+                  </Form.Text>
+                )}
               </Form.Group>
             </div>
           </div>
@@ -399,6 +486,7 @@ const CrearProyecto: React.FC = () => {
                     value={fecha_prorroga}
                     onChange={(e) => setFecha_prorroga(e.target.value)}
                     className="form-control-custom"
+                    min={fecha_fin} // La prórroga debe ser después de la fecha de fin original
                   />
                 </Form.Group>
 
@@ -410,6 +498,7 @@ const CrearProyecto: React.FC = () => {
                     value={fecha_prorroga_inicio}
                     onChange={(e) => setFecha_prorroga_inicio(e.target.value)}
                     className="form-control-custom"
+                    min={fecha_fin} // Debe iniciar después de la fecha de fin original
                   />
                 </Form.Group>
 
@@ -421,6 +510,7 @@ const CrearProyecto: React.FC = () => {
                     value={fecha_prorroga_fin}
                     onChange={(e) => setFecha_prorroga_fin(e.target.value)}
                     className="form-control-custom"
+                    min={fecha_prorroga_inicio || fecha_fin} // Debe ser después del inicio de prórroga o fecha fin original
                   />
                 </Form.Group>
 
@@ -433,6 +523,7 @@ const CrearProyecto: React.FC = () => {
                     value={tiempo_prorroga_meses}
                     onChange={(e) => setTiempo_prorroga_meses(e.target.value)}
                     className="form-control-custom"
+                    min="1"
                   />
                 </Form.Group>
               </div>

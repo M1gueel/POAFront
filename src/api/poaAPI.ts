@@ -1,6 +1,6 @@
 import { API } from './userAPI';
 import { POA, EstadoPOA, TipoPOA } from '../interfaces/poa';
-import { Periodo } from '../interfaces/periodo'; // Asumiendo que tienes esta interfaz
+import { Periodo } from '../interfaces/poa'; // Asumiendo que tienes esta interfaz
 
 //TODO: crear una api para periodos y agregar los métodos necesarios para obtener, crear y editar periodos
 

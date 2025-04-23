@@ -35,10 +35,10 @@ export const projectAPI = {
     // Obtener proyectos (para asociar al POA)
     //TODO: Realizar el filtrado de proyecto en el servidor
     getProyectos: async (filtro?: { codigo?: string, titulo?: string }): Promise<Proyecto[]> => {
-    const response = await API.get('/proyectos/');
+    const response = await API.get<Proyecto[]>('/proyectos/');
     
     // Filtrado en el cliente
-    let proyectos = response.data;
+    let proyectos: Proyecto[] = response.data;
     if (filtro) {
         proyectos = proyectos.filter((proyecto: any) => {
             const matchCodigo = !filtro.codigo ||

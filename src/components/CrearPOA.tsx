@@ -849,7 +849,7 @@ const CrearPOA: React.FC = () => {
                                   <Form.Control 
                                     type="text" 
                                     value={presupuestoPorPeriodo[periodosSeleccionados[periodoActual].id_periodo] || ''}
-                                    onChange={(e) => handlePresupuestoChange(e, periodosSeleccionados[periodoActual].id_periodo)}
+                                    onChange={(e) => handlePresupuestoChange(e as React.ChangeEvent<HTMLInputElement>, periodosSeleccionados[periodoActual].id_periodo)}
                                     isInvalid={!!presupuestoError}
                                     required
                                   />
@@ -875,7 +875,7 @@ const CrearPOA: React.FC = () => {
                   </Button>
                   <Button 
                     variant="primary" 
-                    type="submit" la
+                    type="submit"
                     disabled={isLoading || !proyectoSeleccionado || periodosSeleccionados.length === 0}
                   >
                     {isLoading ? (
