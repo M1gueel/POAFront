@@ -4,6 +4,7 @@ import { Proyecto } from '../interfaces/project';
 import { EstadoPOA, TipoPOA, Periodo, POA, PoaPeriodo } from '../interfaces/poa';
 import { poaAPI } from '../api/poaAPI';
 import { projectAPI } from '../api/projectAPI';
+import '../styles/NuevoPOA.css';
 
 const CrearPOA: React.FC = () => {
   // Estados para campos del formulario - actualizados conforme a la tabla SQL
@@ -535,19 +536,17 @@ const CrearPOA: React.FC = () => {
   };
 
   return (
-    <Container className="py-4">
-      <Card className="shadow-lg">
-        <Card.Header className="bg-primary bg-gradient text-white p-3">
-          <h2 className="mb-0 fw-bold text-center">Crear Nuevo POA</h2>
-        </Card.Header>
-        <Card.Body className="p-4">
-          {error && (
-            <div className="alert alert-danger" role="alert">
-              {error}
-            </div>
-          )}
+    <div className="nuevo-poa-wrapper">
+      <Card className="nuevo-poa-card">
+        <h2 className="nuevo-poa-title">Crear Nuevo POA</h2>
+        
+        {error && (
+          <div className="alert alert-danger" role="alert">
+            {error}
+          </div>
+        )}
           
-          <Form onSubmit={handleSubmit}>
+          <Form className="py-3" onSubmit={handleSubmit}>
             {/* Sección de Proyecto */}
             <Row>
               <Col md={12} className="mb-4">
@@ -993,3 +992,110 @@ const CrearPOA: React.FC = () => {
   };
   
   export default CrearPOA;
+              </Col>
+            </Row>
+          </Form>
+      </Card>
+      
+      {/* Modal para crear nuevo periodo */}
+      <Modal show={showCrearPeriodo} onHide={() => setShowCrearPeriodo(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Crear Nuevo Periodo</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form>
+            <Form.Group className="mb-3" controlId="nuevoPeriodoCodigo">
+              <Form.Label>Código del Periodo</Form.Label>
+              <Form.Control
+                type="text"
+                name="codigo_periodo"
+                value={nuevoPeriodo.codigo_periodo}
+                onChange={handleChangePeriodo}
+                placeholder="Ej: 2024-B1"
+                required
+              />
+            </Form.Group>
+            
+            <Form.Group className="mb-3" controlId="nuevoPeriodoNombre">
+              <Form.Label>Nombre del Periodo</Form.Label>
+              <Form.Control
+                type="text"
+                name="nombre_periodo"
+                value={nuevoPeriodo.nombre_periodo}
+                onChange={handleChangePeriodo}
+                placeholder="Ej: Primer Periodo 2024"
+                required
+              />
+            </Form.Group>
+            
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3" controlId="nuevoPeriodoFechaInicio">
+                  <Form.Label>Fecha de Inicio</Form.Label>
+                  <Form.Control
+                    type="date"
+                    name="fecha_inicio"
+                    value={nuevoPeriodo.fecha_inicio}
+                    onChange={handleChangePeriodo}
+                    required
+                  />
+                </Form.Group>
+              </Col>
+              
+              <Col md={6}>
+                <Form.Group className="mb-3" controlId="nuevoPeriodoFechaFin">
+                  <Form.Label>Fecha de Fin</Form.Label>
+                  <Form.Control
+                    type="date"
+                    name="fecha_fin"
+                    value={nuevoPeriodo.fecha_fin}
+                    onChange={handleChangePeriodo}
+                    required
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+            
+            <Row>
+              <Col md={6}>
+                <Form.Group className="mb-3" controlId="nuevoPeriodoAnio">
+                  <Form.Label>Año</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="anio"
+                    value={nuevoPeriodo.anio}
+                    onChange={handleChangePeriodo}
+                    placeholder="Ej: 2024"
+                  />
+                </Form.Group>
+              </Col>
+              
+              <Col md={6}>
+                <Form.Group className="mb-3" controlId="nuevoPeriodoMes">
+                  <Form.Label>Meses</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="mes"
+                    value={nuevoPeriodo.mes}
+                    onChange={handleChangePeriodo}
+                    placeholder="Ej: Enero-Marzo"
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+          </Form>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowCrearPeriodo(false)}>
+            Cancelar
+          </Button>
+          <Button variant="primary" onClick={handleGuardarPeriodo}>
+            Guardar Periodo
+          </Button>
+        </Modal.Footer>
+      </Modal>
+    </div>
+  );
+};
+
+export default CrearPOA;
