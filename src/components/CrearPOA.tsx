@@ -4,6 +4,8 @@ import { Proyecto } from '../interfaces/project';
 import { EstadoPOA, TipoPOA, Periodo, POA, PoaPeriodo } from '../interfaces/poa';
 import { poaAPI } from '../api/poaAPI';
 import { projectAPI } from '../api/projectAPI';
+import ProyectoSeleccionadoCard from './ProyectoSeleccionadoCard';
+import CrearPeriodoModal from './CrearPeriodoModal';
 
 const CrearPOA: React.FC = () => {
   // Estados para campos del formulario - actualizados conforme a la tabla SQL
@@ -600,27 +602,10 @@ const CrearPOA: React.FC = () => {
             
             {/* Información sobre el proyecto seleccionado */}
             {proyectoSeleccionado && (
-              <Row className="mb-4">
-                <Col md={12}>
-                  <Card className="bg-light">
-                    <Card.Body>
-                      <h5 className="mb-3">Información del Proyecto Seleccionado</h5>
-                      <Row>
-                        <Col md={6}>
-                          <p><strong>Código:</strong> {proyectoSeleccionado.codigo_proyecto}</p>
-                          <p><strong>Título:</strong> {proyectoSeleccionado.titulo}</p>
-                          <p><strong>Fecha Inicio:</strong> {proyectoSeleccionado.fecha_inicio}</p>
-                        </Col>
-                        <Col md={6}>
-                          <p><strong>Fecha Fin:</strong> {proyectoSeleccionado.fecha_fin}</p>
-                          <p><strong>Presupuesto Aprobado:</strong> ${parseFloat(proyectoSeleccionado.presupuesto_aprobado.toString()).toLocaleString('es-CO')}</p>
-                          <p><strong>Periodos Calculados:</strong> {periodosCalculados.length}</p>
-                        </Col>
-                      </Row>
-                    </Card.Body>
-                  </Card>
-                </Col>
-              </Row>
+              <ProyectoSeleccionadoCard 
+                proyectoSeleccionado={proyectoSeleccionado} 
+                periodosCalculados={periodosCalculados} 
+              />
             )}
             
             {/* Sección de Selección de Periodos */}
@@ -890,92 +875,14 @@ const CrearPOA: React.FC = () => {
             </Form>
             
             {/* Modal para crear nuevo periodo */}
-            <Modal show={showCrearPeriodo} onHide={() => setShowCrearPeriodo(false)}>
-              <Modal.Header closeButton>
-                <Modal.Title>Crear Nuevo Periodo</Modal.Title>
-              </Modal.Header>
-              <Modal.Body>
-                <Form.Group className="mb-3" controlId="codigo_periodo">
-                  <Form.Label>Código del Periodo</Form.Label>
-                  <Form.Control 
-                    type="text" 
-                    name="codigo_periodo"
-                    value={nuevoPeriodo.codigo_periodo || ''} 
-                    onChange={handleChangePeriodo}
-                    required
-                  />
-                </Form.Group>
-                <Form.Group className="mb-3" controlId="nombre_periodo">
-                  <Form.Label>Nombre del Periodo</Form.Label>
-                  <Form.Control 
-                    type="text" 
-                    name="nombre_periodo"
-                    value={nuevoPeriodo.nombre_periodo || ''} 
-                    onChange={handleChangePeriodo}
-                    required
-                  />
-                </Form.Group>
-                <Row>
-                  <Col md={6}>
-                    <Form.Group className="mb-3" controlId="fecha_inicio">
-                      <Form.Label>Fecha de Inicio</Form.Label>
-                      <Form.Control 
-                        type="date" 
-                        name="fecha_inicio"
-                        value={nuevoPeriodo.fecha_inicio || ''} 
-                        onChange={handleChangePeriodo}
-                        required
-                      />
-                    </Form.Group>
-                  </Col>
-                  <Col md={6}>
-                    <Form.Group className="mb-3" controlId="fecha_fin">
-                      <Form.Label>Fecha de Fin</Form.Label>
-                      <Form.Control 
-                        type="date" 
-                        name="fecha_fin"
-                        value={nuevoPeriodo.fecha_fin || ''} 
-                        onChange={handleChangePeriodo}
-                        required
-                      />
-                    </Form.Group>
-                  </Col>
-                </Row>
-                <Row>
-                  <Col md={6}>
-                    <Form.Group className="mb-3" controlId="anio">
-                      <Form.Label>Año</Form.Label>
-                      <Form.Control 
-                        type="text" 
-                        name="anio"
-                        value={nuevoPeriodo.anio || ''} 
-                        onChange={handleChangePeriodo}
-                      />
-                    </Form.Group>
-                  </Col>
-                  <Col md={6}>
-                    <Form.Group className="mb-3" controlId="mes">
-                      <Form.Label>Mes/es</Form.Label>
-                      <Form.Control 
-                        type="text" 
-                        name="mes"
-                        value={nuevoPeriodo.mes || ''} 
-                        onChange={handleChangePeriodo}
-                        placeholder="Ej: Enero-Diciembre"
-                      />
-                    </Form.Group>
-                  </Col>
-                </Row>
-              </Modal.Body>
-              <Modal.Footer>
-                <Button variant="secondary" onClick={() => setShowCrearPeriodo(false)}>
-                  Cancelar
-                </Button>
-                <Button variant="primary" onClick={handleGuardarPeriodo}>
-                  Guardar Periodo
-                </Button>
-              </Modal.Footer>
-            </Modal>
+            <CrearPeriodoModal 
+              show={showCrearPeriodo}
+              nuevoPeriodo={nuevoPeriodo}
+              onHide={() => setShowCrearPeriodo(false)}
+              onChange={handleChangePeriodo}
+              onSave={handleGuardarPeriodo}
+            />
+            
           </Card.Body>
         </Card>
       </Container>
