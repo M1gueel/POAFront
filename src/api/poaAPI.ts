@@ -26,7 +26,8 @@ export const poaAPI = {
         // Añadir fecha de creación automáticamente
         const datosAEnviar = {
             ...poaData,
-            fecha_creacion: new Date().toISOString().split('T')[0], // Formato YYYY-MM-DD
+            fecha_creacion: new Date().toISOString(), // Incluye hora y zona (formato ISO completo)
+            id_estado_poa: null // Solo si el backend lo requiere explícitamente
         };
         
         console.log("POA data being sent to API:", datosAEnviar);
@@ -53,19 +54,19 @@ export const poaAPI = {
     },
 
     // Función para generar código POA a partir del código de tipo POA
-    generarCodigoPOA: async (idTipoPOA: string, sufijo?: string): Promise<string> => {
-        // Obtener el tipo POA para extraer su código
-        const tiposPOA = await poaAPI.getTiposPOA();
-        const tipoPOA = tiposPOA.find(tipo => tipo.id_tipo_poa === idTipoPOA);
+    // generarCodigoPOA: async (idTipoPOA: string, sufijo?: string): Promise<string> => {
+    //     // Obtener el tipo POA para extraer su código
+    //     const tiposPOA = await poaAPI.getTiposPOA();
+    //     const tipoPOA = tiposPOA.find(tipo => tipo.id_tipo_poa === idTipoPOA);
         
-        if (!tipoPOA) {
-            throw new Error("Tipo de POA no encontrado");
-        }
+    //     if (!tipoPOA) {
+    //         throw new Error("Tipo de POA no encontrado");
+    //     }
         
-        // Generar el código con el formato deseado: codigoTipo-sufijo
-        const codigoBase = tipoPOA.codigo_tipo;
-        return sufijo ? `${codigoBase}-${sufijo}` : `${codigoBase}-`;
-    },
+    //     // Generar el código con el formato deseado: codigoTipo-sufijo
+    //     const codigoBase = tipoPOA.codigo_tipo;
+    //     return sufijo ? `${codigoBase}-${sufijo}` : `${codigoBase}-`;
+    // },
 
     // Función para obtener el tipo POA correspondiente a un tipo de proyecto
     getTipoPOAByTipoProyecto: async (codigo_tipo: string): Promise<TipoPOA | undefined> => {

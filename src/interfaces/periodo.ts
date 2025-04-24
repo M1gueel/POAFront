@@ -17,8 +17,8 @@ export interface Periodo {
     mes: string;
   }
   
-  export interface PoaPeriodo {
-    id_poa_periodo: string;
-    id_poa: string;
-    id_periodo: string;
-  }
+  // export interface PoaPeriodo {
+  //   id_poa_periodo: string;
+  //   id_poa: string;
+  //   id_periodo: string;
+  // }
