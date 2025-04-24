@@ -191,21 +191,10 @@ const CrearProyecto: React.FC = () => {
     
     // Validar que la fecha fin no exceda la duración máxima del proyecto
     if (nuevaFechaFin && fechaFinMaxima && new Date(nuevaFechaFin) > new Date(fechaFinMaxima)) {
-      setFechaFinError(`La fecha de fin no puede exceder ${new Date(fechaFinMaxima).toLocaleDateString('es-CO')} (${tipoProyecto?.duracion_meses} meses desde la fecha de inicio)`);
+      setFechaFinError(`La fecha de fin no puede exceder la duración máxima de ${tipoProyecto?.duracion_meses} meses desde la fecha de inicio`);
     } else {
       setFechaFinError(null);
     }
-  };
-  
-  // Formateador de fechas para mostrar en español
-  const formatearFecha = (fechaStr: string): string => {
-    if (!fechaStr) return '';
-    const fecha = new Date(fechaStr);
-    return fecha.toLocaleDateString('es-CO', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
   };
 
   // Función para manejar el envío del formulario
@@ -246,7 +235,7 @@ const CrearProyecto: React.FC = () => {
     
     // Validar fecha de fin
     if (fecha_fin && fechaFinMaxima && new Date(fecha_fin) > new Date(fechaFinMaxima)) {
-      setError(`La fecha de fin no puede exceder ${formatearFecha(fechaFinMaxima)} (${tipoProyecto?.duracion_meses} meses desde la fecha de inicio)`);
+      setError(`La fecha de fin no puede exceder la duración máxima de ${tipoProyecto?.duracion_meses} meses desde la fecha de inicio`);
       return;
     }
     
@@ -368,7 +357,7 @@ const CrearProyecto: React.FC = () => {
                 )}
                 {tipoProyecto?.duracion_meses && fecha_inicio && (
                   <Form.Text className="form-text-custom">
-                    Máximo {tipoProyecto.duracion_meses} meses desde la fecha de inicio ({formatearFecha(fechaFinMaxima)})
+                    Máximo {tipoProyecto.duracion_meses} meses desde la fecha de inicio
                   </Form.Text>
                 )}
               </Form.Group>
