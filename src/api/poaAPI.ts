@@ -1,9 +1,6 @@
 import { API } from './userAPI';
-import { POA, EstadoPOA, TipoPOA } from '../interfaces/poa';
-import { Periodo } from '../interfaces/poa'; // Asumiendo que tienes esta interfaz
-
-//TODO: crear una api para periodos y agregar los métodos necesarios para obtener, crear y editar periodos
-
+import { POA, EstadoPOA, TipoPOA, PoaCreate } from '../interfaces/poa';
+// Ya no importamos Periodo de poa.ts
 
 export const poaAPI = {
     // Obtener todos los estados de POA
@@ -18,35 +15,21 @@ export const poaAPI = {
         return response.data;
     },
 
-    // Obtener todos los periodos
-    getPeriodos: async (): Promise<Periodo[]> => {
-        const response = await API.get('/periodos/');
+    // Obtener tipo POA por id
+    getTipoPOA: async (id: string): Promise<TipoPOA> => {
+        const response = await API.get(`/tipos-poa/${id}`);
         return response.data;
     },
-
-    // Obtener un periodo específico
-    getPeriodo: async (id: string): Promise<Periodo> => {
-        const response = await API.get(`/periodos/${id}`);
-        return response.data;
-    },
-
-    // Crear un nuevo periodo
-    crearPeriodo: async (periodoData: Omit<Periodo, 'id_periodo'>): Promise<Periodo> => {
-        const response = await API.post('/periodos/', periodoData);
-        return response.data;
-    },
-
-    
 
     // Crear un nuevo POA
-    crearPOA: async (poaData: Omit<POA, 'id_poa' | 'fecha_creacion' | 'id_estado_poa'>): Promise<POA> => {
+    crearPOA: async (poaData: PoaCreate): Promise<POA> => {
         // Añadir fecha de creación automáticamente
         const datosAEnviar = {
             ...poaData,
             fecha_creacion: new Date().toISOString().split('T')[0], // Formato YYYY-MM-DD
         };
         
-        console.log("POA data being sent to API:", poaData);
+        console.log("POA data being sent to API:", datosAEnviar);
         const response = await API.post('/poas/', datosAEnviar);
         return response.data;
     },
@@ -64,12 +47,11 @@ export const poaAPI = {
     },
 
     // Editar un POA existente
-    editarPOA: async (id: string, poaData: Omit<POA, 'id_poa'>): Promise<POA> => {
+    editarPOA: async (id: string, poaData: Partial<PoaCreate>): Promise<POA> => {
         const response = await API.put(`/poas/${id}`, poaData);
         return response.data;
     },
 
-    //TODO: Eliminar las funciones de aqui, por que solo se deben pasar datos
     // Función para generar código POA a partir del código de tipo POA
     generarCodigoPOA: async (idTipoPOA: string, sufijo?: string): Promise<string> => {
         // Obtener el tipo POA para extraer su código
@@ -85,18 +67,13 @@ export const poaAPI = {
         return sufijo ? `${codigoBase}-${sufijo}` : `${codigoBase}-`;
     },
 
-    
-    //TODO: Se necesita un endpoint para evitar esto
     // Función para obtener el tipo POA correspondiente a un tipo de proyecto
     getTipoPOAByTipoProyecto: async (codigo_tipo: string): Promise<TipoPOA | undefined> => {
         // Obtener todos los tipos de POA
         const tiposPOA = await poaAPI.getTiposPOA();
         
         // Buscar el tipo POA que corresponda al nombre del tipo de proyecto
-        // Esta lógica dependerá de cómo se relacionan en tu sistema
-        // Por ejemplo, si los nombres son iguales o siguen algún patrón
         return tiposPOA.find(tipoPOA => 
-            // tipoPOA.nombre.toLowerCase().includes(tipoProyectoNombre.toLowerCase())
             tipoPOA.codigo_tipo.toLowerCase().includes(codigo_tipo.toLowerCase())
         );
     }

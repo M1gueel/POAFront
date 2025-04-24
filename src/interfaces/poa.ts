@@ -25,18 +25,11 @@ export interface TipoPOA {
   presupuesto_maximo: number;
 }
 
-export  interface Periodo {
-  id_periodo: string;
-  codigo_periodo: string;
-  nombre_periodo: string;
-  fecha_inicio: string;
-  fecha_fin: string;
-  anio?: string;
-  mes?: string;
-}
-
-export interface PoaPeriodo {
-  id_poa_periodo: string;
-  id_poa: string;
-  id_periodo: string;
+export interface PoaCreate {
+  id_proyecto: string;
+  codigo_poa: string;
+  id_tipo_poa: string;
+  anio_ejecucion: string;
+  presupuesto_asignado: number;
+  periodos: string[]; // Array de id_periodo
 }

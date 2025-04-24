@@ -1,22 +1,25 @@
+
 import React, { useState, useEffect } from 'react';
-import { Form, Button, Container, Card, Row, Col, Table, Modal, ListGroup, Badge } from 'react-bootstrap';
+import { Form, Button, Container, Card, Row, Col, ListGroup, Badge } from 'react-bootstrap';
 import { Proyecto } from '../interfaces/project';
-import { EstadoPOA, TipoPOA, Periodo, POA, PoaPeriodo } from '../interfaces/poa';
+import { EstadoPOA, TipoPOA, POA, PoaCreate } from '../interfaces/poa';
+import { Periodo, PeriodoCreate } from '../interfaces/periodo';
 import { poaAPI } from '../api/poaAPI';
+import { periodoAPI } from '../api/periodoAPI';
 import { projectAPI } from '../api/projectAPI';
 import ProyectoSeleccionadoCard from './ProyectoSeleccionadoCard';
 import CrearPeriodoModal from './CrearPeriodoModal';
 import BusquedaProyecto from './BusquedaProyecto';
 
 const CrearPOA: React.FC = () => {
-  // Estados para campos del formulario - actualizados conforme a la tabla SQL
+  // Estados para campos del formulario
   const [id_proyecto, setIdProyecto] = useState('');
   const [id_tipo_poa, setIdTipoPoa] = useState('');
-  const [codigo_poa_base, setCodigoPoaBase] = useState(''); // Código base que se modificará para cada periodo
+  const [codigo_poa_base, setCodigoPoaBase] = useState('');
   
   // Estado para periodos seleccionados
   const [periodosSeleccionados, setPeriodosSeleccionados] = useState<Periodo[]>([]);
-  const [periodoActual, setPeriodoActual] = useState<number>(0); // Índice del periodo actual en edición
+  const [periodoActual, setPeriodoActual] = useState<number>(0);
   
   // Estados para campos específicos por periodo
   const [presupuestoPorPeriodo, setPresupuestoPorPeriodo] = useState<{ [key: string]: string }>({});
@@ -28,6 +31,8 @@ const CrearPOA: React.FC = () => {
   const [periodos, setPeriodos] = useState<Periodo[]>([]);
   const [estadosPoa, setEstadosPoa] = useState<EstadoPOA[]>([]);
   const [tiposPoa, setTiposPoa] = useState<TipoPOA[]>([]);
+  const [tipoPoaSeleccionado, setTipoPoaSeleccionado] = useState<TipoPOA | null>(null);
+
   
   // Estado para proyectos filtrados para la búsqueda
   const [proyectosFiltrados, setProyectosFiltrados] = useState<Proyecto[]>([]);
@@ -47,7 +52,7 @@ const CrearPOA: React.FC = () => {
 
   // Estado para modal de creación de periodo
   const [showCrearPeriodo, setShowCrearPeriodo] = useState(false);
-  const [nuevoPeriodo, setNuevoPeriodo] = useState<Partial<Periodo>>({
+  const [nuevoPeriodo, setNuevoPeriodo] = useState<Partial<PeriodoCreate>>({
     codigo_periodo: '',
     nombre_periodo: '',
     fecha_inicio: '',
@@ -71,7 +76,7 @@ const CrearPOA: React.FC = () => {
         const proyectosData = await projectAPI.getProyectos();
         setProyectos(proyectosData);
         setProyectosFiltrados(proyectosData);
-
+  
         // Cargar estados POA desde la API
         const estadosData = await poaAPI.getEstadosPOA();
         setEstadosPoa(estadosData);
@@ -80,8 +85,13 @@ const CrearPOA: React.FC = () => {
         const tiposData = await poaAPI.getTiposPOA();
         setTiposPoa(tiposData);
         
+        // Seleccionar automáticamente el primer tipo de POA
+        if (tiposData.length > 0) {
+          setIdTipoPoa(tiposData[0].id_tipo_poa);
+        }
+        
         // Cargar periodos desde la API
-        const periodosData = await poaAPI.getPeriodos();
+        const periodosData = await periodoAPI.getPeriodos();
         setPeriodos(periodosData);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error desconocido');
@@ -196,16 +206,16 @@ const CrearPOA: React.FC = () => {
         ? 'Enero-Diciembre' 
         : `${mesesNombres[mesInicio]}-${mesesNombres[mesFin]}`;
       
-      // Crear el objeto periodo
+      // Crear el objeto periodo con un ID temporal único
       periodos.push({
-        id_periodo: `temp-${anio}`, // ID temporal, se reemplazará al guardar
+        id_periodo: `temp-${anio}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
         codigo_periodo: `PER-${anio}`,
         nombre_periodo: `Periodo Fiscal ${anio}`,
         fecha_inicio: inicioStr,
         fecha_fin: finStr,
         anio: anio.toString(),
         mes: mesStr
-      } as Periodo);
+      });
     }
     
     return periodos;
@@ -222,11 +232,13 @@ const CrearPOA: React.FC = () => {
       // Establecer el código POA base basado en el código del proyecto
       setCodigoPoaBase(`${proyecto.codigo_proyecto}-POA`);
       
-      // Obtener y establecer tipo POA basado en el tipo de proyecto
+    // Obtener y establecer tipo POA usando el id_tipo_proyecto directamente
       if (proyecto.id_tipo_proyecto) {
-        const tipoPoaCorrespondiente = await poaAPI.getTipoPOAByTipoProyecto(proyecto.nombre_tipo_proyecto || '');
-        if (tipoPoaCorrespondiente) {
-          setIdTipoPoa(tipoPoaCorrespondiente.id_tipo_poa);
+        // Cambio: Usar getTipoPOA con el id_tipo_proyecto directamente
+        const tipoPOA = await poaAPI.getTipoPOA(proyecto.id_tipo_proyecto);
+        if (tipoPOA) {
+          setIdTipoPoa(tipoPOA.id_tipo_poa);
+          setTipoPoaSeleccionado(tipoPOA); // Guardar el objeto completo
         }
       }
       
@@ -236,42 +248,16 @@ const CrearPOA: React.FC = () => {
         setPresupuestoRestante(presupuestoAprobado);
       }
       
+      // Limpiar selecciones previas
+      setPeriodosSeleccionados([]);
+      setPresupuestoPorPeriodo({});
+      setCodigoPorPeriodo({});
+      setAnioPorPeriodo({});
+      
       // Calcular periodos fiscales basados en fecha_inicio y fecha_fin del proyecto
       if (proyecto.fecha_inicio && proyecto.fecha_fin) {
         const periodosProyecto = calcularPeriodos(proyecto.fecha_inicio, proyecto.fecha_fin);
         setPeriodosCalculados(periodosProyecto);
-        
-        // Inicializar los datos por periodo
-        const presupuestoInicial: { [key: string]: string } = {};
-        const codigoInicial: { [key: string]: string } = {};
-        const anioInicial: { [key: string]: string } = {};
-        
-        periodosProyecto.forEach(periodo => {
-          presupuestoInicial[periodo.id_periodo] = '';
-          codigoInicial[periodo.id_periodo] = `${proyecto.codigo_proyecto}-POA-${periodo.anio}`;
-          anioInicial[periodo.id_periodo] = periodo.anio || '';
-        });
-        
-        setPresupuestoPorPeriodo(presupuestoInicial);
-        setCodigoPorPeriodo(codigoInicial);
-        setAnioPorPeriodo(anioInicial);
-        
-        // Actualizar periodos disponibles combinando los existentes con los calculados
-        const periodosActualizados = [...periodos];
-        // Añadir periodos calculados que no existan ya en la lista de periodos
-        periodosProyecto.forEach(periodoCalc => {
-          const existePeriodo = periodosActualizados.some(
-            p => p.anio === periodoCalc.anio && 
-                 new Date(p.fecha_inicio).getTime() <= new Date(periodoCalc.fecha_inicio).getTime() &&
-                 new Date(p.fecha_fin).getTime() >= new Date(periodoCalc.fecha_fin).getTime()
-          );
-          
-          if (!existePeriodo) {
-            periodosActualizados.push(periodoCalc);
-          }
-        });
-        
-        setPeriodos(periodosActualizados);
       }
     } catch (err) {
       console.error('Error al procesar el proyecto seleccionado:', err);
@@ -288,27 +274,21 @@ const CrearPOA: React.FC = () => {
       const nuevosSeleccionados = [...periodosSeleccionados, periodo];
       setPeriodosSeleccionados(nuevosSeleccionados);
       
-      // Inicializar valores para este periodo si no existen
-      if (!presupuestoPorPeriodo[periodo.id_periodo]) {
-        setPresupuestoPorPeriodo({
-          ...presupuestoPorPeriodo, 
-          [periodo.id_periodo]: ''
-        });
-      }
+      // Inicializar valores para este periodo
+      setPresupuestoPorPeriodo({
+        ...presupuestoPorPeriodo, 
+        [periodo.id_periodo]: ''
+      });
       
-      if (!codigoPorPeriodo[periodo.id_periodo]) {
-        setCodigoPorPeriodo({
-          ...codigoPorPeriodo,
-          [periodo.id_periodo]: `${codigo_poa_base}-${periodo.anio}`
-        });
-      }
+      setCodigoPorPeriodo({
+        ...codigoPorPeriodo,
+        [periodo.id_periodo]: `${codigo_poa_base}-${periodo.anio || ''}`
+      });
       
-      if (!anioPorPeriodo[periodo.id_periodo]) {
-        setAnioPorPeriodo({
-          ...anioPorPeriodo,
-          [periodo.id_periodo]: periodo.anio || ''
-        });
-      }
+      setAnioPorPeriodo({
+        ...anioPorPeriodo,
+        [periodo.id_periodo]: periodo.anio || ''
+      });
       
       // Si es el primer periodo seleccionado, establecerlo como actual
       if (nuevosSeleccionados.length === 1) {
@@ -403,8 +383,8 @@ const CrearPOA: React.FC = () => {
     const finAnio = new Date(hoy.getFullYear(), 11, 31).toISOString().split('T')[0];
     
     setNuevoPeriodo({
-      codigo_periodo: `${hoy.getFullYear()}-B${Math.floor(Math.random() * 9) + 1}`,
-      nombre_periodo: `Nuevo Periodo ${hoy.getFullYear()}`,
+      codigo_periodo: `PER-${hoy.getFullYear()}-${Math.floor(Math.random() * 999) + 1}`,
+      nombre_periodo: `Periodo Fiscal ${hoy.getFullYear()}`,
       fecha_inicio: inicioAnio,
       fecha_fin: finAnio,
       anio: hoy.getFullYear().toString(),
@@ -432,18 +412,22 @@ const CrearPOA: React.FC = () => {
     }
 
     try {
+      setIsLoading(true);
+      
       // Llamar a la API para crear nuevo periodo
-      const periodoCreado = await poaAPI.crearPeriodo({
+      const periodoData: PeriodoCreate = {
         codigo_periodo: nuevoPeriodo.codigo_periodo!,
         nombre_periodo: nuevoPeriodo.nombre_periodo!,
         fecha_inicio: nuevoPeriodo.fecha_inicio!,
         fecha_fin: nuevoPeriodo.fecha_fin!,
-        anio: nuevoPeriodo.anio,
-        mes: nuevoPeriodo.mes
-      });
+        anio: nuevoPeriodo.anio || new Date(nuevoPeriodo.fecha_inicio!).getFullYear().toString(),
+        mes: nuevoPeriodo.mes || 'Enero-Diciembre'
+      };
+      
+      const periodoCreado = await periodoAPI.crearPeriodo(periodoData);
       
       // Actualizar lista de periodos
-      setPeriodos([...periodos, periodoCreado]);
+      setPeriodos(prevPeriodos => [...prevPeriodos, periodoCreado]);
       
       // Cerrar modal
       setShowCrearPeriodo(false);
@@ -454,6 +438,9 @@ const CrearPOA: React.FC = () => {
       alert('Periodo creado con éxito');
     } catch (err) {
       alert('Error al crear periodo: ' + (err instanceof Error ? err.message : 'Error desconocido'));
+      console.error('Error al crear periodo:', err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -468,11 +455,11 @@ const CrearPOA: React.FC = () => {
     }
     
     // Validar que todos los periodos tengan presupuesto asignado
-    const periodonSinPresupuesto = periodosSeleccionados.some(
+    const periodosSinPresupuesto = periodosSeleccionados.some(
       p => !presupuestoPorPeriodo[p.id_periodo] || parseFloat(presupuestoPorPeriodo[p.id_periodo]) <= 0
     );
     
-    if (periodonSinPresupuesto) {
+    if (periodosSinPresupuesto) {
       setError('Todos los periodos seleccionados deben tener un presupuesto asignado');
       return;
     }
@@ -487,26 +474,41 @@ const CrearPOA: React.FC = () => {
     setError(null);
     
     try {
-      // Obtener el estado "Ingresado" para asignarlo automáticamente
-      const estados = await poaAPI.getEstadosPOA();
-      const estadoIngresado = estados.find(e => e.nombre === "Ingresado");
-      
-      if (!estadoIngresado) {
-        throw new Error("Estado 'Ingresado' no encontrado en el sistema");
-      }
-      
       // Crear un POA para cada periodo seleccionado
       const poaCreados = [];
       
       for (const periodo of periodosSeleccionados) {
+        // Verificar si el periodo necesita ser creado primero (periodos temporales)
+        let periodoId = periodo.id_periodo;
+        
+        // Si es un periodo temporal (calculado automáticamente), crearlo primero
+        if (periodoId.startsWith('temp-')) {
+          const periodoData: PeriodoCreate = {
+            codigo_periodo: periodo.codigo_periodo,
+            nombre_periodo: periodo.nombre_periodo,
+            fecha_inicio: periodo.fecha_inicio,
+            fecha_fin: periodo.fecha_fin,
+            anio: periodo.anio || '',
+            mes: periodo.mes || ''
+          };
+          
+          try {
+            const periodoCreado = await periodoAPI.crearPeriodo(periodoData);
+            periodoId = periodoCreado.id_periodo;
+          } catch (err) {
+            console.error('Error al crear periodo temporal:', err);
+            continue; // Continúa con el siguiente periodo si falla la creación
+          }
+        }
+        
         // Datos a enviar para crear POA
-        const datosPOA = {
+        const datosPOA: PoaCreate = {
           id_proyecto,
           id_tipo_poa,
-          codigo_poa: codigoPorPeriodo[periodo.id_periodo] || `${codigo_poa_base}-${periodo.anio}`,
+          codigo_poa: codigoPorPeriodo[periodo.id_periodo] || `${codigo_poa_base}-${periodo.anio || ''}`,
           anio_ejecucion: anioPorPeriodo[periodo.id_periodo] || periodo.anio || '',
           presupuesto_asignado: parseFloat(presupuestoPorPeriodo[periodo.id_periodo]),
-          periodos: [periodo.id_periodo] // Enviamos el periodo como array para el backend
+          periodos: [periodoId] // Enviamos el periodo como array para el backend
         };
         
         // Llamar a la API para crear el POA
@@ -517,11 +519,11 @@ const CrearPOA: React.FC = () => {
       // Mostrar mensaje de éxito
       alert(`Se crearon ${poaCreados.length} POAs correctamente`);
       
-      // Reset del formulario o redirección
-      window.location.href = '/poas'; // Redirección a lista de POAs
+      // Redirección a lista de POAs
+      window.location.href = '/poas';
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al crear los POAs');
-      console.error(err);
+      console.error('Error al crear POAs:', err);
     } finally {
       setIsLoading(false);
     }
@@ -584,83 +586,83 @@ const CrearPOA: React.FC = () => {
                                   <div>
                                     <strong>{periodo.nombre_periodo}</strong> - {periodo.anio}
                                     <div className="small text-muted">{periodo.fecha_inicio} al {periodo.fecha_fin}</div>
-                                    </div>
-                                    <Badge bg="info">{periodo.mes || 'Anual'}</Badge>
                                   </div>
-                                </ListGroup.Item>
-                              ))}
-                            </>
-                          ) : (
-                            <div className="text-center py-3 text-muted">
-                              No hay periodos calculados para este proyecto
-                            </div>
-                          )}
-                          {periodos.length > 0 && (
-                            <>
-                              <div className="mt-3 mb-2 fw-bold text-primary">Periodos del Sistema</div>
-                              {periodos.map(periodo => (
-                                <ListGroup.Item 
-                                  key={periodo.id_periodo}
-                                  action
-                                  onClick={() => seleccionarPeriodo(periodo)}
-                                  disabled={periodosSeleccionados.some(p => p.id_periodo === periodo.id_periodo)}
-                                >
-                                  <div className="d-flex justify-content-between align-items-center">
-                                    <div>
-                                      <strong>{periodo.nombre_periodo}</strong> - {periodo.anio}
-                                      <div className="small text-muted">{periodo.fecha_inicio} al {periodo.fecha_fin}</div>
-                                    </div>
-                                    <Badge bg="secondary">{periodo.mes || 'Anual'}</Badge>
-                                  </div>
-                                </ListGroup.Item>
-                              ))}
-                            </>
-                          )}
-                        </ListGroup>
-                        <div className="d-grid gap-2 mt-3">
-                          <Button 
-                            variant="outline-primary" 
-                            size="sm" 
-                            onClick={handleAbrirModalPeriodo}
-                          >
-                            <i className="bi bi-plus-circle me-1"></i> Crear Nuevo Periodo
-                          </Button>
-                        </div>
-                      </Card.Body>
-                    </Card>
-                  </Col>
-                  
-                  <Col md={6}>
-                    <Card>
-                      <Card.Header className="bg-light">
-                        <h5 className="mb-0">Periodos Seleccionados</h5>
-                      </Card.Header>
-                      <Card.Body style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                        {periodosSeleccionados.length > 0 ? (
-                          <ListGroup>
-                            {periodosSeleccionados.map((periodo, index) => (
-                              <ListGroup.Item key={periodo.id_periodo} className="d-flex justify-content-between align-items-center">
-                                <div>
-                                  <strong>{periodo.nombre_periodo}</strong> - {periodo.anio}
-                                  <div className="small text-muted">{periodo.fecha_inicio} al {periodo.fecha_fin}</div>
+                                  <Badge bg="info">{periodo.mes || 'Anual'}</Badge>
                                 </div>
-                                <Button 
-                                  variant="outline-danger" 
-                                  size="sm" 
-                                  onClick={() => quitarPeriodo(index)}
-                                >
-                                  <i className="bi bi-trash"></i>
-                                </Button>
                               </ListGroup.Item>
                             ))}
-                          </ListGroup>
+                          </>
                         ) : (
                           <div className="text-center py-3 text-muted">
-                            No hay periodos seleccionados
+                            No hay periodos calculados para este proyecto
                           </div>
                         )}
-                      </Card.Body>
-                      {periodosSeleccionados.length > 0 && (
+                        {periodos.length > 0 && (
+                          <>
+                            <div className="mt-3 mb-2 fw-bold text-primary">Periodos del Sistema</div>
+                            {periodos.map(periodo => (
+                              <ListGroup.Item 
+                                key={periodo.id_periodo}
+                                action
+                                onClick={() => seleccionarPeriodo(periodo)}
+                                disabled={periodosSeleccionados.some(p => p.id_periodo === periodo.id_periodo)}
+                              >
+                                <div className="d-flex justify-content-between align-items-center">
+                                  <div>
+                                    <strong>{periodo.nombre_periodo}</strong> - {periodo.anio}
+                                    <div className="small text-muted">{periodo.fecha_inicio} al {periodo.fecha_fin}</div>
+                                  </div>
+                                  <Badge bg="secondary">{periodo.mes || 'Anual'}</Badge>
+                                </div>
+                              </ListGroup.Item>
+                            ))}
+                          </>
+                        )}
+                      </ListGroup>
+                      <div className="d-grid gap-2 mt-3">
+                        <Button 
+                          variant="outline-primary" 
+                          size="sm" 
+                          onClick={handleAbrirModalPeriodo}
+                        >
+                          <i className="bi bi-plus-circle me-1"></i> Crear Nuevo Periodo
+                        </Button>
+                      </div>
+                    </Card.Body>
+                  </Card>
+                </Col>
+                
+                <Col md={6}>
+                  <Card>
+                    <Card.Header className="bg-light">
+                      <h5 className="mb-0">Periodos Seleccionados</h5>
+                    </Card.Header>
+                    <Card.Body style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                      {periodosSeleccionados.length > 0 ? (
+                        <ListGroup>
+                          {periodosSeleccionados.map((periodo, index) => (
+                            <ListGroup.Item key={periodo.id_periodo} className="d-flex justify-content-between align-items-center">
+                              <div>
+                                <strong>{periodo.nombre_periodo}</strong> - {periodo.anio}
+                                <div className="small text-muted">{periodo.fecha_inicio} al {periodo.fecha_fin}</div>
+                              </div>
+                              <Button 
+                                variant="outline-danger" 
+                                size="sm" 
+                                onClick={() => quitarPeriodo(index)}
+                              >
+                                <i className="bi bi-trash"></i>
+                              </Button>
+                            </ListGroup.Item>
+                          ))}
+                        </ListGroup>
+                      ) : (
+                        <div className="text-center py-3 text-muted">
+                          No hay periodos seleccionados
+                        </div>
+                      )}
+                    </Card.Body>
+                    {periodosSeleccionados.length > 0 && (
                         <Card.Footer className="bg-light">
                           <div className="d-flex justify-content-between align-items-center">
                             <span>Total Periodos: <strong>{periodosSeleccionados.length}</strong></span>
@@ -693,21 +695,19 @@ const CrearPOA: React.FC = () => {
                         <Card.Body>
                           <Row>
                             <Col md={6}>
-                              <Form.Group className="mb-3" controlId="id_tipo_poa">
-                                <Form.Label className="fw-semibold">Tipo de POA <span className="text-danger">*</span></Form.Label>
-                                <Form.Select 
-                                  value={id_tipo_poa} 
-                                  onChange={(e) => setIdTipoPoa(e.target.value)}
-                                  required
-                                >
-                                  <option value="">Seleccione un tipo</option>
-                                  {tiposPoa.map(tipo => (
-                                    <option key={tipo.id_tipo_poa} value={tipo.id_tipo_poa}>
-                                      {tipo.nombre} ({tipo.duracion_meses} meses)
-                                    </option>
-                                  ))}
-                                </Form.Select>
-                              </Form.Group>
+                            <Form.Group className="mb-3" controlId="id_tipo_poa">
+                              <Form.Label className="fw-semibold">Tipo de POA <span className="text-danger">*</span></Form.Label>
+                              <Form.Control 
+                                type="text" 
+                                value={tipoPoaSeleccionado 
+                                  ? `${tipoPoaSeleccionado.codigo_tipo} - ${tipoPoaSeleccionado.nombre}` 
+                                  : 'Tipo no seleccionado'} 
+                                readOnly 
+                                className="bg-light"
+                              />
+                              {/* Mantener el id_tipo_poa como campo oculto para el submit */}
+                              <input type="hidden" name="id_tipo_poa" value={id_tipo_poa} />
+                            </Form.Group>
                             </Col>
                             <Col md={6}>
                               <Form.Group className="mb-3" controlId="codigo_poa_base">
