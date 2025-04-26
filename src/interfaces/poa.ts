@@ -29,7 +29,7 @@ export interface PoaCreate {
   id_proyecto: string;
   codigo_poa: string;
   id_tipo_poa: string;
+  id_periodo: string;
   anio_ejecucion: string;
   presupuesto_asignado: number;
-  periodos: string[]; // Array de id_periodo
 }

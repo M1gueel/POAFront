@@ -23,16 +23,28 @@ export const poaAPI = {
 
     // Crear un nuevo POA
     crearPOA: async (poaData: PoaCreate): Promise<POA> => {
-        // Añadir fecha de creación automáticamente
+        // Añadir fecha de creación y estado POA automáticamente
         const datosAEnviar = {
             ...poaData,
             fecha_creacion: new Date().toISOString(), // Incluye hora y zona (formato ISO completo)
-            id_estado_poa: null // Solo si el backend lo requiere explícitamente
+            //id_estado_poa: null // Solo si el backend lo requiere explícitamente
+            id_estado_poa: "fdb9a3e6-7ce2-49a6-bb25-8b80cd7310b3" // ID del estado inicial
         };
         
         console.log("POA data being sent to API:", datosAEnviar);
-        const response = await API.post('/poas/', datosAEnviar);
-        return response.data;
+
+        try {
+            const response = await API.post('/poas/', datosAEnviar);
+            console.log("Respuesta del servidor:", response.data);
+            return response.data;
+        } catch (error) {
+            console.error("Error detallado al crear POA:", error);
+            if (error.response) {
+                console.error("Respuesta del servidor:", error.response.data);
+                console.error("Status:", error.response.status);
+            }
+            throw error;
+        }
     },
 
     // Obtener todos los POAs
