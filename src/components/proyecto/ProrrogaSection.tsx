@@ -1,4 +1,3 @@
-// src/components/proyecto/ProrrogaSection.tsx
 import React from 'react';
 import { Form, Collapse } from 'react-bootstrap';
 import { ChevronDown, ChevronUp } from 'lucide-react';

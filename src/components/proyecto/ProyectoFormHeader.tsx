@@ -1,4 +1,3 @@
-// src/components/proyecto/ProyectoFormHeader.tsx
 import React from 'react';
 import { TipoProyecto } from '../../interfaces/project';
 

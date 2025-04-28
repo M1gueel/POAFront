@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { TipoProyecto, EstadoProyecto } from '../interfaces/project';
+import { Proyecto, TipoProyecto, EstadoProyecto } from '../interfaces/project';
 import { projectService } from '../services/projectService';
 import { 
   validateDirectorName, 
@@ -156,7 +156,7 @@ export const useProjectForm = ({ initialTipoProyecto }: UseProjectFormProps) => 
     
     try {
       // Prepare data to send to backend
-      const proyectoData = {
+      const proyecto: Partial<Proyecto> = {
         codigo_proyecto,
         titulo,
         id_tipo_proyecto: tipoProyecto!.id_tipo_proyecto,
@@ -167,10 +167,10 @@ export const useProjectForm = ({ initialTipoProyecto }: UseProjectFormProps) => 
         fecha_fin,
       };
       
-      console.log("Enviando datos:", proyectoData);
+      console.log("Enviando datos:", proyecto);
       
       // Send data to backend via service layer
-      await projectService.crearProyecto(proyectoData);
+      await projectService.crearProyecto(proyecto as Proyecto);
       
       alert('Proyecto creado con éxito');
       setIsLoading(false);
