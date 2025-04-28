@@ -15,6 +15,7 @@ export interface Proyecto {
 }
 
 export interface TipoProyecto {
+    prefijo: any;
     id_tipo_proyecto: string;
     codigo_tipo: string;
     nombre: string;
@@ -33,13 +34,3 @@ export interface TipoProyecto {
     id_usuario: string;
     nombre_usuario: string;
   }
-
-// export  interface Periodo {
-//     id_periodo: string;
-//     codigo_periodo: string;
-//     nombre_periodo: string;
-//     fecha_inicio: string;
-//     fecha_fin: string;
-//     anio?: string;
-//     mes?: string;
-//   }
