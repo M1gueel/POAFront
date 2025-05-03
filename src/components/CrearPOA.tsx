@@ -449,65 +449,101 @@ const CrearPOA: React.FC = () => {
     }
   };
 
-  // Manejar el envío del formulario
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+// Manejar el envío del formulario
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  
+  // Validaciones básicas
+  if (!id_proyecto || !id_tipo_poa || periodosSeleccionados.length === 0) {
+    setError('Debe seleccionar un proyecto, un tipo de POA y al menos un periodo');
+    return;
+  }
+  
+  // Validar que todos los periodos tengan presupuesto asignado
+  const periodosSinPresupuesto = periodosSeleccionados.some(
+    p => !presupuestoPorPeriodo[p.id_periodo] || parseFloat(presupuestoPorPeriodo[p.id_periodo]) <= 0
+  );
+  
+  if (periodosSinPresupuesto) {
+    setError('Todos los periodos seleccionados deben tener un presupuesto asignado');
+    return;
+  }
+  
+  // Validar que el presupuesto total no exceda el presupuesto aprobado
+  if (proyectoSeleccionado && presupuestoTotalAsignado > parseFloat(proyectoSeleccionado.presupuesto_aprobado.toString())) {
+    setError('El presupuesto total asignado excede el presupuesto aprobado del proyecto');
+    return;
+  }
+  
+  setIsLoading(true);
+  setError(null);
+  
+  try {
+    // Crear un POA para cada periodo seleccionado
+    const poaCreados = [];
     
-    // Validaciones básicas
-    if (!id_proyecto || !id_tipo_poa || periodosSeleccionados.length === 0) {
-      setError('Debe seleccionar un proyecto, un tipo de POA y al menos un periodo');
-      return;
-    }
+    // Mapeo para seguimiento de IDs: temporales -> permanentes
+    const mapeoIdsPeriodos = new Map();
     
-    // Validar que todos los periodos tengan presupuesto asignado
-    const periodosSinPresupuesto = periodosSeleccionados.some(
-      p => !presupuestoPorPeriodo[p.id_periodo] || parseFloat(presupuestoPorPeriodo[p.id_periodo]) <= 0
-    );
+    // Primero, crear todos los periodos temporales
+    const periodosACrear = periodosSeleccionados.filter(p => p.id_periodo.startsWith('temp-'));
     
-    if (periodosSinPresupuesto) {
-      setError('Todos los periodos seleccionados deben tener un presupuesto asignado');
-      return;
-    }
-    
-    // Validar que el presupuesto total no exceda el presupuesto aprobado
-    if (proyectoSeleccionado && presupuestoTotalAsignado > parseFloat(proyectoSeleccionado.presupuesto_aprobado.toString())) {
-      setError('El presupuesto total asignado excede el presupuesto aprobado del proyecto');
-      return;
-    }
-    
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      // Crear un POA para cada periodo seleccionado
-      const poaCreados = [];
+    if (periodosACrear.length > 0) {
+      console.log(`Creando ${periodosACrear.length} periodos temporales primero`);
       
-      // se recorre cada periodo seleccionado 
-      for (const periodo of periodosSeleccionados) {
-        // Verificar si el periodo necesita ser creado primero (periodos temporales)
-        let periodoId = periodo.id_periodo;
-        
-        // Si es un periodo temporal (calculado automáticamente), crearlo primero
-        if (periodoId.startsWith('temp-')) {
+      for (const periodo of periodosACrear) {
+        try {
           const periodoData: PeriodoCreate = {
             codigo_periodo: periodo.codigo_periodo,
             nombre_periodo: periodo.nombre_periodo,
             fecha_inicio: periodo.fecha_inicio,
             fecha_fin: periodo.fecha_fin,
-            anio: periodo.anio || '',
-            mes: periodo.mes || ''
+            anio: periodo.anio || new Date().getFullYear().toString(),
+            mes: periodo.mes || 'Enero-Diciembre'
           };
           
-          try {
-            console.log("Creando periodo temporal:", periodoData);
-            const periodoCreado = await periodoAPI.crearPeriodo(periodoData);
-            console.log("Periodo creado exitosamente:", periodoCreado);
-            periodoId = periodoCreado.id_periodo;
-          } catch (err) {
-            console.error('Error detallado al crear periodo temporal:', err);
-            console.error('Datos enviados:', periodoData);
-            continue; // Continúa con el siguiente periodo si falla la creación
+          console.log("Creando periodo temporal:", periodoData);
+          const periodoCreado = await periodoAPI.crearPeriodo(periodoData);
+          console.log("Periodo creado exitosamente:", periodoCreado);
+          
+          // Guardar la relación entre ID temporal e ID permanente
+          mapeoIdsPeriodos.set(periodo.id_periodo, periodoCreado.id_periodo);
+        } catch (err) {
+          console.error('Error al crear periodo temporal:', err);
+          if (err.response) {
+            console.error('Respuesta del servidor:', err.response.data);
           }
+          // Mostrar error al usuario
+          setError(`Error al crear periodo ${periodo.nombre_periodo}: ${err.message || 'Error desconocido'}`);
+          setIsLoading(false);
+          return; // Detener el proceso si no podemos crear un periodo
+        }
+      }
+    }
+    
+    // Ahora procesamos la creación de POAs con los IDs correctos
+    for (const periodo of periodosSeleccionados) {
+      try {
+        // Determinar el ID correcto del periodo (temporal o existente)
+        let periodoId = periodo.id_periodo;
+        if (periodo.id_periodo.startsWith('temp-')) {
+          periodoId = mapeoIdsPeriodos.get(periodo.id_periodo);
+          // Si no tenemos un ID válido, omitir este periodo
+          if (!periodoId) {
+            console.error(`No se pudo obtener un ID válido para el periodo ${periodo.codigo_periodo}`);
+            continue;
+          }
+        }
+        
+        // Verificar que el periodo exista realmente en la base de datos
+        try {
+          // Intentar obtener el periodo para verificar que existe
+          await periodoAPI.getPeriodo(periodoId);
+        } catch (err) {
+          console.error(`El periodo con ID ${periodoId} no existe en la base de datos:`, err);
+          setError(`El periodo ${periodo.nombre_periodo} no existe en la base de datos`);
+          setIsLoading(false);
+          return; // Detener el proceso
         }
         
         // Datos a enviar para crear POA
@@ -517,37 +553,64 @@ const CrearPOA: React.FC = () => {
           codigo_poa: codigoPorPeriodo[periodo.id_periodo] || `${codigo_poa_base}-${periodo.anio || ''}`,
           anio_ejecucion: anioPorPeriodo[periodo.id_periodo] || periodo.anio || '',
           presupuesto_asignado: parseFloat(presupuestoPorPeriodo[periodo.id_periodo]),
-          id_periodo: periodoId // Ahora enviamos solo el ID del periodo
+          id_periodo: periodoId,
+          fecha_creacion: new Date().toISOString(),
+          id_estado_poa: null  // Campo requerido según el error 422
         };
         
-        try {
-          console.log("Enviando datos de POA:", datosPOA);  
-          // Llamar a la API para crear el POA
-          const nuevoPOA = await poaAPI.crearPOA(datosPOA);
-          console.log("POA creado exitosamente:", nuevoPOA);
-          poaCreados.push(nuevoPOA);
-        } catch (err) {
-          console.error('Error al crear POA para periodo:', periodoId, err);
-          // Si falla un POA, mostrar error pero continuar con los siguientes
+        console.log("Enviando datos de POA:", datosPOA);  
+        // Llamar a la API para crear el POA
+        const nuevoPOA = await poaAPI.crearPOA(datosPOA);
+        console.log("POA creado exitosamente:", nuevoPOA);
+        poaCreados.push(nuevoPOA);
+      } catch (err) {
+        console.error('Error al crear POA:', err);
+        if (err.response) {
+          console.error('Detalle del error:', err.response.data);
+          console.error('Status:', err.response.status);
+          
+          // Mejor manejo de errores para mostrar el mensaje específico
+          let mensajeError = 'Error al crear el POA';
+          
+          // Extraer el mensaje específico de error si existe
+          if (err.response.data?.detail) {
+            if (Array.isArray(err.response.data.detail)) {
+              // Si es un array de errores, tomamos el primer mensaje
+              const primerError = err.response.data.detail[0];
+              if (primerError.msg) {
+                mensajeError = `${primerError.msg} - Campo: ${primerError.loc.join('.')}`;
+              }
+            } else {
+              mensajeError = err.response.data.detail;
+            }
+          }
+          
+          setError(`Error: ${mensajeError}`);
+        } else {
+          setError(`Error de conexión al crear POA: ${err.message}`);
         }
+        setIsLoading(false);
+        return; // Detener el proceso
       }
-      
-      // Mostrar mensaje de éxito
+    }
+    
+    // Mostrar mensaje de éxito
     if (poaCreados.length > 0) {
       alert(`Se crearon ${poaCreados.length} POAs correctamente`);
       
       // Redirección a lista de POAs
       window.location.href = '/poas';
     } else {
-      setError('No se pudo crear ningún POA');
+      setError('No se pudo crear ningún POA. Revise los logs para más detalles.');
     }
   } catch (err) {
-    setError(err instanceof Error ? err.message : 'Error al crear los POAs');
+    const errorMessage = err instanceof Error ? err.message : 'Error al crear los POAs';
+    setError(errorMessage);
     console.error('Error general al crear POAs:', err);
   } finally {
     setIsLoading(false);
   }
-  };
+};
 
   return (
     <Container className="py-4">

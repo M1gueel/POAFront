@@ -24,11 +24,16 @@ export const poaAPI = {
     // Crear un nuevo POA
     crearPOA: async (poaData: PoaCreate): Promise<POA> => {
         // Añadir fecha de creación y estado POA automáticamente
+        // Asegurarnos de que todos los campos requeridos estén presentes y formateados correctamente
         const datosAEnviar = {
-            ...poaData,
-            fecha_creacion: new Date().toISOString(), // Incluye hora y zona (formato ISO completo)
-            //id_estado_poa: null // Solo si el backend lo requiere explícitamente
-            id_estado_poa: "fdb9a3e6-7ce2-49a6-bb25-8b80cd7310b3" // ID del estado inicial
+            id_proyecto: poaData.id_proyecto,
+            id_periodo: poaData.id_periodo,
+            codigo_poa: poaData.codigo_poa,
+            fecha_creacion: poaData.fecha_creacion || new Date().toISOString(),
+            id_tipo_poa: poaData.id_tipo_poa,
+            id_estado_poa: poaData.id_estado_poa,
+            anio_ejecucion: poaData.anio_ejecucion,
+            presupuesto_asignado: poaData.presupuesto_asignado
         };
         
         console.log("POA data being sent to API:", datosAEnviar);

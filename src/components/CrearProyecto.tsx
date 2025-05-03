@@ -3,7 +3,7 @@ import React, { useEffect } from 'react';
 import { Form, Button, Card } from 'react-bootstrap';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { TipoProyecto } from '../interfaces/project';
-import { useProjectForm } from '../hooks/useProjectForm';
+import { useProjectForm } from '../Hooks/useProjectForm';
 import { ProyectoFormHeader } from './proyecto/ProyectoFormHeader';
 import { ProrrogaSection } from './proyecto/ProrrogaSection';
 import '../styles/NuevoProyecto.css';
