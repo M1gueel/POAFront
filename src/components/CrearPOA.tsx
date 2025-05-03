@@ -493,12 +493,55 @@ const handleSubmit = async (e: React.FormEvent) => {
       
       for (const periodo of periodosACrear) {
         try {
+          // Verificar si ya existe un periodo con el mismo código
+          try {
+            // Construir el código de periodo que usaremos
+            const anio = periodo.anio || new Date().getFullYear().toString();
+            // Obtener el título del proyecto normalizándolo para el código
+            const tituloProyectoNormalizado = proyectoSeleccionado?.titulo
+              ? proyectoSeleccionado.titulo
+                  .replace(/\s+/g, '-') // Convertir espacios en guiones
+                  .replace(/[^a-zA-Z0-9-]/g, '') // Eliminar caracteres especiales
+                  .toLowerCase() // Convertir a minúsculas
+                  .substring(0, 20) // Limitar longitud para evitar códigos muy largos
+              : '';
+            
+            const nuevoCodigo = `PER-${anio}-${tituloProyectoNormalizado}`;
+            
+            // Como no tenemos un método para buscar por código, verificaremos si existe consultando todos los periodos
+            // Obtener todos los periodos disponibles y filtrar en el frontend
+            const todosPeriodos = await periodoAPI.getPeriodos();
+            const periodoExistente = todosPeriodos.find(p => p.codigo_periodo === nuevoCodigo);
+            
+            if (periodoExistente) {
+              console.log(`Periodo con código '${nuevoCodigo}' ya existe. Usando ID existente:`, periodoExistente.id_periodo);
+              mapeoIdsPeriodos.set(periodo.id_periodo, periodoExistente.id_periodo);
+              continue; // Saltamos a la siguiente iteración sin crear un periodo nuevo
+            }
+            
+          } catch (err) {
+            // Si falla la búsqueda, asumimos que no existe y continuamos con la creación
+            console.log(`Error al buscar periodos existentes:`, err);
+          }
+          
+          // Si llegamos aquí, necesitamos crear un nuevo periodo
+          // Asegúrate de que cada periodo tenga un código único incluyendo el nombre del proyecto
+          const anio = periodo.anio || new Date().getFullYear().toString();
+          // Obtener el título del proyecto normalizándolo para el código
+          const tituloProyectoNormalizado = proyectoSeleccionado?.titulo
+            ? proyectoSeleccionado.titulo
+                .replace(/\s+/g, '-') // Convertir espacios en guiones
+                .replace(/[^a-zA-Z0-9-]/g, '') // Eliminar caracteres especiales
+                .toLowerCase() // Convertir a minúsculas
+                .substring(0, 20) // Limitar longitud para evitar códigos muy largos
+            : '';
+          
           const periodoData: PeriodoCreate = {
-            codigo_periodo: periodo.codigo_periodo,
+            codigo_periodo: `PER-${anio}-${tituloProyectoNormalizado}`, // Formato: PER-AÑO-NOMBREPROYECTO
             nombre_periodo: periodo.nombre_periodo,
             fecha_inicio: periodo.fecha_inicio,
             fecha_fin: periodo.fecha_fin,
-            anio: periodo.anio || new Date().getFullYear().toString(),
+            anio: anio,
             mes: periodo.mes || 'Enero-Diciembre'
           };
           
@@ -546,15 +589,20 @@ const handleSubmit = async (e: React.FormEvent) => {
           return; // Detener el proceso
         }
         
+        // Generar un código único para cada POA
+        const timestamp = new Date().getTime();
+        const codigoPoa = codigoPorPeriodo[periodo.id_periodo] || 
+                         `${codigo_poa_base}-${periodo.anio || ''}-${timestamp.toString().slice(-5)}`;
+        
         // Datos a enviar para crear POA
         const datosPOA: PoaCreate = {
           id_proyecto,
           id_tipo_poa,
-          codigo_poa: codigoPorPeriodo[periodo.id_periodo] || `${codigo_poa_base}-${periodo.anio || ''}`,
+          codigo_poa: codigoPoa,
           anio_ejecucion: anioPorPeriodo[periodo.id_periodo] || periodo.anio || '',
           presupuesto_asignado: parseFloat(presupuestoPorPeriodo[periodo.id_periodo]),
           id_periodo: periodoId,
-          fecha_creacion: new Date().toISOString(),
+          fecha_creacion: new Date().toISOString().split('Z')[0],
           id_estado_poa: null  // Campo requerido según el error 422
         };
         

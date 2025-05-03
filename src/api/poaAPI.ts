@@ -29,7 +29,7 @@ export const poaAPI = {
             id_proyecto: poaData.id_proyecto,
             id_periodo: poaData.id_periodo,
             codigo_poa: poaData.codigo_poa,
-            fecha_creacion: poaData.fecha_creacion || new Date().toISOString(),
+            fecha_creacion: poaData.fecha_creacion ? poaData.fecha_creacion.split('Z')[0] : new Date().toISOString().split('Z')[0],// Eliminar la información de zona horaria
             id_tipo_poa: poaData.id_tipo_poa,
             id_estado_poa: poaData.id_estado_poa,
             anio_ejecucion: poaData.anio_ejecucion,
