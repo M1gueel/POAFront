@@ -4,8 +4,8 @@ import { Form, Button, Card } from 'react-bootstrap';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { TipoProyecto } from '../interfaces/project';
 import { useProjectForm } from '../Hooks/useProjectForm';
-import { ProyectoFormHeader } from './proyecto/ProyectoFormHeader';
-import { ProrrogaSection } from './proyecto/ProrrogaSection';
+import { ProyectoFormHeader } from '../components/ProyectoFormHeader';
+import { ProrrogaSection } from '../components/ProrrogaSection';
 import '../styles/NuevoProyecto.css';
 
 interface LocationState {

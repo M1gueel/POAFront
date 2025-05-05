@@ -1,5 +1,6 @@
 import React from 'react';
 import { Row, Col, Form, Table } from 'react-bootstrap';
+import { Proyecto } from '../interfaces/project';
 
 interface BusquedaProyectoProps {
   busquedaProyecto: string;

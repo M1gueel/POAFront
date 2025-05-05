@@ -1,13 +1,13 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import AppLayout from './AppLayout';
-import Login from './components/Login';
-import Register from './components/Register';
-import Dashboard from './components/Dashboard';
-import CrearPOA from './components/CrearPOA';
-import Perfil from './components/Perfil';
-import CrearProyecto from './components/CrearProyecto';
-import TiposProyecto from './components/TiposProyecto';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import Dashboard from './pages/Dashboard';
+import CrearPOA from './pages/CrearPOA';
+import Perfil from './pages/Perfil';
+import CrearProyecto from './pages/CrearProyecto';
+import TiposProyecto from './pages/TiposProyecto';
 // Importa otros componentes según sea necesario
 
 function App() {

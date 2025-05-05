@@ -1,5 +1,7 @@
 import React from 'react';
 import { Row, Col, Card } from 'react-bootstrap';
+import { Proyecto } from '../interfaces/project';
+import { Periodo } from '../interfaces/periodo';
 
 // Definir la interfaz para las props
 interface ProyectoSeleccionadoCardProps {

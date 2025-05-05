@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Container, Offcanvas } from 'react-bootstrap';
 import { useAuth } from './context/AuthContext';
-import SidebarContent from './components/SidebarContent';
+import SidebarContent from './pages/SidebarContent';
 
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
   // Estado para el sidebar móvil

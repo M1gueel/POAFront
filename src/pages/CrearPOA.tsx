@@ -1,21 +1,25 @@
 
 import React, { useState, useEffect } from 'react';
 import { Form, Button, Container, Card, Row, Col, ListGroup, Badge, Collapse } from 'react-bootstrap';
+import { useNavigate } from 'react-router-dom';
 import { Proyecto } from '../interfaces/project';
 import { EstadoPOA, TipoPOA, PoaCreate } from '../interfaces/poa';
 import { Periodo, PeriodoCreate } from '../interfaces/periodo';
 import { poaAPI } from '../api/poaAPI';
 import { periodoAPI } from '../api/periodoAPI';
 import { projectAPI } from '../api/projectAPI';
-import ProyectoSeleccionadoCard from './ProyectoSeleccionadoCard';
-import CrearPeriodoModal from './CrearPeriodoModal';
-import BusquedaProyecto from './BusquedaProyecto';
+import ProyectoSeleccionadoCard from '../components/ProyectoSeleccionadoCard';
+import CrearPeriodoModal from '../components/CrearPeriodoModal';
+import BusquedaProyecto from '../components/BusquedaProyecto';
 
 import 'bootstrap-icons/font/bootstrap-icons.css';
 // import '../styles/CrearPOA.css';
 
 
 const CrearPOA: React.FC = () => {
+
+  const navigate = useNavigate();
+
   // Estados para campos del formulario
   const [id_proyecto, setIdProyecto] = useState('');
   const [id_tipo_poa, setIdTipoPoa] = useState('');
@@ -647,7 +651,8 @@ const handleSubmit = async (e: React.FormEvent) => {
       alert(`Se crearon ${poaCreados.length} POAs correctamente`);
       
       // Redirección a lista de POAs
-      window.location.href = '/poas';
+      navigate('/poas');
+      //window.location.href = '/poas';
     } else {
       setError('No se pudo crear ningún POA. Revise los logs para más detalles.');
     }

@@ -1,5 +1,4 @@
 import { useState, FormEvent } from 'react';
-import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authAPI } from '../api/userAPI';
 import '../styles/Login.css';

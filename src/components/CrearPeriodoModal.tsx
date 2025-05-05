@@ -1,5 +1,6 @@
 import React from 'react';
 import { Modal, Button, Form, Row, Col } from 'react-bootstrap';
+import { Periodo } from '../interfaces/periodo';
 
 interface PeriodoModalProps {
   show: boolean;

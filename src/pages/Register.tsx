@@ -74,9 +74,13 @@ const Register = () => {
             // Si todo salió bien, redirigir al login
             navigate('/login', { state: { message: 'Registro exitoso. Por favor inicia sesión.' } });
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Error al registrar:', error);
-            setError(error.response?.data?.detail || 'Error al registrar el usuario');
+            if (error instanceof Error) {
+                setError(error.message || 'Error al registrar el usuario');
+            } else {
+                setError('Error al registrar el usuario');
+            }
         } finally {
             setLoading(false);
         }

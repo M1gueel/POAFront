@@ -1,5 +1,5 @@
 import React from 'react';
-import { TipoProyecto } from '../../interfaces/project';
+import { TipoProyecto } from '../interfaces/project';
 
 interface ProyectoFormHeaderProps {
   tipoProyecto: TipoProyecto | null;
