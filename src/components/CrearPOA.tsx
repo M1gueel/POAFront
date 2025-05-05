@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Form, Button, Container, Card, Row, Col, ListGroup, Badge, Collapse } from 'react-bootstrap';
 import { Proyecto } from '../interfaces/project';
-import { EstadoPOA, TipoPOA, POA, PoaCreate } from '../interfaces/poa';
+import { EstadoPOA, TipoPOA, PoaCreate } from '../interfaces/poa';
 import { Periodo, PeriodoCreate } from '../interfaces/periodo';
 import { poaAPI } from '../api/poaAPI';
 import { periodoAPI } from '../api/periodoAPI';
