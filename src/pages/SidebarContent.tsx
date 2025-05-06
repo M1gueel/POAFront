@@ -88,6 +88,18 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
                 Nuevo POA
               </Nav.Link>
             </Nav.Item>
+
+            <div className="px-3 mt-4 mb-2 text-secondary text-uppercase small">ACTIVIDADES</div>
+            
+            <Nav.Item>
+              <Nav.Link 
+                className={`text-white ${isActive("/agregar-actividad")}`}
+                onClick={() => handleNavigate("/agregar-actividad")}
+              >
+                <FileChartLine size={iconSize} className="me-2" />
+                Agregar Actividad
+              </Nav.Link>
+            </Nav.Item>
             
             {/* Preferencias de usuario */}
             <div className="mt-auto"> 

@@ -63,21 +63,6 @@ export const poaAPI = {
         return response.data;
     },
 
-    // Función para generar código POA a partir del código de tipo POA
-    // generarCodigoPOA: async (idTipoPOA: string, sufijo?: string): Promise<string> => {
-    //     // Obtener el tipo POA para extraer su código
-    //     const tiposPOA = await poaAPI.getTiposPOA();
-    //     const tipoPOA = tiposPOA.find(tipo => tipo.id_tipo_poa === idTipoPOA);
-        
-    //     if (!tipoPOA) {
-    //         throw new Error("Tipo de POA no encontrado");
-    //     }
-        
-    //     // Generar el código con el formato deseado: codigoTipo-sufijo
-    //     const codigoBase = tipoPOA.codigo_tipo;
-    //     return sufijo ? `${codigoBase}-${sufijo}` : `${codigoBase}-`;
-    // },
-
     // Función para obtener el tipo POA correspondiente a un tipo de proyecto
     getTipoPOAByTipoProyecto: async (codigo_tipo: string): Promise<TipoPOA | undefined> => {
         // Obtener todos los tipos de POA
@@ -87,5 +72,20 @@ export const poaAPI = {
         return tiposPOA.find(tipoPOA => 
             tipoPOA.codigo_tipo.toLowerCase().includes(codigo_tipo.toLowerCase())
         );
-    }
+    },
+
+    // Obtener POAs por Proyecto
+    getPOAsByProyecto: async (idProyecto: string): Promise<POA[]> => {
+        try {
+            const response = await API.get(`/proyectos/${idProyecto}/poas`);
+            return response.data;
+        } catch (error) {
+            console.error("Error al obtener POAs por proyecto:", error);
+            if (error.response) {
+                console.error("Respuesta del servidor:", error.response.data);
+                console.error("Status:", error.response.status);
+            }
+            throw error;
+        }
+    },
 };

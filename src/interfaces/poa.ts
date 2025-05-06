@@ -1,3 +1,4 @@
+import { Periodo } from './periodo';
 export interface POA {
   id_poa: string;       // UUID
   id_proyecto: string;  // UUID
@@ -7,8 +8,9 @@ export interface POA {
   id_tipo_poa: string;   // UUID
   anio_ejecucion: string;
   presupuesto_asignado: number;
-}
-
+  periodo?: Periodo;  // Propiedad opcional
+  }
+  
 export interface EstadoPOA {
   id_estado_poa: string;
   nombre: string;

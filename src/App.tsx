@@ -8,6 +8,7 @@ import CrearPOA from './pages/CrearPOA';
 import Perfil from './pages/Perfil';
 import CrearProyecto from './pages/CrearProyecto';
 import TiposProyecto from './pages/TiposProyecto';
+import AgregarActividad from './pages/AgregarActividad';
 // Importa otros componentes según sea necesario
 
 function App() {
@@ -20,12 +21,13 @@ function App() {
             <Route path="/login" element={<Login />} />
             
             {/* Rutas protegidas */}
-            <Route path="/register" element={<Register />} />
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/crearPOA" element={<CrearPOA />} />
-            <Route path="/perfil" element={<Perfil />} />
-            <Route path="/crear-proyecto" element={<CrearProyecto />} />
             <Route path="/tipos-proyecto" element={<TiposProyecto />} />
+            <Route path="/crear-proyecto" element={<CrearProyecto />} />
+            <Route path="/crearPOA" element={<CrearPOA />} />
+            <Route path="/agregar-actividad" element={<AgregarActividad />} />
+            <Route path="/perfil" element={<Perfil />} />
+            <Route path="/register" element={<Register />} />
           </Routes>
         </AppLayout>
       </AuthProvider>
