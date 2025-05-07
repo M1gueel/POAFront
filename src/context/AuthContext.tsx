@@ -46,7 +46,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Redireccionar según autenticación y ruta
   useEffect(() => {
     if (!loading) {
-      const isPublicRoute = ['/login'].includes(location.pathname);
+      const isPublicRoute = ['/login','/register'].includes(location.pathname);
 
       if (!token && !isPublicRoute) {
         // Si no hay token y no es ruta pública, redirigir a login

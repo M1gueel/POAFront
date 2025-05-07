@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import AppLayout from './AppLayout';
+import SubirExcel from './pages/SubirExcel';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -28,6 +29,7 @@ function App() {
             <Route path="/agregar-actividad" element={<AgregarActividad />} />
             <Route path="/perfil" element={<Perfil />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/subir-excel" element={<SubirExcel />} />
           </Routes>
         </AppLayout>
       </AuthProvider>
