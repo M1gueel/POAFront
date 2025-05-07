@@ -127,6 +127,20 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
               </Nav.Item>
             </div>
             
+            {/* Sección Excel */}
+            <div className="px-3 mt-4 mb-2 text-secondary text-uppercase small">
+              Excel
+            </div>
+            <Nav.Item>
+              <Nav.Link
+                className={`text-white ${isActive("/subir-excel")}`}
+                onClick={() => handleNavigate("/subir-excel")}
+              >
+                <FileChartLine size={iconSize} className="me-2" />
+                Transformar Excel
+              </Nav.Link>
+            </Nav.Item>
+
             {/* Información del usuario en la parte inferior del sidebar */}
             <div className="mt-auto p-3 border-top">
               <div className="d-flex align-items-center">
