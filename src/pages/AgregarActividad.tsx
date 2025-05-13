@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Form, Button, Container, Card, Row, Col, ListGroup, Alert, Spinner, Tabs, Tab } from 'react-bootstrap';
+import { Form, Button, Container, Card, Row, Col, ListGroup, Spinner, Tabs, Tab, Toast, Alert } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { Proyecto } from '../interfaces/project';
 import { Periodo } from '../interfaces/periodo';
@@ -8,8 +8,11 @@ import { projectAPI } from '../api/projectAPI';
 import { actividadAPI } from '../api/actividadAPI';
 import BusquedaProyecto from '../components/BusquedaProyecto';
 
-// Usando la interfaz ActividadCreate definida en el proyecto
+// Interfaces para actividades
 import { ActividadCreate, ActividadForm, POAConActividades } from '../interfaces/actividad';
+
+// Importamos la lista de actividades
+import { getActividadesPorTipoPOA, ActividadOpciones } from '../utils/listaActividades';
 
 const CrearActividades: React.FC = () => {
   const navigate = useNavigate();
@@ -29,13 +32,11 @@ const CrearActividades: React.FC = () => {
   // Estados para la pestaña activa de POA
   const [activePoaTab, setActivePoaTab] = useState('');
 
-  // Estados para actividades (solo la descripción)
-  const [actividades, setActividades] = useState<ActividadForm[]>([
-    { id: '1', descripcion_actividad: '' }
-  ]);
-
-  // Estado para los presupuestos por actividad por POA
+  // Estado para los POAs con actividades seleccionadas
   const [poasConActividades, setPoasConActividades] = useState<POAConActividades[]>([]);
+
+  // Estado para almacenar las actividades disponibles según el tipo de POA
+  const [actividadesDisponiblesPorPoa, setActividadesDisponiblesPorPoa] = useState<{[key: string]: ActividadOpciones[]}>({});
 
   // Estados para mensajes y carga
   const [isLoading, setIsLoading] = useState(false);
@@ -99,43 +100,29 @@ const CrearActividades: React.FC = () => {
     return () => clearTimeout(timeoutId);
   }, [busquedaProyecto, proyectos]);
 
-  // Inicializar la estructura de poasConActividades cuando cambian las actividades o los POAs
+  // Inicializar las actividades disponibles por tipo de POA cuando cambian los POAs del proyecto
   useEffect(() => {
-    if (poasProyecto.length > 0 && actividades.length > 0) {
-      const nuevosPoasConActividades = poasProyecto.map(poa => {
-        // Buscar si ya existe este POA en el estado actual
-        const poaExistente = poasConActividades.find(p => p.id_poa === poa.id_poa);
-        
-        // Si existe, mantener los valores de actividades que ya están
-        if (poaExistente) {
-          // Asegurar que tiene todas las actividades actuales
-          const actividadesActualizadas = actividades.map(act => {
-            const actividadExistente = poaExistente.actividades.find(a => a.actividad_id === act.id);
-            return {
-              actividad_id: act.id,
-              total_por_actividad: actividadExistente ? actividadExistente.total_por_actividad : 0
-            };
-          });
-          
-          return {
-            id_poa: poa.id_poa,
-            codigo_poa: poa.codigo_poa,
-            presupuesto_asignado: parseFloat(poa.presupuesto_asignado),
-            actividades: actividadesActualizadas
-          };
-        }
-        
-        // Si no existe, crear nuevo con actividades en 0
-        return {
-          id_poa: poa.id_poa,
-          codigo_poa: poa.codigo_poa,
-          presupuesto_asignado: parseFloat(poa.presupuesto_asignado),
-          actividades: actividades.map(act => ({
-            actividad_id: act.id,
-            total_por_actividad: 0
-          }))
-        };
-      });
+    const nuevasActividadesDisponibles: {[key: string]: ActividadOpciones[]} = {};
+    
+    poasProyecto.forEach(poa => {
+      const tipoPOA = poa.tipo_poa || 'PIM'; // Valor por defecto si no hay tipo
+      nuevasActividadesDisponibles[poa.id_poa] = getActividadesPorTipoPOA(tipoPOA);
+    });
+    
+    setActividadesDisponiblesPorPoa(nuevasActividadesDisponibles);
+    
+  }, [poasProyecto]);
+
+  // Inicializar la estructura de poasConActividades cuando cambian los POAs
+  useEffect(() => {
+    if (poasProyecto.length > 0) {
+      const nuevosPoasConActividades = poasProyecto.map(poa => ({
+        id_poa: poa.id_poa,
+        codigo_poa: poa.codigo_poa,
+        tipo_poa: poa.tipo_poa || 'PIM',
+        presupuesto_asignado: parseFloat(poa.presupuesto_asignado),
+        actividades: [] // Comienza con actividades vacías
+      }));
       
       setPoasConActividades(nuevosPoasConActividades);
       
@@ -144,7 +131,7 @@ const CrearActividades: React.FC = () => {
         setActivePoaTab(nuevosPoasConActividades[0].id_poa);
       }
     }
-  }, [poasProyecto, actividades]);
+  }, [poasProyecto]);
 
   // Seleccionar un proyecto y cargar sus POAs
   const seleccionarProyecto = async (proyecto: Proyecto) => {
@@ -170,9 +157,6 @@ const CrearActividades: React.FC = () => {
       
       setPeriodosProyecto(periodos);
       
-      // Restablecer las actividades al seleccionar un nuevo proyecto
-      setActividades([{ id: '1', descripcion_actividad: '' }]);
-      
       // Restablecer los POAs con actividades
       setPoasConActividades([]);
       
@@ -187,23 +171,70 @@ const CrearActividades: React.FC = () => {
     }
   };
 
-  // Manejar cambios en las actividades (descripción)
-  const handleActividadChange = (id: string, value: string) => {
-    const nuevasActividades = actividades.map(act => 
-      act.id === id ? { ...act, descripcion_actividad: value } : act
-    );
-    setActividades(nuevasActividades);
+  // Agregar nueva actividad en un POA específico
+  const agregarActividad = (poaId: string) => {
+    const nuevaActividadId = Date.now().toString();
+    
+    // Si es el primer POA, replicar la nueva actividad a todos los POAs
+    const isFirstPoa = poasConActividades.length > 0 && poasConActividades[0].id_poa === poaId;
+    
+    // Actualizar el estado de POAs con actividades
+    const nuevosPoasConActividades = poasConActividades.map(poa => {
+      // Si es el primer POA o si se debe replicar la actividad
+      if (poa.id_poa === poaId || (isFirstPoa && poa.id_poa !== poaId)) {
+        return {
+          ...poa,
+          actividades: [
+            ...poa.actividades,
+            {
+              actividad_id: nuevaActividadId,
+              codigo_actividad: ""
+            }
+          ]
+        };
+      }
+      return poa;
+    });
+    
+    setPoasConActividades(nuevosPoasConActividades);
   };
 
-  // Manejar cambios en el total por actividad para un POA específico
-  const handleTotalActividadChange = (poaId: string, actividadId: string, value: string) => {
-    const monto = parseFloat(value) || 0;
+  // Eliminar actividad de un POA específico
+  const eliminarActividad = (poaId: string, actividadId: string) => {
+    // Si es el primer POA, eliminar la actividad de todos los POAs
+    const isFirstPoa = poasConActividades.length > 0 && poasConActividades[0].id_poa === poaId;
     
+    // Actualizar el estado de POAs con actividades
     const nuevosPoasConActividades = poasConActividades.map(poa => {
-      if (poa.id_poa === poaId) {
+      // Si es el primer POA o si se debe eliminar la actividad de otros POAs
+      if (poa.id_poa === poaId || (isFirstPoa && poa.id_poa !== poaId)) {
+        return {
+          ...poa,
+          actividades: poa.actividades.filter(act => act.actividad_id !== actividadId)
+        };
+      }
+      return poa;
+    });
+    
+    setPoasConActividades(nuevosPoasConActividades);
+  };
+
+  // Manejar cambios en la selección de actividad para un POA específico
+  const handleActividadSeleccionChange = (poaId: string, actividadId: string, codigoActividad: string) => {
+    // Primero encontramos la actividad correspondiente al código seleccionado
+    const actividadesDisponibles = actividadesDisponiblesPorPoa[poaId] || [];
+    const actividadSeleccionada = actividadesDisponibles.find(act => act.id === codigoActividad);
+    
+    // Si es el primer POA, actualizar todos los POAs con la misma actividad
+    const isFirstPoa = poasConActividades.length > 0 && poasConActividades[0].id_poa === poaId;
+    
+    // Actualizar el código de actividad en poasConActividades
+    const nuevosPoasConActividades = poasConActividades.map(poa => {
+      // Si es el mismo POA o si es el primer POA (y se debe replicar)
+      if (poa.id_poa === poaId || (isFirstPoa && poa.id_poa !== poaId)) {
         const nuevasActividades = poa.actividades.map(act => {
           if (act.actividad_id === actividadId) {
-            return { ...act, total_por_actividad: monto };
+            return { ...act, codigo_actividad: codigoActividad };
           }
           return act;
         });
@@ -215,50 +246,11 @@ const CrearActividades: React.FC = () => {
     setPoasConActividades(nuevosPoasConActividades);
   };
 
-  // Agregar nueva actividad
-  const agregarActividad = () => {
-    const nuevaActividad = {
-      id: Date.now().toString(),
-      descripcion_actividad: ''
-    };
-    setActividades([...actividades, nuevaActividad]);
-  };
-
-  // Eliminar actividad
-  const eliminarActividad = (id: string) => {
-    if (actividades.length > 1) {
-      const nuevasActividades = actividades.filter(act => act.id !== id);
-      setActividades(nuevasActividades);
-      
-      // También eliminar esta actividad de los POAs
-      const nuevosPoasConActividades = poasConActividades.map(poa => {
-        return {
-          ...poa,
-          actividades: poa.actividades.filter(act => act.actividad_id !== id)
-        };
-      });
-      
-      setPoasConActividades(nuevosPoasConActividades);
-    } else {
-      setError('Debe haber al menos una actividad');
-    }
-  };
-
-  // Calcular el total presupuestado para un POA específico
-  const calcularTotalPresupuestado = (poaId: string): number => {
-    const poa = poasConActividades.find(p => p.id_poa === poaId);
-    if (!poa) return 0;
-    
-    return poa.actividades.reduce((total, act) => total + act.total_por_actividad, 0);
-  };
-
-  // Calcular el porcentaje del presupuesto utilizado para un POA específico
-  const calcularPorcentajeUtilizado = (poaId: string): number => {
-    const poa = poasConActividades.find(p => p.id_poa === poaId);
-    if (!poa || poa.presupuesto_asignado === 0) return 0;
-    
-    const totalAsignado = calcularTotalPresupuestado(poaId);
-    return (totalAsignado / poa.presupuesto_asignado) * 100;
+  // Obtener la descripción de una actividad a partir de su código
+  const getDescripcionActividad = (poaId: string, codigoActividad: string) => {
+    const actividadesDisponibles = actividadesDisponiblesPorPoa[poaId] || [];
+    const actividad = actividadesDisponibles.find(act => act.id === codigoActividad);
+    return actividad ? actividad.descripcion : 'Seleccione una actividad';
   };
 
   // Validar el formulario
@@ -275,26 +267,20 @@ const CrearActividades: React.FC = () => {
       return false;
     }
 
-    // Validar que todas las actividades tengan descripción
-    const actividadesVacias = actividades.some(act => act.descripcion_actividad.trim() === '');
-    if (actividadesVacias) {
-      setError('Todas las actividades deben tener una descripción');
+    // Validar que haya al menos una actividad definida
+    const hayActividadesDefinidas = poasConActividades.some(poa => poa.actividades.length > 0);
+    if (!hayActividadesDefinidas) {
+      setError('Debe definir al menos una actividad');
       return false;
     }
 
-    // Validar que todas las actividades tengan un total mayor a cero en cada POA
+    // Validar que todas las actividades tengan una actividad seleccionada en cada POA
     for (const poa of poasConActividades) {
-      const actividadesSinMonto = poa.actividades.some(act => act.total_por_actividad <= 0);
-      if (actividadesSinMonto) {
-        setError(`Todas las actividades deben tener un total mayor a cero en el POA ${poa.codigo_poa}`);
-        setActivePoaTab(poa.id_poa);
-        return false;
-      }
+      if (poa.actividades.length === 0) continue; // Saltamos si no hay actividades
       
-      // Validar que el total no supere el presupuesto del POA
-      const totalPresupuestado = calcularTotalPresupuestado(poa.id_poa);
-      if (totalPresupuestado > poa.presupuesto_asignado) {
-        setError(`El total de las actividades (${totalPresupuestado.toLocaleString('es-CO')}) supera el presupuesto del POA ${poa.codigo_poa} (${poa.presupuesto_asignado.toLocaleString('es-CO')})`);
+      const actividadesSinSeleccionar = poa.actividades.some(act => !act.codigo_actividad);
+      if (actividadesSinSeleccionar) {
+        setError(`Todas las actividades deben tener una opción seleccionada en el POA ${poa.codigo_poa}`);
         setActivePoaTab(poa.id_poa);
         return false;
       }
@@ -319,35 +305,29 @@ const CrearActividades: React.FC = () => {
       // Array para almacenar las promesas de creación de actividades
       const promesas = [];
       
-      // Para cada POA, crear sus actividades con los montos específicos
+      // Para cada POA, crear sus actividades seleccionadas
       for (const poa of poasConActividades) {
         // Preparar las actividades para este POA específico
-        const actividadesParaEnviar: ActividadCreate[] = actividades.map(act => {
-          // Encontrar el monto asignado a esta actividad para este POA
-          const actividadPoa = poa.actividades.find(a => a.actividad_id === act.id);
-          const monto = actividadPoa ? actividadPoa.total_por_actividad : 0;
-          
+        const actividadesParaEnviar: ActividadCreate[] = poa.actividades.map(actPoa => {
           return {
-            descripcion_actividad: act.descripcion_actividad,
-            total_por_actividad: monto,
-            saldo_actividad: monto // Asignar el mismo valor al saldo inicial
+            descripcion_actividad: getDescripcionActividad(poa.id_poa, actPoa.codigo_actividad),
+            total_por_actividad: 0, // Inicializar en 0, se calculará después con las tareas
+            saldo_actividad: 0 // Inicializar en 0, se calculará después con las tareas
           };
         });
         
-        // Crear las actividades para este POA
-        promesas.push(
-          actividadAPI.crearActividadesPorPOA(poa.id_poa, actividadesParaEnviar)
-        );
+        // Crear las actividades para este POA solo si hay actividades para enviar
+        if (actividadesParaEnviar.length > 0) {
+          promesas.push(
+            actividadAPI.crearActividadesPorPOA(poa.id_poa, actividadesParaEnviar)
+          );
+        }
       }
       
       // Esperar a que todas las promesas se resuelvan
-      const resultados = await Promise.all(promesas);
+      await Promise.all(promesas);
       
       setSuccess(`Se han creado exitosamente las actividades para ${poasProyecto.length} POAs del proyecto`);
-      
-      // Reiniciar el formulario
-      setActividades([{ id: '1', descripcion_actividad: '' }]);
-      setPoasConActividades([]);
       
       // Opcional: redirigir a otra página después de un tiempo
       setTimeout(() => {
@@ -434,10 +414,11 @@ const CrearActividades: React.FC = () => {
                               <Col md={6}>
                                 <p className="mb-1"><strong>Código POA:</strong> {poa.codigo_poa}</p>
                                 <p className="mb-1"><strong>Año Ejecución:</strong> {poa.anio_ejecucion}</p>
+                                <p className="mb-1"><strong>Tipo:</strong> {poa.tipo_poa || 'No especificado'}</p>
                               </Col>
                               <Col md={6}>
-                                <p className="mb-1"><strong>Presupuesto:</strong> ${parseFloat(poa.presupuesto_asignado).toLocaleString('es-CO')}</p>
-                                <p className="mb-1"><strong>Periodo:</strong> {poa.periodo ? poa.periodo.nombre_periodo : 'N/A'}</p>
+                                <p className="mb-1"><strong>Presupuesto Asignado:</strong> ${parseFloat(poa.presupuesto_asignado).toLocaleString('es-CO')}</p>
+                                {poa.periodo && <p className="mb-1"><strong>Periodo:</strong> {poa.periodo.nombre_periodo}</p>}
                               </Col>
                             </Row>
                           </ListGroup.Item>
@@ -449,148 +430,96 @@ const CrearActividades: React.FC = () => {
               </Row>
             )}
             
-            {/* Sección de descripción de actividades (común para todos los POAs) */}
+            {/* Sección de actividades por POA */}
             {proyectoSeleccionado && poasProyecto.length > 0 && (
               <Row className="mb-4">
                 <Col md={12}>
                   <Card>
                     <Card.Header className="bg-light">
-                      <h5 className="mb-0">Descripción de Actividades</h5>
+                      <h5 className="mb-0">Definición de Actividades por POA</h5>
                       <p className="text-muted small mb-0">
-                        Estas actividades se crearán para todos los POAs asociados al proyecto
+                        Las actividades añadidas en el primer POA se replicarán automáticamente en los demás POAs
                       </p>
                     </Card.Header>
                     <Card.Body>
-                      {actividades.map((actividad, index) => (
-                        <Row key={actividad.id} className="mb-3 align-items-center">
-                          <Col md={10}>
-                            <Form.Group controlId={`actividad-${actividad.id}`}>
-                              <Form.Label>Actividad {index + 1}</Form.Label>
-                              <Form.Control
-                                as="textarea"
-                                rows={2}
-                                value={actividad.descripcion_actividad}
-                                onChange={(e) => handleActividadChange(actividad.id, e.target.value)}
-                                placeholder="Describa la actividad"
-                                required
-                              />
-                            </Form.Group>
-                          </Col>
-                          <Col md={2} className="d-flex align-items-end justify-content-center">
-                            <Button 
-                              variant="outline-danger"
-                              onClick={() => eliminarActividad(actividad.id)}
-                              disabled={actividades.length <= 1}
-                              className="mb-2"
-                            >
-                              <i className="bi bi-trash"></i>
-                            </Button>
-                          </Col>
-                        </Row>
-                      ))}
-                      
-                      <Button 
-                        variant="outline-primary" 
-                        onClick={agregarActividad}
-                        className="mt-2"
-                      >
-                        <i className="bi bi-plus-circle me-1"></i> Agregar Actividad
-                      </Button>
-                    </Card.Body>
-                  </Card>
-                </Col>
-              </Row>
-            )}
-            
-            {/* Asignación de presupuesto por POA */}
-            {proyectoSeleccionado && poasProyecto.length > 0 && actividades.length > 0 && poasConActividades.length > 0 && (
-              <Row className="mb-4">
-                <Col md={12}>
-                  <Card>
-                    <Card.Header className="bg-light">
-                      <h5 className="mb-0">Presupuesto por POA</h5>
-                      <p className="text-muted small mb-0">
-                        Asigne el presupuesto para cada actividad en cada POA
-                      </p>
-                    </Card.Header>
-                    <Card.Body>
+                      {/* Tabs para POAs */}
                       <Tabs
                         activeKey={activePoaTab}
-                        onSelect={(k) => k && setActivePoaTab(k)}
+                        onSelect={(k) => setActivePoaTab(k || '')}
                         className="mb-4"
+                        fill
                       >
-                        {poasConActividades.map((poa) => (
+                        {poasConActividades.map((poa, poaIndex) => (
                           <Tab 
                             key={poa.id_poa} 
                             eventKey={poa.id_poa} 
-                            title={`POA ${poa.codigo_poa}`}
+                            title={`${poa.codigo_poa}`}
                           >
-                            {/* Barra de progreso para este POA */}
-                            <Row className="mb-4">
-                              <Col md={12}>
-                                <Alert variant={
-                                  calcularPorcentajeUtilizado(poa.id_poa) > 100 ? "danger" : 
-                                  calcularPorcentajeUtilizado(poa.id_poa) > 90 ? "warning" : "info"
-                                }>
-                                  <div className="d-flex justify-content-between">
-                                    <div>
-                                      <strong>Presupuesto POA:</strong> ${poa.presupuesto_asignado.toLocaleString('es-CO')}
-                                    </div>
-                                    <div>
-                                      <strong>Total Asignado:</strong> ${calcularTotalPresupuestado(poa.id_poa).toLocaleString('es-CO')} 
-                                      ({calcularPorcentajeUtilizado(poa.id_poa).toFixed(2)}% utilizado)
-                                    </div>
-                                  </div>
-                                  <div className="progress mt-2">
-                                    <div 
-                                      className={`progress-bar ${
-                                        calcularPorcentajeUtilizado(poa.id_poa) > 100 ? 'bg-danger' : 
-                                        calcularPorcentajeUtilizado(poa.id_poa) > 90 ? 'bg-warning' : 'bg-success'
-                                      }`}
-                                      role="progressbar" 
-                                      style={{width: `${Math.min(calcularPorcentajeUtilizado(poa.id_poa), 100)}%`}}
-                                      aria-valuenow={Math.min(calcularPorcentajeUtilizado(poa.id_poa), 100)}
-                                      aria-valuemin={0}
-                                      aria-valuemax={100}
-                                    ></div>
-                                  </div>
-                                </Alert>
-                              </Col>
-                            </Row>
-                            
-                            {/* Formulario de actividades para este POA */}
-                            <ListGroup>
-                              {actividades.map((actividad, index) => {
-                                // Encontrar la actividad correspondiente en este POA
-                                const actividadPoa = poa.actividades.find(a => a.actividad_id === actividad.id);
-                                const totalActividad = actividadPoa ? actividadPoa.total_por_actividad : 0;
+                            <Card className="border-top-0 rounded-0 rounded-bottom">
+                              <Card.Body>
+                                <div className="d-flex justify-content-between align-items-center mb-3">
+                                  <h6 className="mb-0">{`Actividades para el periodo: ${poa.codigo_poa} - Tipo de POA: ${poa.tipo_poa}`}</h6>
+                                  <Button 
+                                    variant="success" 
+                                    size="sm"
+                                    onClick={() => agregarActividad(poa.id_poa)}
+                                  >
+                                    <i className="bi bi-plus-circle"></i> Agregar Actividad
+                                  </Button>
+                                </div>
                                 
-                                return (
-                                  <ListGroup.Item key={actividad.id} className="mb-2">
-                                    <Row>
-                                      <Col md={8}>
-                                        <p className="mb-2"><strong>Actividad {index + 1}:</strong></p>
-                                        <p className="mb-2">{actividad.descripcion_actividad}</p>
-                                      </Col>
-                                      <Col md={4}>
-                                        <Form.Group controlId={`total-${poa.id_poa}-${actividad.id}`}>
-                                          <Form.Label>Total por Actividad</Form.Label>
-                                          <Form.Control
-                                            type="number"
-                                            min="0"
-                                            step="0.01"
-                                            value={totalActividad}
-                                            onChange={(e) => handleTotalActividadChange(poa.id_poa, actividad.id, e.target.value)}
-                                            placeholder="Presupuesto"
-                                            required
-                                          />
-                                        </Form.Group>
-                                      </Col>
-                                    </Row>
-                                  </ListGroup.Item>
-                                );
-                              })}
-                            </ListGroup>
+                                {poa.actividades.length === 0 ? (
+                                  <Alert variant="info">
+                                    No hay actividades definidas para este POA. Haga clic en "Agregar Actividad" para comenzar.
+                                  </Alert>
+                                ) : (
+                                  poa.actividades.map((actividad, actIndex) => (
+                                    <div key={`${poa.id_poa}-${actividad.actividad_id}`} className="mb-4 pb-3 border-bottom">
+                                      <div className="d-flex justify-content-between align-items-center mb-2">
+                                        <h6>Actividad {actIndex + 1}</h6>
+                                        <Button 
+                                          variant="danger" 
+                                          size="sm"
+                                          onClick={() => eliminarActividad(poa.id_poa, actividad.actividad_id)}
+                                        >
+                                          <i className="bi bi-trash"></i> Eliminar
+                                        </Button>
+                                      </div>
+                                      
+                                      <Form.Group className="mb-3">
+                                        <Form.Label>Seleccione una actividad</Form.Label>
+                                        <Form.Select
+                                          value={actividad.codigo_actividad}
+                                          onChange={(e) => handleActividadSeleccionChange(
+                                            poa.id_poa, 
+                                            actividad.actividad_id, 
+                                            e.target.value
+                                          )}
+                                          required
+                                        >
+                                          <option value="">-- Seleccione una actividad --</option>
+                                          {(actividadesDisponiblesPorPoa[poa.id_poa] || []).map((opcion) => (
+                                            <option key={opcion.id} value={opcion.id}>
+                                              {/* {opcion.id} - {opcion.descripcion} */}
+                                              {opcion.descripcion}
+                                            </option>
+                                          ))}
+                                        </Form.Select>
+                                      </Form.Group>
+                                      
+                                      {/* Se eliminó el bloque condicional que mostraba la descripción */}
+                                    </div>
+                                  ))
+                                )}
+                                
+                                {poaIndex === 0 && poa.actividades.length > 0 && (
+                                  <Alert variant="warning" className="mt-3">
+                                    <i className="bi bi-info-circle me-2"></i>
+                                    Las actividades añadidas en este POA se replicarán en los demás POAs automáticamente.
+                                  </Alert>
+                                )}
+                              </Card.Body>
+                            </Card>
                           </Tab>
                         ))}
                       </Tabs>
@@ -599,30 +528,84 @@ const CrearActividades: React.FC = () => {
                 </Col>
               </Row>
             )}
-            
-            {/* Botones de acción */}
-            <Row>
-              <Col md={12} className="d-flex justify-content-end gap-2">
-                <Button variant="secondary" type="button" onClick={() => navigate('/poas')}>
+
+            {/* Botones del formulario */}
+            <Row className="mt-4">
+              <Col md={12} className="d-flex justify-content-between">
+                <Button 
+                  variant="secondary" 
+                  onClick={() => navigate('/poas')}
+                  disabled={isLoading}
+                >
                   Cancelar
                 </Button>
                 <Button 
-                  variant="primary" 
-                  type="submit"
+                  type="submit" 
+                  variant="primary"
                   disabled={isLoading || !proyectoSeleccionado || poasProyecto.length === 0}
                 >
                   {isLoading ? (
                     <>
-                      <Spinner animation="border" size="sm" className="me-2" />
+                      <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2" />
                       Guardando...
                     </>
-                  ) : 'Crear Actividades'}
+                  ) : (
+                    'Guardar Actividades'
+                  )}
                 </Button>
               </Col>
             </Row>
           </Form>
         </Card.Body>
       </Card>
+
+      {/* Modal o spinner para indicar carga */}
+      {isLoading && (
+        <div className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-dark bg-opacity-50" style={{ zIndex: 1050 }}>
+          <div className="bg-white p-4 rounded shadow-lg text-center">
+            <Spinner animation="border" role="status" variant="primary" className="mb-3" />
+            <p className="mb-0">Procesando su solicitud...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Toast para mensajes */}
+      <div 
+        className="position-fixed bottom-0 end-0 p-3" 
+        style={{ zIndex: 1055 }}
+      >
+        {error && (
+          <Toast 
+            onClose={() => setError(null)}
+            show={!!error}
+            delay={5000}
+            autohide
+            bg="danger"
+            text="white"
+          >
+            <Toast.Header closeButton>
+              <strong className="me-auto">Error</strong>
+            </Toast.Header>
+            <Toast.Body>{error}</Toast.Body>
+          </Toast>
+        )}
+        
+        {success && (
+          <Toast 
+            onClose={() => setSuccess(null)}
+            show={!!success}
+            delay={5000}
+            autohide
+            bg="success"
+            text="white"
+          >
+            <Toast.Header closeButton>
+              <strong className="me-auto">Éxito</strong>
+            </Toast.Header>
+            <Toast.Body>{success}</Toast.Body>
+          </Toast>
+        )}
+      </div>
     </Container>
   );
 };

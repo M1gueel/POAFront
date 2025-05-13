@@ -8,7 +8,7 @@ RUN npm install
 COPY . .
 
 # Recompilar esbuild para que coincida la versión binaria con la del entorno
-RUN npm rebuild esbuild
+#RUN npm rebuild esbuild
 
 RUN npm run build
 
