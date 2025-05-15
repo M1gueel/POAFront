@@ -1,0 +1,129 @@
+.reporte-poa-wrapper {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  margin-top: 17px;
+  background: #fff;
+}
+
+.reporte-poa-card-new {
+  
+  background-color: #fff;
+  padding: 40px 48px;
+  border-radius: 18px;
+  box-shadow: 0px 6px 32px rgba(0, 0, 0, 0.13);
+  max-width: 500px;
+  width: 100%;
+}
+
+.reporte-poa-card-new2 {
+  margin-top: 60px;
+  background-color: #fff;
+  padding: 35px 48px;
+  border-radius: 18px;
+  box-shadow: 0px 6px 32px rgba(0, 0, 0, 0.13);
+  max-width: 500px;
+}
+
+.titulo-reporte-poa-new {
+  font-size: 2rem !important;
+  font-weight: 700 !important;
+  color: #1d3557 !important;
+  text-align: center;
+  margin-bottom: 20px !important;
+}
+.titulo-descarga{
+  font-size: 25px !important;
+  font-weight: 700 !important;
+  color: #1d3557 !important;
+  text-align: center;
+  margin-bottom: 20px !important;
+}
+
+.inputs-row {
+  display: flex;
+  flex-direction: column;
+
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.input-margin {
+  flex: 1;
+  min-width: 180px;
+}
+
+.descarga-row {
+  text-align: center;
+}
+
+.botones-descarga {
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+  margin-top: 16px;
+}
+
+.reportepoa-custom-button-excel {
+  background-color: #1d6f42 !important;
+  color: #fff !important;
+  font-size: 1.1rem !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+  padding: 12px 15px !important;
+  box-shadow: 0 2px 8px rgba(29, 111, 66, 0.08);
+  transition: background 0.2s;
+}
+.reportepoa-custom-button-excel:hover {
+  background-color: #218c54 !important;
+}
+
+.reportepoa-custom-button-pdf {
+  background-color: #b71c1c !important;
+  color: #fff !important;
+  font-size: 1.1rem !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+  padding: 12px 36.84px !important;
+  box-shadow: 0 2px 8px rgba(183, 28, 28, 0.08);
+  transition: background 0.2s;
+}
+.reportepoa-custom-button-pdf:hover {
+  background-color: #d32f2f !important;
+}
+
+.reportepoa-custom-button {
+  background-color: #182c4a !important;
+  color: white !important;
+  font-size: 18px !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;  
+  margin-bottom: 0 !important;
+  padding: 10px 0 !important;
+  width: 300px !important;     /* Hace el botón tan ancho como su contenedor */
+  display: block !important; /* Asegúrate de que sea un bloque */
+  margin: 0 auto !important; /* Centra horizontalmente */ 
+  box-shadow: 0 2px 8px rgba(24, 44, 74, 0.08);
+  transition: background 0.2s;
+}
+
+.reportepoa-custom-button:hover {
+  background-color: #28497b !important;
+}
+
+/* Responsive para móviles */
+@media (max-width: 600px) {
+  .reporte-poa-card-new {
+    padding: 20px 8px;
+    max-width: 98vw;
+  }
+  .inputs-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .botones-descarga {
+    flex-direction: column;
+    gap: 16px;
+  }
+}

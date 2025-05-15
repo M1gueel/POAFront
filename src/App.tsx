@@ -10,6 +10,7 @@ import Perfil from './pages/Perfil';
 import CrearProyecto from './pages/CrearProyecto';
 import TiposProyecto from './pages/TiposProyecto';
 import AgregarActividad from './pages/AgregarActividad';
+import ReportePOA from './pages/ReportePOA';
 // Importa otros componentes según sea necesario
 
 function App() {
@@ -30,6 +31,8 @@ function App() {
             <Route path="/perfil" element={<Perfil />} />
             <Route path="/register" element={<Register />} />
             <Route path="/subir-excel" element={<SubirExcel />} />
+            <Route path="/reporte-poa" element={<ReportePOA />} />
+            {/* Ruta por defecto */}
           </Routes>
         </AppLayout>
       </AuthProvider>
