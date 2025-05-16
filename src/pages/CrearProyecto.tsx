@@ -125,8 +125,8 @@ const CrearProyecto: React.FC = () => {
                   placeholder="Se generará automáticamente"
                   size="lg"
                   value={form.codigo_proyecto}
-                  readOnly
-                  className="form-control-custom form-control-readonly"
+                    onChange={(e) => form.setCodigo_proyecto(e.target.value)}
+                  className="form-control-custom"
                 />
                 <Form.Text className="form-text-custom">
                   Código automático según tipo de proyecto y fecha de inicio.

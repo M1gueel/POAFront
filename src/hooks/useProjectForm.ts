@@ -15,6 +15,7 @@ interface UseProjectFormProps {
 export const useProjectForm = ({ initialTipoProyecto }: UseProjectFormProps) => {
   // Form states
   const [codigo_proyecto, setCodigo_proyecto] = useState('');
+  const [codigoModificadoManualmente, setCodigoModificadoManualmente] = useState(false);
   const [titulo, setTitulo] = useState('');
   const [tipoProyecto] = useState<TipoProyecto | null>(initialTipoProyecto);
   const [id_estado_proyecto, setId_estado_proyecto] = useState('');
@@ -41,9 +42,15 @@ export const useProjectForm = ({ initialTipoProyecto }: UseProjectFormProps) => 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Manejador para cambios en el código del proyecto
+  const handleCodigoProyectoChange = (value: string) => {
+    setCodigo_proyecto(value);
+    setCodigoModificadoManualmente(true);
+  };
+
   // Update project code when start date changes
   const actualizarCodigoProyectoDesdefecha = (fecha: string) => {
-    if (fecha && tipoProyecto) {
+    if (fecha && tipoProyecto && !codigoModificadoManualmente) {
       const codigo = projectService.generarCodigoProyecto(tipoProyecto, fecha);
       setCodigo_proyecto(codigo);
     }
@@ -88,7 +95,7 @@ export const useProjectForm = ({ initialTipoProyecto }: UseProjectFormProps) => 
     
     if (value.trim() !== '') {
       if (!validateDirectorName(value)) {
-        setDirectorError('El formato debe ser: Nombre Apellido o Nombre1 Nombre2 Apellido1 Apellido2');
+        setDirectorError('El formato debe ser: Nombre Apellido como mínimo y hasta un maximo de 8 palabras para Nombres complejos');
       } else {
         setDirectorError(null);
       }
@@ -187,6 +194,7 @@ export const useProjectForm = ({ initialTipoProyecto }: UseProjectFormProps) => 
   return {
     // Form states
     codigo_proyecto,
+    setCodigo_proyecto: handleCodigoProyectoChange, // Ahora exportamos esta función
     titulo,
     setTitulo,
     tipoProyecto,

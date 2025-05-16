@@ -5,12 +5,26 @@ import { TipoProyecto } from '../interfaces/project';
  * Validates the director name format
  * Format: 1-2 first names followed by 1-2 last names
  */
+
 export const validateDirectorName = (name: string): boolean => {
-  if (!name.trim()) return false;
+  // Elimina espacios adicionales al inicio y final
+  const trimmedName = name.trim();
   
-  // Pattern for validating: 1-2 names followed by 1-2 surnames
-  const pattern = /^[A-Za-zÀ-ÖØ-öø-ÿ]+ [A-Za-zÀ-ÖØ-öø-ÿ]+( [A-Za-zÀ-ÖØ-öø-ÿ]+)?( [A-Za-zÀ-ÖØ-öø-ÿ]+)?$/;
-  return pattern.test(name.trim());
+  // Verifica que no esté vacío
+  if (!trimmedName) return false;
+  
+  // Divide el nombre en palabras
+  const words = trimmedName.split(/\s+/);
+  const wordCount = words.length;
+  
+  // Verifica que tenga al menos 2 palabras y máximo 8
+  if (wordCount < 2 || wordCount > 8) return false;
+  
+  // Verifica que cada palabra contenga solo caracteres válidos para nombres
+  // Incluye caracteres latinos, acentos, ñ y ü
+  const validWordPattern = /^[A-Za-zÀ-ÖØ-öø-ÿ]+$/;
+  
+  return words.every(word => validWordPattern.test(word));
 };
 
 /**
