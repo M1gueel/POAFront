@@ -28,7 +28,9 @@
 .input-margin {
   margin-bottom: 20px !important;
 }
-
+.input-margin-2 {
+  margin-bottom: 0px !important;
+}
 .file-dropzone {
   border: 2px dashed #ccc;
   border-radius: 8px;
@@ -36,7 +38,6 @@
   text-align: center;
   color: #888;
   cursor: pointer;
-  margin-bottom: 16px;
   transition: all 0.2s ease;
 }
 
@@ -48,8 +49,7 @@
 .file-preview {
   border: 1px solid #ccc;
   padding: 16px;
-  border-radius: 8px;
-  margin-bottom: 16px;
+  border-radius: 8px; 
   position: relative;
   text-align: center;
 }
@@ -84,11 +84,13 @@
   color: white; /* Color del texto */
   transition: all 0.3s ease;
   width: 143px !important;
-  font-size: 20px !important;
-  font-weight: 500 !important;
+  font-size:18px !important;
+  font-weight: 600 !important;
+  padding: 10px 0 !important;
   border-radius: 8px !important;
   display: block !important; /* Asegúrate de que sea un bloque */
   margin: 0 auto !important; /* Centra horizontalmente */
+  margin-top: 20px !important; /* Espacio superior */
 }
 
 .custom-button:hover {
@@ -100,6 +102,7 @@
 
 .custom-select:hover .MuiOutlinedInput-notchedOutline {
   border-color: #28497b !important; /* Cambia el color del borde al pasar el mouse */
+
 }
 
 .custom-select.Mui-focused .MuiOutlinedInput-notchedOutline {
@@ -109,3 +112,13 @@
   color: #27507b !important; /* Cambia el color del Label cuando el Select está enfocado */
 }
 
+.custom-select2{
+  margin-bottom: -20px !important;
+}
+.custom-select2:hover .MuiOutlinedInput-notchedOutline {
+  border-color: #28497b !important; /* Cambia el color del borde al pasar el mouse */
+
+}
+.custom-select2.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: #28497b !important; /* Cambia el color del borde al enfocar */
+}

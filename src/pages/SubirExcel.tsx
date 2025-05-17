@@ -40,7 +40,8 @@ const SubirExcel: React.FC = () => {
     anio?: string;
   }>({});
   const [poaSeleccionado2, seterror2] = useState<string | undefined>(undefined);
-
+  const [nombreHojaError, setNombreHojaError] = useState<string | undefined>(undefined); // Estado para el error del nombre de la hoja
+  
   // Estados para el Snackbar
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [message, setMessage] = useState("");
@@ -52,7 +53,7 @@ const SubirExcel: React.FC = () => {
   const [pendingRequest, setPendingRequest] = useState<FormData | null>(null); // Almacena la solicitud pendiente
 
   const [hojas, setHojas] = useState<string[]>([]); // Estado para los nombres de las hojas
-
+const [seleccionManualPoa, setSeleccionManualPoa] = useState(false);
   // Función para cerrar el Snackbar
   const handleCloseSnackbar = () => {
     setOpenSnackbar(false);
@@ -117,6 +118,37 @@ const SubirExcel: React.FC = () => {
     }
   }, [anio, hojas]);
 
+  // Sincronizar POA cuando se selecciona tipo de proyecto y año
+  useEffect(() => {
+    if (opcion && anio) {
+      if (!seleccionManualPoa) { // Solo si no fue manual
+      const tipoProyecto = tiposProyecto.find(
+        (tipo) => tipo.id_tipo_proyecto === opcion
+      );
+      if (tipoProyecto) {
+        const poa = poas.find(
+          (p) =>
+            obtenerCodigoTipo(p.codigo_poa) === tipoProyecto.codigo_tipo &&
+            p.anio_ejecucion === String(anio)
+        );
+        seterror2(undefined);
+        if (poa) {
+          setPoaSeleccionado(poa.id_poa); // Actualizar POA
+          setErrors((prev) => ({ ...prev, poaSeleccionado: undefined })); // Limpiar error
+        } else {
+          setPoaSeleccionado(""); // Limpiar POA si no coincide
+          seterror2(
+            "No se encontró un POA para el tipo de proyecto y año seleccionados."
+          );
+        }
+        }
+      }
+    } else {
+      setPoaSeleccionado(""); // Limpiar POA si no hay tipo de proyecto o año
+      seterror2(undefined);
+    }
+  }, [opcion, anio, poas, tiposProyecto]);
+
   // Sincronizar campos cuando se selecciona un POA
   useEffect(() => {
     if (poaSeleccionado) {
@@ -150,35 +182,6 @@ const SubirExcel: React.FC = () => {
     }
   }, [poaSeleccionado, poas, tiposProyecto]);
 
-  // Sincronizar POA cuando se selecciona tipo de proyecto y año
-  useEffect(() => {
-    if (opcion && anio) {
-      const tipoProyecto = tiposProyecto.find(
-        (tipo) => tipo.id_tipo_proyecto === opcion
-      );
-      if (tipoProyecto) {
-        const poa = poas.find(
-          (p) =>
-            obtenerCodigoTipo(p.codigo_poa) === tipoProyecto.codigo_tipo &&
-            p.anio_ejecucion === String(anio)
-        );
-        seterror2(undefined);
-        if (poa) {
-          setPoaSeleccionado(poa.id_poa); // Actualizar POA
-          setErrors((prev) => ({ ...prev, poaSeleccionado: undefined })); // Limpiar error
-        } else {
-          setPoaSeleccionado(""); // Limpiar POA si no coincide
-          seterror2(
-            "No se encontró un POA para el tipo de proyecto y año seleccionados."
-          );
-        }
-      }
-    } else {
-      setPoaSeleccionado(""); // Limpiar POA si no hay tipo de proyecto o año
-      seterror2(undefined);
-    }
-  }, [opcion, anio, poas, tiposProyecto]);
-
   // Validar automáticamente el formulario y generar el nombre de la hoja
   useEffect(() => {
     const newErrors: {
@@ -200,8 +203,13 @@ const SubirExcel: React.FC = () => {
     if (!anio) {
       newErrors.anio = "Debes seleccionar un año.";
     }
+    if (!nombreHoja) {
+    setNombreHojaError("Debes seleccionar el nombre de la hoja.");
+  } else {
+    setNombreHojaError(undefined);
+  }
     setErrors(newErrors);
-  }, [file, opcion, poaSeleccionado, anio]); // Ejecutar cada vez que cambie alguno de estos estados
+  }, [file, opcion, poaSeleccionado, anio,nombreHoja]); // Ejecutar cada vez que cambie alguno de estos estados
 
   // Manejar el cambio de archivo
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -235,9 +243,16 @@ const SubirExcel: React.FC = () => {
         // Seleccionar automáticamente la hoja que contenga el año seleccionado
         if (anio) {
           const hojaConAnio = sheetNames.find((sheet) => sheet.includes(anio));
+          console.log(hojaConAnio);
           setNombreHoja(hojaConAnio || ""); // Seleccionar la hoja o dejar vacío
+          if (!hojaConAnio) {
+            setNombreHojaError("Debes seleccionar un año.");
+          } else {
+            setNombreHojaError(undefined); // Limpiar error si se selecciona una hoja válida
+          }
         } else {
           setNombreHoja(""); // Limpiar si no hay año seleccionado
+          setNombreHojaError("Debes seleccionar un año.");
         }
       };
       reader.readAsArrayBuffer(selectedFile);
@@ -307,8 +322,8 @@ const SubirExcel: React.FC = () => {
     e.preventDefault();
     setFormTouched(true); // Marcar el formulario como tocado
 
-    // Si hay errores, no enviar el formulario
-    if (Object.keys(errors).length > 0) {
+    // Si hay errores, no enviar el formulario o si no hay hoja seleccionada
+    if (Object.keys(errors).length > 0 || !nombreHoja) {
       setMessage("Por favor, corrige los errores antes de enviar.");
       setSeverity("error");
       setOpenSnackbar(true);
@@ -432,7 +447,10 @@ const SubirExcel: React.FC = () => {
             <Select
               labelId="opcion-label"
               value={opcion}
-              onChange={(e) => setOpcion(e.target.value)}
+              onChange={(e) => {
+    setOpcion(e.target.value);
+    setSeleccionManualPoa(false); // <-- Resetea selección manual
+  }}
               label="Seleccione tipo de Proyecto"
               className="custom-select"
               renderValue={(selected) => {
@@ -470,7 +488,10 @@ const SubirExcel: React.FC = () => {
             <Select
               labelId="anio-label"
               value={anio}
-              onChange={(e) => setAnio(e.target.value)}
+              onChange={(e) => {
+    setAnio(e.target.value);
+    setSeleccionManualPoa(false); // <-- Resetea selección manual
+  }}
               label="Selecciona un año"
               className="custom-select"
             >
@@ -498,7 +519,10 @@ const SubirExcel: React.FC = () => {
             <Select
               labelId="poa-label"
               value={poaSeleccionado}
-              onChange={(e) => setPoaSeleccionado(e.target.value)}
+              onChange={(e) => {
+              setPoaSeleccionado(e.target.value);
+              setSeleccionManualPoa(true); // <-- Selección manual
+            }}
               label="Seleccione POA"
               className="custom-select"
             >
@@ -527,7 +551,9 @@ const SubirExcel: React.FC = () => {
               </Button>
               <img src={iconoExcel} alt="Excel" className="icono-excel" />
               <Typography>{file.name}</Typography>
+              
             </div>
+            
           ) : (
             <div
               className="file-dropzone"
@@ -545,15 +571,17 @@ const SubirExcel: React.FC = () => {
                 onChange={handleFileChange}
                 style={{ display: "none" }}
               />
+              
             </div>
+            
           )}
           {formTouched && errors.file && (
             <Typography color="error">{errors.file}</Typography>
           )}
           {/* Selector para el nombre de la hoja */}
           {Object.keys(errors).length === 0 && file && (
-            <FormControl fullWidth className="input-margin">
-              <InputLabel id="hoja-label" className="custom-label">
+            <FormControl fullWidth className="input-margin" sx={{ marginTop: "20px" }}>
+              <InputLabel id="hoja-label" className="custom-label" sx={{ marginBottom: "0px" }}>
                 Seleccione el nombre de la hoja
               </InputLabel>
               <Select
@@ -561,7 +589,8 @@ const SubirExcel: React.FC = () => {
                 value={nombreHoja}
                 onChange={(e) => setNombreHoja(e.target.value)}
                 label="Seleccione el nombre de la hoja"
-                className="custom-select"
+                className="custom-select2"
+                
               >
                 {hojas.map((hoja, index) => (
                   <MenuItem key={index} value={hoja}>
@@ -569,8 +598,15 @@ const SubirExcel: React.FC = () => {
                   </MenuItem>
                 ))}
               </Select>
+              {/*  Mensaje de error para el nombre de la hoja si no se selecciona y el formulario ha sido tocado y hay un archivo */}
+          {formTouched && nombreHojaError && file && (
+            <Typography color="error">{nombreHojaError}</Typography>
+          )}
+              
             </FormControl>
           )}
+          
+          {/* Botón de subir */}
           <Button
             type="submit"
             variant="contained"
