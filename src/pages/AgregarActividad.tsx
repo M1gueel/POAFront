@@ -8,6 +8,9 @@ import { projectAPI } from '../api/projectAPI';
 import { actividadAPI } from '../api/actividadAPI';
 import BusquedaProyecto from '../components/BusquedaProyecto';
 
+// Componente para exportar POA
+import ExportarPOA from '../components/ExportarPOA';
+
 // Interfaces para actividades
 import { ActividadCreate, ActividadForm, POAConActividades } from '../interfaces/actividad';
 
@@ -407,6 +410,13 @@ const CrearActividades: React.FC = () => {
                       <h5 className="mb-0">POAs Asociados al Proyecto</h5>
                     </Card.Header>
                     <Card.Body>
+                      {/* Componente de exportación */}
+                      <ExportarPOA 
+                        proyectoSeleccionado={proyectoSeleccionado}
+                        poasProyecto={poasProyecto}
+                      />
+                      
+                      {/* Lista de POAs existente */}
                       <ListGroup>
                         {poasProyecto.map((poa, index) => (
                           <ListGroup.Item key={poa.id_poa} className="mb-2">
