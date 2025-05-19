@@ -1,8 +1,10 @@
+
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Container, Offcanvas } from 'react-bootstrap';
 import { useAuth } from './context/AuthContext';
 import SidebarContent from './pages/SidebarContent';
+import './styles/Screen.css';
 
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
   // Estado para el sidebar móvil
@@ -17,7 +19,6 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const toggleSidebar = () => setIsSidebarCollapsed(!isSidebarCollapsed);
   
   // Determinar si estamos en una ruta pública
-  // const isPublicRoute = ['/login', '/register'].includes(location.pathname);
   const isPublicRoute = ['/login'].includes(location.pathname);
   
   // 🌌 Cambiar el fondo del body solo en login
@@ -29,19 +30,27 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
     }
   }, [isPublicRoute]);
 
+  // Función para determinar las clases del contenido principal
+  const getMainContentClasses = () => {
+    if (isPublicRoute) {
+      return 'main-content main-content-public';
+    }
+    if (isAuthenticated) {
+      return isSidebarCollapsed 
+        ? 'main-content main-content-authenticated-collapsed'
+        : 'main-content main-content-authenticated-expanded';
+    }
+    return 'main-content main-content-public';
+  };
+
   return (
-    <div className="d-flex">
+    <div className="app-layout">
       {/* Sidebar para pantallas grandes - solo se muestra en rutas protegidas */}
       {isAuthenticated && !isPublicRoute && (
         <div 
-          className="d-none d-lg-flex flex-column bg-dark text-white" 
-          style={{ 
-            width: isSidebarCollapsed ? '70px' : '280px', 
-            height: '100vh',
-            position: 'sticky',
-            top: 0,
-            transition: 'width 0.3s ease'
-          }}
+          className={`sidebar-desktop custom-scrollbar ${
+            isSidebarCollapsed ? 'sidebar-collapsed' : 'sidebar-expanded'
+          }`}
         >
           {usuario && (
             <SidebarContent 
@@ -53,15 +62,18 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
         </div>
       )}
       
-      {/* Contenido principal */}
-      <div className={`${isPublicRoute ? 'w-100' : 'flex-grow-1'}`}>
-                
+      {/* Contenido principal con margen para compensar el sidebar fijo */}
+      <div className={getMainContentClasses()}>
         {/* Sidebar como Offcanvas para pantallas pequeñas */}
-        <Offcanvas show={showSidebar} onHide={handleCloseSidebar} className="bg-dark text-white" style={{ width: '280px' }}>
+        <Offcanvas 
+          show={showSidebar} 
+          onHide={handleCloseSidebar} 
+          className="sidebar-mobile custom-scrollbar" 
+        >
           <Offcanvas.Header closeButton closeVariant="white">
             <Offcanvas.Title>Menú</Offcanvas.Title>
           </Offcanvas.Header>
-          <Offcanvas.Body>
+          <Offcanvas.Body className="sidebar-mobile">
             {usuario && (
               <SidebarContent 
                 usuario={usuario} 
@@ -74,7 +86,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
         </Offcanvas>
         
         {/* Contenido de la página */}
-        <Container fluid className="p-4">
+        <Container fluid className="container-fluid-custom">
           {children}
         </Container>
       </div>

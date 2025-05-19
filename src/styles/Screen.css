@@ -1,0 +1,117 @@
+/* Estilos para el layout principal */
+.app-layout {
+  display: flex;
+  height: 100vh;
+}
+
+/* Sidebar para pantallas grandes */
+.sidebar-desktop {
+  display: none;
+  flex-direction: column;
+  background-color: #212529;
+  color: white;
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  transition: width 0.3s ease;
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 1000;
+}
+
+/* Mostrar sidebar en pantallas grandes */
+@media (min-width: 992px) {
+  .sidebar-desktop {
+    display: flex;
+  }
+}
+
+/* Estados del sidebar */
+.sidebar-collapsed {
+  width: 70px;
+}
+
+.sidebar-expanded {
+  width: 280px;
+}
+
+/* Contenido principal */
+.main-content {
+  height: 100vh;
+  overflow-y: auto;
+  transition: margin-left 0.3s ease, width 0.3s ease;
+}
+
+/* Estados del contenido principal */
+.main-content-public {
+  width: 100%;
+  margin-left: 0;
+}
+
+.main-content-authenticated-collapsed {
+  margin-left: 70px;
+  width: calc(100% - 70px);
+}
+
+.main-content-authenticated-expanded {
+  margin-left: 280px;
+  width: calc(100% - 280px);
+}
+
+/* Solo aplicar márgenes en pantallas grandes */
+@media (max-width: 991px) {
+  .main-content-authenticated-collapsed,
+  .main-content-authenticated-expanded {
+    margin-left: 0;
+    width: 100%;
+  }
+}
+
+/* Sidebar móvil (Offcanvas) */
+.sidebar-mobile {
+  width: 280px;
+  background-color: #212529;
+  color: white;
+}
+
+.sidebar-mobile .offcanvas-body {
+  padding: 0;
+  background-color: #212529;
+}
+
+/* Estilos para ocultar scrollbar en todos los navegadores */
+.custom-scrollbar {
+  /* Firefox */
+  scrollbar-width: none;
+  /* IE/Edge */
+  -ms-overflow-style: none;
+}
+
+/* Chrome, Safari, Opera y otros webkit */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 0px;
+  height: 0px;
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Soporte adicional para otros navegadores */
+.custom-scrollbar {
+  /* Para navegadores que soportan scrollbar-width */
+  scrollbar-width: none;
+  /* Para navegadores que soportan overflow */
+  overflow: -moz-scrollbars-none;
+}
+
+/* Contenedor principal */
+.container-fluid-custom {
+  padding: 1.5rem;
+}

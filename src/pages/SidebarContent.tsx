@@ -102,30 +102,27 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
             </Nav.Item>
             
             {/* Preferencias de usuario */}
-            <div className="mt-auto"> 
-              <div className="px-3 mb-2 text-secondary text-uppercase small">Usuario</div>
-                <Nav.Item>
-                  <Nav.Link 
-                    className={`text-white ${isActive("/perfil")}`}
-                    onClick={() => handleNavigate("/perfil")}
-                  >
-                    <CircleUserRound size={iconSize} className="me-2" />
-                    Perfil
-                  </Nav.Link>
-                </Nav.Item>
-            </div>
+            <div className="px-3 mt-4 mb-2 text-secondary text-uppercase small">Usuario</div>
+            <Nav.Item>
+              <Nav.Link 
+                className={`text-white ${isActive("/perfil")}`}
+                onClick={() => handleNavigate("/perfil")}
+              >
+                <CircleUserRound size={iconSize} className="me-2" />
+                Perfil
+              </Nav.Link>
+            </Nav.Item>
+            
             {/* Registro de usuarios */}
-            <div className='mt-auto'>
-              <Nav.Item>
-                <Nav.Link
+            <Nav.Item>
+              <Nav.Link
                 className={`text-white ${isActive("/register")}`}
                 onClick={() => handleNavigate("/register")}
-                > 
-                  <UserPlus size={iconSize} className="me-2" />
-                  Registrar usuario
-                </Nav.Link>
-              </Nav.Item>
-            </div>
+              > 
+                <UserPlus size={iconSize} className="me-2" />
+                Registrar usuario
+              </Nav.Link>
+            </Nav.Item>
             
             {/* Sección Excel */}
             <div className="px-3 mt-4 mb-2 text-secondary text-uppercase small">
@@ -147,7 +144,6 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
                 Reporte Anual
               </Nav.Link>
             </Nav.Item>
-            
 
             {/* Información del usuario en la parte inferior del sidebar */}
             <div className="mt-auto p-3 border-top">
@@ -189,23 +185,59 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
           </Nav.Item>
           <Nav.Item>
             <Nav.Link 
-              className={`text-white ${isActive("/CrearPOA")}`}
-              onClick={() => handleNavigate("/CrearPOA")}
+              className={`text-white ${isActive("/crearPOA")}`}
+              onClick={() => handleNavigate("/crearPOA")}
               title="Nuevo POA"
             >
               <FileChartLine size={iconSize} />
             </Nav.Link>
           </Nav.Item>
+          <Nav.Item>
+            <Nav.Link 
+              className={`text-white ${isActive("/agregar-actividad")}`}
+              onClick={() => handleNavigate("/agregar-actividad")}
+              title="Agregar Actividad"
+            >
+              <FileChartLine size={iconSize} />
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link 
+              className={`text-white ${isActive("/perfil")}`}
+              onClick={() => handleNavigate("/perfil")}
+              title="Perfil"
+            >
+              <CircleUserRound size={iconSize} />
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link 
+              className={`text-white ${isActive("/register")}`}
+              onClick={() => handleNavigate("/register")}
+              title="Registrar usuario"
+            >
+              <UserPlus size={iconSize} />
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link
+              className={`text-white ${isActive("/subir-excel")}`}
+              onClick={() => handleNavigate("/subir-excel")}
+              title="Transformar Excel"
+            >
+              <FileChartLine size={iconSize} />
+            </Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link
+              className={`text-white ${isActive("/reporte-poa")}`}
+              onClick={() => handleNavigate("/reporte-poa")}
+              title="Reporte Anual"
+            >
+              <FileChartLine size={iconSize} />
+            </Nav.Link>
+          </Nav.Item>
           <div className="mt-auto mb-3">
-            <Nav.Item>
-              <Nav.Link 
-                className={`text-white ${isActive("/perfil")}`}
-                onClick={() => handleNavigate("/perfil")}
-                title="Perfil"
-              >
-                <CircleUserRound size={iconSize} />
-              </Nav.Link>
-            </Nav.Item>
             <Nav.Item>
               <Nav.Link 
                 className="text-white"
