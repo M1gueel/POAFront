@@ -11,9 +11,8 @@ import { projectAPI } from '../api/projectAPI';
 import ProyectoSeleccionadoCard from '../components/ProyectoSeleccionadoCard';
 import CrearPeriodoModal from '../components/CrearPeriodoModal';
 import BusquedaProyecto from '../components/BusquedaProyecto';
-
 import 'bootstrap-icons/font/bootstrap-icons.css';
-// import '../styles/CrearPOA.css';
+import '../styles/NuevoPOA.css';
 
 
 const CrearPOA: React.FC = () => {
