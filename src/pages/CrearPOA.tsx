@@ -16,7 +16,6 @@ import '../styles/NuevoPOA.css';
 
 
 const CrearPOA: React.FC = () => {
-
   const navigate = useNavigate();
 
   // Estados para campos del formulario
@@ -32,7 +31,6 @@ const CrearPOA: React.FC = () => {
   // Estados para campos específicos por periodo
   const [presupuestoPorPeriodo, setPresupuestoPorPeriodo] = useState<{ [key: string]: string }>({});
   const [codigoPorPeriodo, setCodigoPorPeriodo] = useState<{ [key: string]: string }>({});
-  
   const [anioPorPeriodo, setAnioPorPeriodo] = useState<{ [key: string]: string }>({});
   const [anioPorPeriodoError, setAnioPorPeriodoError] = useState<{ [key: string]: string }>({});
   
@@ -99,7 +97,6 @@ const CrearPOA: React.FC = () => {
         if (tiposData.length > 0) {
           setIdTipoPoa(tiposData[0].id_tipo_poa);
         }
-        
         // Cargar periodos desde la API
         const periodosData = await periodoAPI.getPeriodos();
         setPeriodos(periodosData);
@@ -169,7 +166,6 @@ const CrearPOA: React.FC = () => {
   // Calcular periodos fiscales basados en las fechas del proyecto
   const calcularPeriodos = (fechaInicio: string, fechaFin: string): Periodo[] => {
     if (!fechaInicio || !fechaFin) return [];
-    
     const periodos: Periodo[] = [];
     const fechaInicioObj = new Date(fechaInicio);
     const fechaFinObj = new Date(fechaFin);
@@ -206,12 +202,10 @@ const CrearPOA: React.FC = () => {
       // Determinar los meses del periodo
       const mesInicio = periodoInicio.getMonth();
       const mesFin = periodoFin.getMonth();
-      
       const mesesNombres = [
         'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
         'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
       ];
-      
       const mesStr = mesInicio === 0 && mesFin === 11 
         ? 'Enero-Diciembre' 
         : `${mesesNombres[mesInicio]}-${mesesNombres[mesFin]}`;
@@ -241,7 +235,6 @@ const CrearPOA: React.FC = () => {
     try {
       // Establecer el código POA base basado en el código del proyecto
       setCodigoPoaBase(`${proyecto.codigo_proyecto}-POA`);
-      
     // Obtener y establecer tipo POA usando el id_tipo_proyecto directamente
       if (proyecto.id_tipo_proyecto) {
         // Cambio: Usar getTipoPOA con el id_tipo_proyecto directamente
@@ -283,7 +276,7 @@ const CrearPOA: React.FC = () => {
     if (!yaSeleccionado) {
       const nuevosSeleccionados = [...periodosSeleccionados, periodo];
       setPeriodosSeleccionados(nuevosSeleccionados);
-      
+
       // Inicializar valores para este periodo
       setPresupuestoPorPeriodo({
         ...presupuestoPorPeriodo, 
@@ -360,7 +353,6 @@ const CrearPOA: React.FC = () => {
     const valorNumerico = parseFloat(valor);
     const presupuestoActual = proyectoSeleccionado?.presupuesto_aprobado ? 
       parseFloat(proyectoSeleccionado.presupuesto_aprobado.toString()) : 0;
-    
     // Calcular el total asignado excluyendo el periodo actual
     let totalOtrosPeriodos = 0;
     Object.entries(presupuestoPorPeriodo).forEach(([id, presupuesto]) => {
@@ -484,16 +476,13 @@ const handleSubmit = async (e: React.FormEvent) => {
   try {
     // Crear un POA para cada periodo seleccionado
     const poaCreados = [];
-    
     // Mapeo para seguimiento de IDs: temporales -> permanentes
     const mapeoIdsPeriodos = new Map();
-    
     // Primero, crear todos los periodos temporales
     const periodosACrear = periodosSeleccionados.filter(p => p.id_periodo.startsWith('temp-'));
     
     if (periodosACrear.length > 0) {
       console.log(`Creando ${periodosACrear.length} periodos temporales primero`);
-      
       for (const periodo of periodosACrear) {
         try {
           // Verificar si ya existe un periodo con el mismo código

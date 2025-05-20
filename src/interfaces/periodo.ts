@@ -16,9 +16,3 @@ export interface PeriodoCreate {
   anio: string;
   mes: string;
 }
-  
-  // export interface PoaPeriodo {
-  //   id_poa_periodo: string;
-  //   id_poa: string;
-  //   id_periodo: string;
-  // }
