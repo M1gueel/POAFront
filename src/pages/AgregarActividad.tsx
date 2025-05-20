@@ -410,13 +410,6 @@ const CrearActividades: React.FC = () => {
                       <h5 className="mb-0">POAs Asociados al Proyecto</h5>
                     </Card.Header>
                     <Card.Body>
-                      {/* Componente de exportación */}
-                      <ExportarPOA 
-                        proyectoSeleccionado={proyectoSeleccionado}
-                        poasProyecto={poasProyecto}
-                      />
-                      
-                      {/* Lista de POAs existente */}
                       <ListGroup>
                         {poasProyecto.map((poa, index) => (
                           <ListGroup.Item key={poa.id_poa} className="mb-2">
@@ -436,6 +429,24 @@ const CrearActividades: React.FC = () => {
                       </ListGroup>
                     </Card.Body>
                   </Card>
+                </Col>
+              </Row>
+            )}
+
+            {proyectoSeleccionado && poasProyecto.length > 0 && (
+              <Row className="mb-4">
+                <Col md={12} className="d-flex justify-content-end">
+                  <ExportarPOA 
+                    codigoProyecto={proyectoSeleccionado.codigo_proyecto}
+                    poas={poasProyecto.map(poa => ({
+                      id_poa: poa.id_poa,
+                      codigo_poa: poa.codigo_poa,
+                      anio_ejecucion: poa.anio_ejecucion,
+                      tipo_poa: poa.tipo_poa || 'No especificado',
+                      presupuesto_asignado: parseFloat(poa.presupuesto_asignado)
+                    }))}
+                    onExport={() => setSuccess("POA exportado correctamente")}
+                  />
                 </Col>
               </Row>
             )}

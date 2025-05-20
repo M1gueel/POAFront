@@ -556,11 +556,18 @@ const handleSubmit = async (e: React.FormEvent) => {
           mapeoIdsPeriodos.set(periodo.id_periodo, periodoCreado.id_periodo);
         } catch (err) {
           console.error('Error al crear periodo temporal:', err);
-          if (err.response) {
-            console.error('Respuesta del servidor:', err.response.data);
+          if (
+            typeof err === 'object' &&
+            err !== null &&
+            'response' in err &&
+            typeof (err as { response?: unknown }).response === 'object' &&
+            (err as { response?: unknown }).response !== null
+          ) {
+            const response = (err as { response: any }).response;
+            console.error('Respuesta del servidor:', response.data);
           }
           // Mostrar error al usuario
-          setError(`Error al crear periodo ${periodo.nombre_periodo}: ${err.message || 'Error desconocido'}`);
+          setError(`Error al crear periodo ${periodo.nombre_periodo}: ${err && typeof err === 'object' && 'message' in err ? (err as { message: string }).message : 'Error desconocido'}`);
           setIsLoading(false);
           return; // Detener el proceso si no podemos crear un periodo
         }
@@ -616,29 +623,41 @@ const handleSubmit = async (e: React.FormEvent) => {
         poaCreados.push(nuevoPOA);
       } catch (err) {
         console.error('Error al crear POA:', err);
-        if (err.response) {
-          console.error('Detalle del error:', err.response.data);
-          console.error('Status:', err.response.status);
+        if (
+          typeof err === 'object' &&
+          err !== null &&
+          'response' in err &&
+          typeof (err as { response?: unknown }).response === 'object' &&
+          (err as { response?: unknown }).response !== null
+        ) {
+          const response = (err as { response: any }).response;
+          console.error('Detalle del error:', response.data);
+          console.error('Status:', response.status);
           
           // Mejor manejo de errores para mostrar el mensaje específico
           let mensajeError = 'Error al crear el POA';
           
           // Extraer el mensaje específico de error si existe
-          if (err.response.data?.detail) {
-            if (Array.isArray(err.response.data.detail)) {
+          if (
+            'data' in response &&
+            response.data &&
+            'detail' in response.data
+          ) {
+            const responseData = response.data;
+            if (Array.isArray(responseData.detail)) {
               // Si es un array de errores, tomamos el primer mensaje
-              const primerError = err.response.data.detail[0];
+              const primerError = responseData.detail[0];
               if (primerError.msg) {
                 mensajeError = `${primerError.msg} - Campo: ${primerError.loc.join('.')}`;
               }
             } else {
-              mensajeError = err.response.data.detail;
+              mensajeError = responseData.detail;
             }
           }
           
           setError(`Error: ${mensajeError}`);
         } else {
-          setError(`Error de conexión al crear POA: ${err.message}`);
+          setError(`Error de conexión al crear POA: ${err instanceof Error ? err.message : 'Error desconocido'}`);
         }
         setIsLoading(false);
         return; // Detener el proceso
@@ -650,7 +669,7 @@ const handleSubmit = async (e: React.FormEvent) => {
       alert(`Se crearon ${poaCreados.length} POAs correctamente`);
       
       // Redirección a lista de POAs
-      navigate('/poas');
+      navigate('/agregar-actividad');
       //window.location.href = '/poas';
     } else {
       setError('No se pudo crear ningún POA. Revise los logs para más detalles.');
@@ -962,7 +981,7 @@ const handleSubmit = async (e: React.FormEvent) => {
               {/* Botones de acción */}
               <Row>
                 <Col md={12} className="d-flex justify-content-end gap-2">
-                  <Button variant="secondary" type="button" href="/poas">
+                  <Button variant="secondary" type="button" href="/dashboard">
                     Cancelar
                   </Button>
                   <Button 
