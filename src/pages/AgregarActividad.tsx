@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Form, Button, Container, Card, Row, Col, ListGroup, Spinner, Tabs, Tab, Toast, Alert } from 'react-bootstrap';
+import { Form, Button, Container, Card, Row, Col, ListGroup, Spinner, Tabs, Tab, Toast, Alert, Modal, InputGroup } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { Proyecto } from '../interfaces/project';
 import { Periodo } from '../interfaces/periodo';
@@ -10,14 +10,18 @@ import BusquedaProyecto from '../components/BusquedaProyecto';
 
 // Componente para exportar POA
 import ExportarPOA from '../components/ExportarPOA';
+import { tareaAPI } from '../api/tareaAPI';
 
 // Interfaces para actividades
-import { ActividadCreate, ActividadForm, POAConActividades } from '../interfaces/actividad';
+import { ActividadCreate, ActividadForm, POAConActividades, ActividadConTareas, POAConActividadesYTareas } from '../interfaces/actividad';
+
+// Interfaces para tareas
+import { DetalleTarea, ItemPresupuestario, Tarea, TareaCreate, TareaForm } from '../interfaces/tarea';
 
 // Importamos la lista de actividades
 import { getActividadesPorTipoPOA, ActividadOpciones } from '../utils/listaActividades';
 
-const CrearActividades: React.FC = () => {
+const AgregarActividad: React.FC = () => {
   const navigate = useNavigate();
 
   // Estados para el proyecto
@@ -35,14 +39,30 @@ const CrearActividades: React.FC = () => {
   // Estados para la pestaña activa de POA
   const [activePoaTab, setActivePoaTab] = useState('');
 
-  // Estado para los POAs con actividades seleccionadas
-  const [poasConActividades, setPoasConActividades] = useState<POAConActividades[]>([]);
+  // Estado para los POAs con actividades seleccionadas y tareas
+  const [poasConActividades, setPoasConActividades] = useState<POAConActividadesYTareas[]>([]);
 
   // Estado para almacenar las actividades disponibles según el tipo de POA
   const [actividadesDisponiblesPorPoa, setActividadesDisponiblesPorPoa] = useState<{[key: string]: ActividadOpciones[]}>({});
 
+  // Estados para modales de tareas
+  const [showTareaModal, setShowTareaModal] = useState(false);
+  const [currentPoa, setCurrentPoa] = useState<string>('');
+  const [currentActividad, setCurrentActividad] = useState<string>('');
+  const [currentTarea, setCurrentTarea] = useState<TareaForm | null>(null);
+  const [isEditingTarea, setIsEditingTarea] = useState(false);
+
+  // Estado para el modal de selección de actividades
+  const [showActividadModal, setShowActividadModal] = useState(false);
+  const [actividadesDisponiblesModal, setActividadesDisponiblesModal] = useState<ActividadOpciones[]>([]);
+  const [actividadSeleccionadaModal, setActividadSeleccionadaModal] = useState<string>('');
+
+
+  const [actividadesSeleccionadasPorPoa, setActividadesSeleccionadasPorPoa] = useState<{[key: string]: string[]}>({});
+
   // Estados para mensajes y carga
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('Cargando datos...');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -50,6 +70,7 @@ const CrearActividades: React.FC = () => {
   useEffect(() => {
     const cargarDatos = async () => {
       setIsLoading(true);
+      setLoadingMessage('Cargando proyectos...');
       setError(null);
       
       try {
@@ -73,6 +94,7 @@ const CrearActividades: React.FC = () => {
     const filtrarProyectos = async () => {
       if (busquedaProyecto.length > 0) {
         setIsLoading(true);
+        setLoadingMessage('Filtrando proyectos...');
         try {
           // Usar el método getProyectos con filtro
           const filtrados = await projectAPI.getProyectos({
@@ -106,34 +128,74 @@ const CrearActividades: React.FC = () => {
   // Inicializar las actividades disponibles por tipo de POA cuando cambian los POAs del proyecto
   useEffect(() => {
     const nuevasActividadesDisponibles: {[key: string]: ActividadOpciones[]} = {};
-    
+    const nuevasActividadesSeleccionadas: {[key: string]: string[]} = {};
+
     poasProyecto.forEach(poa => {
-      const tipoPOA = poa.tipo_poa || 'PIM'; // Valor por defecto si no hay tipo
-      nuevasActividadesDisponibles[poa.id_poa] = getActividadesPorTipoPOA(tipoPOA);
-    });
+    const tipoPOA = poa.tipo_poa || 'PIM'; // Valor por defecto si no hay tipo
+    nuevasActividadesDisponibles[poa.id_poa] = getActividadesPorTipoPOA(tipoPOA);
+    nuevasActividadesSeleccionadas[poa.id_poa] = [];
+  });
     
     setActividadesDisponiblesPorPoa(nuevasActividadesDisponibles);
+    setActividadesSeleccionadasPorPoa(nuevasActividadesSeleccionadas);
+    // Si no hay pestaña activa, seleccionar la primera
     
   }, [poasProyecto]);
 
-  // Inicializar la estructura de poasConActividades cuando cambian los POAs
+  // Inicializar la estructura de poasConActividades cuando cambian los POAs y precarga las actividades
   useEffect(() => {
-    if (poasProyecto.length > 0) {
-      const nuevosPoasConActividades = poasProyecto.map(poa => ({
-        id_poa: poa.id_poa,
-        codigo_poa: poa.codigo_poa,
-        tipo_poa: poa.tipo_poa || 'PIM',
-        presupuesto_asignado: parseFloat(poa.presupuesto_asignado),
-        actividades: [] // Comienza con actividades vacías
-      }));
+    const cargarDetallesTarea = async () => {
+      if (poasProyecto.length === 0) return;
       
-      setPoasConActividades(nuevosPoasConActividades);
+      setIsLoading(true);
+      setLoadingMessage('Cargando detalles de tareas...');
       
-      // Si no hay pestaña activa, seleccionar la primera
-      if (!activePoaTab && nuevosPoasConActividades.length > 0) {
-        setActivePoaTab(nuevosPoasConActividades[0].id_poa);
+      try {
+        const nuevosPoasConActividades: POAConActividadesYTareas[] = [];
+        
+        // Para cada POA, cargar sus detalles de tarea
+        for (const poa of poasProyecto) {
+          const detallesTarea = await tareaAPI.getDetallesTareaPorPOA(poa.id_poa);
+          
+          // Precargamos todas las actividades disponibles para este POA
+          const actividadesPreCargadas: ActividadConTareas[] = [];
+          const actividadesPorTipo = getActividadesPorTipoPOA(poa.tipo_poa || 'PIM');
+          
+          // Creamos una actividad precargada para cada actividad disponible
+          actividadesPorTipo.forEach((act, index) => {
+            actividadesPreCargadas.push({
+              actividad_id: `pre-${poa.id_poa}-${act.id}-${Date.now()}-${index}`,
+              codigo_actividad: act.id,
+              tareas: []
+            });
+          });
+          
+          nuevosPoasConActividades.push({
+            id_poa: poa.id_poa,
+            codigo_poa: poa.codigo_poa,
+            tipo_poa: poa.tipo_poa || 'PIM',
+            presupuesto_asignado: parseFloat(poa.presupuesto_asignado),
+            actividades: actividadesPreCargadas, // Actividades precargadas
+            detallesTarea // Guardamos los detalles de tarea disponibles
+          });
+        }
+        
+        setPoasConActividades(nuevosPoasConActividades);
+        
+        // Si no hay pestaña activa, seleccionar la primera
+        if (!activePoaTab && nuevosPoasConActividades.length > 0) {
+          setActivePoaTab(nuevosPoasConActividades[0].id_poa);
+        }
+        
+      } catch (err) {
+        console.error('Error al cargar detalles de tarea:', err);
+        setError('Error al cargar los detalles de tareas');
+      } finally {
+        setIsLoading(false);
       }
-    }
+    };
+    
+    cargarDetallesTarea();
   }, [poasProyecto]);
 
   // Seleccionar un proyecto y cargar sus POAs
@@ -145,6 +207,7 @@ const CrearActividades: React.FC = () => {
     
     try {
       setIsLoading(true);
+      setLoadingMessage('Cargando POAs del proyecto...');
       
       // Cargar los POAs del proyecto seleccionado
       const poasData = await poaAPI.getPOAsByProyecto(proyecto.id_proyecto);
@@ -176,34 +239,104 @@ const CrearActividades: React.FC = () => {
 
   // Agregar nueva actividad en un POA específico
   const agregarActividad = (poaId: string) => {
-    const nuevaActividadId = Date.now().toString();
+    const poa = poasConActividades.find(p => p.id_poa === poaId);
+    if (!poa) return;
     
-    // Si es el primer POA, replicar la nueva actividad a todos los POAs
-    const isFirstPoa = poasConActividades.length > 0 && poasConActividades[0].id_poa === poaId;
+    // Obtener actividades disponibles para este POA
+    const actividadesDisponibles = actividadesDisponiblesPorPoa[poaId] || [];
     
-    // Actualizar el estado de POAs con actividades
-    const nuevosPoasConActividades = poasConActividades.map(poa => {
-      // Si es el primer POA o si se debe replicar la actividad
-      if (poa.id_poa === poaId || (isFirstPoa && poa.id_poa !== poaId)) {
-        return {
-          ...poa,
-          actividades: [
-            ...poa.actividades,
-            {
-              actividad_id: nuevaActividadId,
-              codigo_actividad: ""
-            }
-          ]
-        };
-      }
-      return poa;
-    });
+    // Obtener códigos de actividades ya seleccionadas
+    const actividadesYaSeleccionadas = poa.actividades.map(act => act.codigo_actividad).filter(codigo => codigo !== "");
     
-    setPoasConActividades(nuevosPoasConActividades);
+    // Filtrar actividades no utilizadas
+    const actividadesNoUtilizadas = actividadesDisponibles.filter(
+      act => !actividadesYaSeleccionadas.includes(act.id)
+    );
+    
+    // Si no hay actividades disponibles, mostrar mensaje
+    if (actividadesNoUtilizadas.length === 0) {
+      setError('No hay más actividades disponibles para agregar');
+      return;
+    }
+    
+    // Mostrar modal para seleccionar actividad
+    setShowActividadModal(true);
+    setCurrentPoa(poaId);
+    setActividadesDisponiblesModal(actividadesNoUtilizadas);
   };
+
+  // Confirmar la selección de actividad en el modal
+const confirmarSeleccionActividad = () => {
+  const poaId = currentPoa;
+  if (!poaId || !actividadSeleccionadaModal) {
+    setError('Debe seleccionar una actividad');
+    return;
+  }
+  
+  const poa = poasConActividades.find(p => p.id_poa === poaId);
+  if (!poa) return;
+  
+  // Crear la nueva actividad con el ID seleccionado
+  const nuevaActividadId = Date.now().toString();
+  
+  // Si es el primer POA, replicar la nueva actividad a todos los POAs
+  const isFirstPoa = poasConActividades.length > 0 && poasConActividades[0].id_poa === poaId;
+  
+  // Actualizar el estado de POAs con actividades
+  const nuevosPoasConActividades = poasConActividades.map(poa => {
+    // Si es el primer POA o si se debe replicar la actividad
+    if (poa.id_poa === poaId || (isFirstPoa && poa.id_poa !== poaId)) {
+      // Ordenar las actividades según el orden en actividadesDisponiblesPorPoa
+      const actividadesDisponibles = actividadesDisponiblesPorPoa[poa.id_poa] || [];
+      const nuevaActividad = {
+        actividad_id: nuevaActividadId,
+        codigo_actividad: actividadSeleccionadaModal,
+        tareas: []
+      };
+      
+      // Agregar la nueva actividad
+      const actividadesActualizadas = [...poa.actividades, nuevaActividad];
+      
+      // Ordenar según el orden de actividades disponibles
+      actividadesActualizadas.sort((a, b) => {
+        const indexA = actividadesDisponibles.findIndex(act => act.id === a.codigo_actividad);
+        const indexB = actividadesDisponibles.findIndex(act => act.id === b.codigo_actividad);
+        return indexA - indexB;
+      });
+      
+      return {
+        ...poa,
+        actividades: actividadesActualizadas
+      };
+    }
+    return poa;
+  });
+  
+  setPoasConActividades(nuevosPoasConActividades);
+  
+  // Cerrar el modal y limpiar la selección
+  setShowActividadModal(false);
+  setActividadSeleccionadaModal('');
+  
+  // Hacer scroll a la nueva actividad después de que se renderice
+  setTimeout(() => {
+    const newActivityElement = document.getElementById(`actividad-${nuevaActividadId}`);
+    if (newActivityElement) {
+      newActivityElement.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, 100);
+};
+
 
   // Eliminar actividad de un POA específico
   const eliminarActividad = (poaId: string, actividadId: string) => {
+    // Obtener el código de actividad antes de eliminarla
+    const poa = poasConActividades.find(p => p.id_poa === poaId);
+    if (!poa) return;
+    
+    const actividad = poa.actividades.find(a => a.actividad_id === actividadId);
+    if (!actividad) return;
+    
     // Si es el primer POA, eliminar la actividad de todos los POAs
     const isFirstPoa = poasConActividades.length > 0 && poasConActividades[0].id_poa === poaId;
     
@@ -220,8 +353,9 @@ const CrearActividades: React.FC = () => {
     });
     
     setPoasConActividades(nuevosPoasConActividades);
+    setSuccess('Actividad eliminada correctamente');
   };
-
+  
   // Manejar cambios en la selección de actividad para un POA específico
   const handleActividadSeleccionChange = (poaId: string, actividadId: string, codigoActividad: string) => {
     // Primero encontramos la actividad correspondiente al código seleccionado
@@ -247,6 +381,256 @@ const CrearActividades: React.FC = () => {
     });
     
     setPoasConActividades(nuevosPoasConActividades);
+  };
+
+  // Mostrar modal para agregar/editar tarea
+  const mostrarModalTarea = (poaId: string, actividadId: string, tarea?: TareaForm) => {
+    setCurrentPoa(poaId);
+    setCurrentActividad(actividadId);
+    
+    if (tarea) {
+      // Editar tarea existente
+      setCurrentTarea(tarea);
+
+      console.log("Inicializando currentTarea:", currentTarea);
+
+      setIsEditingTarea(true);
+    } else {
+      // Crear nueva tarea
+      setCurrentTarea({
+        tempId: Date.now().toString(),
+        id_detalle_tarea: '',
+        nombre: '',
+        detalle_descripcion: '',
+        cantidad: 1,
+        precio_unitario: 0,
+        codigo_item: 'N/A',
+      });
+      setIsEditingTarea(false);
+    }
+    
+    setShowTareaModal(true);
+  };
+
+  const handleDetalleTareaChange = async (idDetalleTarea: string) => {
+  if (!currentTarea || !currentPoa) return;
+  
+  console.log("handleDetalleTareaChange llamado con ID:", idDetalleTarea);
+  console.log("currentPoa:", currentPoa);
+  console.log("currentTarea existe:", !!currentTarea);
+
+  const poa = poasConActividades.find(p => p.id_poa === currentPoa);
+  if (!poa) return;
+  
+  const detalleTarea = poa.detallesTarea.find(dt => dt.id_detalle_tarea === idDetalleTarea);
+  
+  if (detalleTarea) {
+    console.log("=== DETALLE DE TAREA ENCONTRADO ===");
+    console.log("detalleTarea completo:", detalleTarea);
+    console.log("id_item_presupuestario:", detalleTarea.id_item_presupuestario);
+    console.log("nombre del detalle:", detalleTarea.nombre);
+    console.log("descripcion del detalle:", detalleTarea.descripcion);
+
+    setIsLoading(true);
+    setLoadingMessage('Cargando información del ítem presupuestario...');
+    
+    try {
+      // Preparar la tarea actualizada con la información básica
+      let tareaActualizada = {
+        ...currentTarea,
+        id_detalle_tarea: idDetalleTarea,
+        nombre: detalleTarea.nombre || '',
+        detalle_descripcion: detalleTarea.descripcion || '',
+        detalle: detalleTarea,
+        saldo_disponible: currentTarea.total || 0,
+        codigo_item: 'N/A', // Valor por defecto
+      };
+
+      // Obtener el tipo de POA actual
+      const poaActual = poasConActividades.find(p => p.id_poa === currentPoa);
+      const tipoPoa = poaActual?.tipo_poa || 'PIM';
+      
+      // Solo intentar cargar el ítem presupuestario si hay un ID válido
+      if (detalleTarea.id_item_presupuestario) {
+        try {
+          console.log("=== CONSULTANDO ÍTEM PRESUPUESTARIO ===");
+          console.log("ID a consultar:", detalleTarea.id_item_presupuestario);
+          console.log("Tipo del ID:", typeof detalleTarea.id_item_presupuestario);
+
+          const item = await tareaAPI.getItemPresupuestarioPorId(detalleTarea.id_item_presupuestario);
+          console.log("=== RESPUESTA DEL API ÍTEM PRESUPUESTARIO ===");
+          console.log("Respuesta completa del item presupuestario:", item);
+          console.log("Estructura de la respuesta:", {
+            tieneCodigoDirecto: !!item.codigo,
+            tieneData: !!item.data,
+            tieneCodigo: item.data ? !!item.data.codigo : false,
+            keys: Object.keys(item)
+          });
+
+          if (item) {
+            // Verificar diferentes posibles ubicaciones del código
+            // Verificar diferentes posibles ubicaciones del código
+            let codigoItem = 'N/D';
+
+            console.log("=== EXTRAYENDO CÓDIGO DEL ÍTEM ===");
+            if (item.codigo) {
+              codigoItem = item.codigo;
+              console.log("✓ Código encontrado en item.codigo:", codigoItem);
+            } else if (item.data && item.data.codigo) {
+              codigoItem = item.data.codigo;
+              console.log("✓ Código encontrado en item.data.codigo:", codigoItem);
+            } else {
+              console.log("✗ Código NO encontrado");
+              console.log("Estructura completa del item:", JSON.stringify(item, null, 2));
+              console.log("¿Tiene propiedad codigo?", item.hasOwnProperty('codigo'));
+              console.log("Valor de item.codigo:", item.codigo);
+              console.log("Todas las propiedades del item:", Object.getOwnPropertyNames(item));
+            }
+
+            console.log("Código final asignado:", codigoItem);
+            
+            // Obtener el número de tarea según el tipo de POA
+            const numeroTarea = obtenerNumeroTarea(item, tipoPoa);
+
+            tareaActualizada = {
+              ...tareaActualizada,
+              itemPresupuestario: item,
+              codigo_item: codigoItem,
+              numero_tarea: numeroTarea,
+              // Si hay número de tarea, usarlo como prefijo en el nombre
+              nombre: numeroTarea ? `${numeroTarea} - ${detalleTarea.nombre || ''}` : (detalleTarea.nombre || '')
+            };
+          }
+        } catch (itemError) {
+          console.error('=== ERROR AL CARGAR ÍTEM PRESUPUESTARIO ===');
+          console.error('Error completo:', itemError);
+          console.error('Respuesta del error:', itemError.response);
+          console.error('Status del error:', itemError.response?.status);
+          console.error('Data del error:', itemError.response?.data);
+          tareaActualizada = {
+            ...tareaActualizada,
+            codigo_item: 'Error'
+          };
+        }
+      }
+      
+      // Actualizar el estado una sola vez con toda la información
+      setCurrentTarea(tareaActualizada);
+      
+    } catch (err) {
+      console.error('Error general en handleDetalleTareaChange:', err);
+      setError('Error al procesar el detalle de tarea');
+    } finally {
+      setIsLoading(false);
+    }
+  }
+};
+
+  // Guardar tarea (nueva o editada)
+  const guardarTarea = () => {
+    if (!currentTarea || !currentPoa || !currentActividad) return;
+    
+    // Validar datos de la tarea
+    if (!currentTarea.id_detalle_tarea) {
+      setError('Debe seleccionar un detalle de tarea');
+      return;
+    }
+    
+    if (!currentTarea.nombre) {
+      setError('El nombre de la tarea es obligatorio');
+      return;
+    }
+    
+    if (!currentTarea.cantidad || currentTarea.cantidad <= 0) {
+      setError('La cantidad debe ser mayor que cero');
+      return;
+    }
+    
+    if (!currentTarea.precio_unitario || currentTarea.precio_unitario <= 0) {
+      setError('El precio unitario debe ser mayor que cero');
+      return;
+    }
+    
+    // Calcular el total con dos decimales
+    const precio_unitario_num = parseFloat(currentTarea.precio_unitario.toString()) || 0;
+    const total = parseFloat((currentTarea.cantidad * precio_unitario_num).toFixed(2));
+
+    // Si no se ha establecido el saldo disponible, usar el total como valor inicial
+    const saldo_disponible = parseFloat((currentTarea.saldo_disponible || total).toFixed(2));
+
+    console.log("Guardando tarea con código_item:", currentTarea.codigo_item);
+    console.log("Tarea completa antes de guardar:", {
+      codigo_item: currentTarea.codigo_item,
+      id_detalle_tarea: currentTarea.id_detalle_tarea,
+      itemPresupuestario: currentTarea.itemPresupuestario
+    });
+
+    // Crear objeto de tarea completo con valores formateados correctamente
+    const tareaCompleta = {
+      ...currentTarea,
+      cantidad: Math.floor(currentTarea.cantidad), // Asegurar que sea entero
+      precio_unitario: precio_unitario_num, // Convertir a número antes de guardar definitivamente
+      total,
+      saldo_disponible
+    };
+
+    //TODO: Obtener de forma correcta codigo del item presupuestario
+  
+    // Actualizar las tareas en el estado
+    const nuevosPoasConActividades = poasConActividades.map(poa => {
+      if (poa.id_poa === currentPoa) {
+        const nuevasActividades = poa.actividades.map(act => {
+          if (act.actividad_id === currentActividad) {
+            // Si estamos editando, reemplazar la tarea existente
+            if (isEditingTarea) {
+              const nuevasTareas = act.tareas.map(t => 
+                t.tempId === currentTarea!.tempId 
+                  ? tareaCompleta
+                  : t
+              );
+              return { ...act, tareas: nuevasTareas };
+            } 
+            // Si es una nueva tarea, agregarla
+            else {
+              return { 
+                ...act, 
+                tareas: [...act.tareas, tareaCompleta]
+              };
+            }
+          }
+          return act;
+        });
+        return { ...poa, actividades: nuevasActividades };
+      }
+      return poa;
+    });
+    
+    setPoasConActividades(nuevosPoasConActividades);
+    setShowTareaModal(false);
+    setCurrentTarea(null);
+    setSuccess(isEditingTarea ? 'Tarea actualizada correctamente' : 'Tarea agregada correctamente');
+  };
+
+  // Eliminar tarea
+  const eliminarTarea = (poaId: string, actividadId: string, tareaId: string) => {
+    const nuevosPoasConActividades = poasConActividades.map(poa => {
+      if (poa.id_poa === poaId) {
+        const nuevasActividades = poa.actividades.map(act => {
+          if (act.actividad_id === actividadId) {
+            return {
+              ...act,
+              tareas: act.tareas.filter(t => t.tempId !== tareaId)
+            };
+          }
+          return act;
+        });
+        return { ...poa, actividades: nuevasActividades };
+      }
+      return poa;
+    });
+    
+    setPoasConActividades(nuevosPoasConActividades);
+    setSuccess('Tarea eliminada correctamente');
   };
 
   // Obtener la descripción de una actividad a partir de su código
@@ -301,12 +685,13 @@ const CrearActividades: React.FC = () => {
     }
     
     setIsLoading(true);
+    setLoadingMessage('Guardando actividades y tareas...');
     setError(null);
     setSuccess(null);
     
     try {
-      // Array para almacenar las promesas de creación de actividades
-      const promesas = [];
+      // Paso 1: Crear actividades
+      const actividadesCreadas: { [key: string]: string } = {}; // Mapeo de ID temporal a ID real
       
       // Para cada POA, crear sus actividades seleccionadas
       for (const poa of poasConActividades) {
@@ -321,16 +706,56 @@ const CrearActividades: React.FC = () => {
         
         // Crear las actividades para este POA solo si hay actividades para enviar
         if (actividadesParaEnviar.length > 0) {
-          promesas.push(
-            actividadAPI.crearActividadesPorPOA(poa.id_poa, actividadesParaEnviar)
-          );
+          const actividadesRespuesta = await actividadAPI.crearActividadesPorPOA(poa.id_poa, actividadesParaEnviar);
+          
+          // Guardar mapeo de IDs temporales a IDs reales
+          poa.actividades.forEach((act, index) => {
+            if (actividadesRespuesta[index]) {
+              actividadesCreadas[act.actividad_id] = actividadesRespuesta[index].id_actividad;
+            }
+          });
         }
       }
       
-      // Esperar a que todas las promesas se resuelvan
-      await Promise.all(promesas);
+      // Actualizar el estado con los IDs reales de actividades
+      const poasActualizados = poasConActividades.map(poa => {
+        const actividadesActualizadas = poa.actividades.map(act => ({
+          ...act,
+          id_actividad_real: actividadesCreadas[act.actividad_id] || undefined
+        }));
+        return { ...poa, actividades: actividadesActualizadas };
+      });
       
-      setSuccess(`Se han creado exitosamente las actividades para ${poasProyecto.length} POAs del proyecto`);
+      setPoasConActividades(poasActualizados);
+      
+      // Paso 2: Crear tareas para cada actividad
+      setLoadingMessage('Guardando tareas...');
+      
+      // Para cada POA
+      for (const poa of poasActualizados) {
+        // Para cada actividad
+        for (const actividad of poa.actividades) {
+          // Si la actividad tiene ID real y tareas
+          if (actividad.id_actividad_real && actividad.tareas.length > 0) {
+            // Crear tareas en paralelo
+            const promesasTareas = actividad.tareas.map(tarea => {
+              const tareaDatos: TareaCreate = {
+                id_detalle_tarea: tarea.id_detalle_tarea,
+                nombre: tarea.nombre,
+                detalle_descripcion: tarea.detalle_descripcion,
+                cantidad: tarea.cantidad,
+                precio_unitario: tarea.precio_unitario
+              };
+              
+              return tareaAPI.crearTarea(actividad.id_actividad_real!, tareaDatos);
+            });
+            
+            await Promise.all(promesasTareas);
+          }
+        }
+      }
+      
+      setSuccess(`Se han creado exitosamente las actividades y tareas para ${poasProyecto.length} POAs del proyecto`);
       
       // Opcional: redirigir a otra página después de un tiempo
       setTimeout(() => {
@@ -338,18 +763,57 @@ const CrearActividades: React.FC = () => {
       }, 3000);
       
     } catch (err) {
-      console.error('Error al crear actividades:', err);
-      setError(err instanceof Error ? err.message : 'Error al crear las actividades');
+      console.error('Error al crear actividades y tareas:', err);
+      setError(err instanceof Error ? err.message : 'Error al crear las actividades y tareas');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Calcular total para una actividad
+  const calcularTotalActividad = (poaId: string, actividadId: string) => {
+    const poa = poasConActividades.find(p => p.id_poa === poaId);
+    if (!poa) return 0;
+    
+    const actividad = poa.actividades.find(a => a.actividad_id === actividadId);
+    if (!actividad) return 0;
+    
+    return actividad.tareas.reduce((sum, tarea) => sum + (tarea.total || 0), 0);
+  };
+
+  // Función para obtener el número de tarea según el tipo de POA
+  const obtenerNumeroTarea = (itemPresupuestario: any, tipoPoa: string): string => {
+    if (!itemPresupuestario || !itemPresupuestario.nombre) return '';
+    
+    // El nombre contiene tres números separados por "; " en el orden: PIM, PTT, PVIF
+    const numeros = itemPresupuestario.nombre.split('; ');
+    
+    if (numeros.length !== 3) return '';
+    
+    let indice = 0;
+    switch (tipoPoa) {
+      case 'PIM':
+        indice = 0;
+        break;
+      case 'PTT':
+        indice = 1;
+        break;
+      case 'PVIF':
+        indice = 2;
+        break;
+      default:
+        indice = 0; // Por defecto PIM
+    }
+    
+    const numero = numeros[indice];
+    return numero === '0' ? '' : numero;
   };
 
   return (
     <Container className="py-4">
       <Card className="shadow-lg">
         <Card.Header className="bg-primary bg-gradient text-white p-3">
-          <h2 className="mb-0 fw-bold text-center">Crear Actividades para Proyecto</h2>
+          <h2 className="mb-0 fw-bold text-center">Crear Actividades y Tareas para Proyecto</h2>
         </Card.Header>
         <Card.Body className="p-4">
           {error && (
@@ -400,14 +864,13 @@ const CrearActividades: React.FC = () => {
                 </Col>
               </Row>
             )}
-            
             {/* Información de los POAs del Proyecto */}
             {proyectoSeleccionado && poasProyecto.length > 0 && (
               <Row className="mb-4">
                 <Col md={12}>
                   <Card>
                     <Card.Header className="bg-light">
-                      <h5 className="mb-0">POAs Asociados al Proyecto</h5>
+                      <h5 className="mb-0">POAs del Proyecto</h5>
                     </Card.Header>
                     <Card.Body>
                       <ListGroup>
@@ -468,79 +931,124 @@ const CrearActividades: React.FC = () => {
                         activeKey={activePoaTab}
                         onSelect={(k) => setActivePoaTab(k || '')}
                         className="mb-4"
-                        fill
                       >
-                        {poasConActividades.map((poa, poaIndex) => (
+                        {poasConActividades.map((poa) => (
                           <Tab 
                             key={poa.id_poa} 
                             eventKey={poa.id_poa} 
-                            title={`${poa.codigo_poa}`}
+                            title={`${poa.codigo_poa} - ${poa.tipo_poa}`}
                           >
-                            <Card className="border-top-0 rounded-0 rounded-bottom">
-                              <Card.Body>
-                                <div className="d-flex justify-content-between align-items-center mb-3">
-                                  <h6 className="mb-0">{`Actividades para el periodo: ${poa.codigo_poa} - Tipo de POA: ${poa.tipo_poa}`}</h6>
-                                  <Button 
-                                    variant="success" 
+                            <div className="d-flex justify-content-between align-items-center mb-3">
+                              <h6>Presupuesto Asignado: ${poa.presupuesto_asignado.toLocaleString('es-CO')}</h6>
+                              <Button 
+                                variant="success" 
+                                size="sm" 
+                                onClick={() => agregarActividad(poa.id_poa)}
+                              >
+                                <i className="bi bi-plus-circle me-1"></i> Agregar Actividad
+                              </Button>
+                            </div>
+
+                            {/* Lista de Actividades con Tareas */}
+                            {/* Reemplazar la parte del formulario para seleccionar actividad */}
+                            {poa.actividades.map((actividad, indexActividad) => (
+                              <Card 
+                                key={actividad.actividad_id} 
+                                className="mb-4 border-primary"
+                                id={`actividad-${actividad.actividad_id}`}
+                              >
+                                <Card.Header className="bg-light d-flex justify-content-between align-items-center">
+                                  <h6 className="mb-0 text-primary">Actividad #{indexActividad + 1}</h6>
+                                  <Button
+                                    variant="outline-danger"
                                     size="sm"
-                                    onClick={() => agregarActividad(poa.id_poa)}
+                                    onClick={() => eliminarActividad(poa.id_poa, actividad.actividad_id)}
                                   >
-                                    <i className="bi bi-plus-circle"></i> Agregar Actividad
+                                    <i className="bi bi-trash"></i> Eliminar
                                   </Button>
-                                </div>
-                                
-                                {poa.actividades.length === 0 ? (
-                                  <Alert variant="info">
-                                    No hay actividades definidas para este POA. Haga clic en "Agregar Actividad" para comenzar.
-                                  </Alert>
-                                ) : (
-                                  poa.actividades.map((actividad, actIndex) => (
-                                    <div key={`${poa.id_poa}-${actividad.actividad_id}`} className="mb-4 pb-3 border-bottom">
-                                      <div className="d-flex justify-content-between align-items-center mb-2">
-                                        <h6>Actividad {actIndex + 1}</h6>
-                                        <Button 
-                                          variant="danger" 
-                                          size="sm"
-                                          onClick={() => eliminarActividad(poa.id_poa, actividad.actividad_id)}
-                                        >
-                                          <i className="bi bi-trash"></i> Eliminar
-                                        </Button>
-                                      </div>
-                                      
-                                      <Form.Group className="mb-3">
-                                        <Form.Label>Seleccione una actividad</Form.Label>
-                                        <Form.Select
-                                          value={actividad.codigo_actividad}
-                                          onChange={(e) => handleActividadSeleccionChange(
-                                            poa.id_poa, 
-                                            actividad.actividad_id, 
-                                            e.target.value
-                                          )}
-                                          required
-                                        >
-                                          <option value="">-- Seleccione una actividad --</option>
-                                          {(actividadesDisponiblesPorPoa[poa.id_poa] || []).map((opcion) => (
-                                            <option key={opcion.id} value={opcion.id}>
-                                              {/* {opcion.id} - {opcion.descripcion} */}
-                                              {opcion.descripcion}
-                                            </option>
-                                          ))}
-                                        </Form.Select>
-                                      </Form.Group>
-                                      
-                                      {/* Se eliminó el bloque condicional que mostraba la descripción */}
+                                </Card.Header>
+                                <Card.Body className="p-3">
+                                  {/* Ya no mostrar el select, solo la descripción */}
+                                  <div className="mb-3 p-2 bg-light rounded border">
+                                    <p className="mb-1"><strong>Descripción:</strong></p>
+                                    <p className="mb-0">{getDescripcionActividad(poa.id_poa, actividad.codigo_actividad)}</p>
+                                  </div>
+
+                                  <hr className="my-3" />
+
+                                  {/* Sección de Tareas - Se mantiene igual */}
+                                  <div className="mt-3">
+                                    <div className="d-flex justify-content-between align-items-center mb-3">
+                                      <h6>Tareas asignadas</h6>
+                                      <Button
+                                        variant="outline-primary"
+                                        size="sm"
+                                        onClick={() => mostrarModalTarea(poa.id_poa, actividad.actividad_id)}
+                                      >
+                                        <i className="bi bi-plus-circle me-1"></i> Agregar Tarea
+                                      </Button>
                                     </div>
-                                  ))
-                                )}
-                                
-                                {poaIndex === 0 && poa.actividades.length > 0 && (
-                                  <Alert variant="warning" className="mt-3">
-                                    <i className="bi bi-info-circle me-2"></i>
-                                    Las actividades añadidas en este POA se replicarán en los demás POAs automáticamente.
-                                  </Alert>
-                                )}
-                              </Card.Body>
-                            </Card>
+                                    {actividad.tareas.length === 0 ? (
+                                      <p className="text-muted small">No hay tareas definidas para esta actividad.</p>
+                                    ) : (
+                                      <div className="table-responsive">
+                                        <table className="table table-sm table-hover table-bordered">
+                                          <thead className="table-light">
+                                            <tr>
+                                              <th>#</th>
+                                              <th>Nombre</th>
+                                              <th>Código Ítem</th>
+                                              <th>Descripción</th>
+                                              <th className="text-end">Cantidad</th>
+                                              <th className="text-end">Precio Unit.</th>
+                                              <th className="text-end">Total</th>
+                                              <th className="text-center">Acciones</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {actividad.tareas.map((tarea, indexTarea) => (
+                                              <tr key={tarea.tempId}>
+                                                <td>{indexTarea + 1}</td>
+                                                <td>{tarea.nombre}</td>
+                                                <td>{tarea.codigo_item || 'N/A'}</td>
+                                                <td>{tarea.detalle_descripcion}</td>
+                                                <td className="text-end">{tarea.cantidad}</td>
+                                                <td className="text-end">${tarea.precio_unitario.toFixed(2)}</td>
+                                                <td className="text-end">${tarea.total?.toFixed(2)}</td>
+                                                <td className="text-center">
+                                                  <Button
+                                                    variant="outline-secondary"
+                                                    size="sm"
+                                                    className="me-1"
+                                                    onClick={() => mostrarModalTarea(poa.id_poa, actividad.actividad_id, tarea)}
+                                                  >
+                                                    <i className="bi bi-pencil"></i>
+                                                  </Button>
+                                                  <Button
+                                                    variant="outline-danger"
+                                                    size="sm"
+                                                    onClick={() => eliminarTarea(poa.id_poa, actividad.actividad_id, tarea.tempId)}
+                                                  >
+                                                    <i className="bi bi-trash"></i>
+                                                  </Button>
+                                                </td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                          <tfoot className="table-light">
+                                            <tr>
+                                              <th colSpan={6} className="text-end">Total Actividad:</th>
+                                              <th className="text-end">${calcularTotalActividad(poa.id_poa, actividad.actividad_id).toFixed(2)}</th>
+                                              <th></th>
+                                            </tr>
+                                          </tfoot>
+                                        </table>
+                                      </div>
+                                    )}
+                                  </div>
+                                </Card.Body>
+                              </Card>
+                            ))}
                           </Tab>
                         ))}
                       </Tabs>
@@ -550,85 +1058,290 @@ const CrearActividades: React.FC = () => {
               </Row>
             )}
 
-            {/* Botones del formulario */}
-            <Row className="mt-4">
-              <Col md={12} className="d-flex justify-content-between">
-                <Button 
-                  variant="secondary" 
-                  onClick={() => navigate('/poas')}
-                  disabled={isLoading}
-                >
+            {/* Botones de acción */}
+            {proyectoSeleccionado && poasProyecto.length > 0 && (
+              <Row className="mt-4">
+                <Col className="d-flex justify-content-center">
+                  <Button variant="secondary" className="me-2" onClick={() => navigate('/poas')}>
+                    Cancelar
+                  </Button>
+                  <Button variant="primary" type="submit" disabled={isLoading}>
+                    {isLoading ? (
+                      <>
+                        <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2" />
+                        Guardando...
+                      </>
+                    ) : (
+                      'Guardar Actividades y Tareas'
+                    )}
+                  </Button>
+                </Col>
+              </Row>
+            )}
+
+            {/* Modal para seleccionar actividad */}
+            <Modal show={showActividadModal} onHide={() => setShowActividadModal(false)}>
+              <Modal.Header closeButton>
+                <Modal.Title>Seleccionar Actividad</Modal.Title>
+              </Modal.Header>
+              <Modal.Body>
+                {error && (
+                  <Alert variant="danger" onClose={() => setError(null)} dismissible>
+                    {error}
+                  </Alert>
+                )}
+                
+                <Form.Group className="mb-3">
+                  <Form.Label>Actividades Disponibles</Form.Label>
+                  <Form.Select
+                    value={actividadSeleccionadaModal}
+                    onChange={(e) => setActividadSeleccionadaModal(e.target.value)}
+                  >
+                    <option value="">Seleccione una actividad...</option>
+                    {actividadesDisponiblesModal.map(act => (
+                      <option key={act.id} value={act.id}>
+                        {act.descripcion}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+              </Modal.Body>
+              <Modal.Footer>
+                <Button variant="secondary" onClick={() => setShowActividadModal(false)}>
                   Cancelar
                 </Button>
-                <Button 
-                  type="submit" 
-                  variant="primary"
-                  disabled={isLoading || !proyectoSeleccionado || poasProyecto.length === 0}
-                >
-                  {isLoading ? (
-                    <>
-                      <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2" />
-                      Guardando...
-                    </>
-                  ) : (
-                    'Guardar Actividades'
-                  )}
+                <Button variant="primary" onClick={confirmarSeleccionActividad}>
+                  Agregar Actividad
                 </Button>
-              </Col>
-            </Row>
+              </Modal.Footer>
+            </Modal>
+
+            {/* Modal para agregar/editar tareas */}
+            <Modal show={showTareaModal} onHide={() => setShowTareaModal(false)}>
+              <Modal.Header closeButton>
+                <Modal.Title>{isEditingTarea ? 'Editar Tarea' : 'Agregar Nueva Tarea'}</Modal.Title>
+              </Modal.Header>
+              <Modal.Body>
+                {error && (
+                  <Alert variant="danger" onClose={() => setError(null)} dismissible>
+                    {error}
+                  </Alert>
+                )}
+                
+                <Form.Group className="mb-3">
+                  <Form.Label>Detalle de Tarea</Form.Label>
+                  <Form.Select
+                    value={currentTarea?.id_detalle_tarea || ''}
+                    onChange={async (e) => {
+                      console.log("Seleccionando detalle de tarea:", e.target.value);
+                      await handleDetalleTareaChange(e.target.value);
+                    }}
+                  >
+                    <option value="">Seleccione un detalle...</option>
+                    {currentPoa && poasConActividades.find(p => p.id_poa === currentPoa)?.detallesTarea.map(dt => (
+                      <option key={dt.id_detalle_tarea} value={dt.id_detalle_tarea}>
+                        {dt.nombre}
+                      </option>
+                    ))}
+                  </Form.Select>
+                </Form.Group>
+                
+                {/* Campo para mostrar el código del ítem */}
+                <Form.Group className="mb-3">
+                  <Form.Label>Código del Ítem</Form.Label>
+                  <Form.Control
+                    type="text"
+                    value={currentTarea?.codigo_item || ''}
+                    disabled
+                    onChange={() => {
+                      console.log("Código del ítem actual:", currentTarea?.codigo_item);
+                    }}
+                  />
+                  <Form.Text className="text-muted">
+                    Este código se asigna automáticamente según el detalle de tarea.
+                  </Form.Text>
+                </Form.Group>
+                
+                <Form.Group className="mb-3">
+                  <Form.Label>Nombre de la Tarea *</Form.Label>
+                  <Form.Control
+                    type="text"
+                    value={currentTarea?.nombre || ''}
+                    onChange={(e) => setCurrentTarea(prev => prev ? {...prev, nombre: e.target.value} : null)}
+                    required
+                  />
+                </Form.Group>
+                
+                <Form.Group className="mb-3">
+                  <Form.Label>Descripción</Form.Label>
+                  <Form.Control
+                    as="textarea"
+                    rows={2}
+                    value={currentTarea?.detalle_descripcion || ''}
+                    onChange={(e) => setCurrentTarea(prev => prev ? {...prev, detalle_descripcion: e.target.value} : null)}
+                  />
+                </Form.Group>
+
+                <Row>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Cantidad *</Form.Label>
+                      <Form.Control
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={currentTarea?.cantidad === 0 ? '' : currentTarea?.cantidad || ''}
+                        onChange={(e) => {
+                          const rawValue = e.target.value;
+                          // Si está vacío, establecer a vacío para permitir borrar
+                          if (rawValue === '') {
+                            setCurrentTarea(prev => prev ? {...prev, cantidad: 0} : null);
+                            return;
+                          }
+                          // Solo permitir enteros positivos
+                          const value = parseInt(rawValue, 10);
+                          if (!isNaN(value)) {
+                            setCurrentTarea(prev => {
+                              if (!prev) return prev;
+                              const nuevaCantidad = value;
+                              const nuevoTotal = nuevaCantidad * (prev.precio_unitario || 0);
+                              // También actualizamos el saldo disponible para que sea igual al total
+                              return {
+                                ...prev,
+                                cantidad: nuevaCantidad,
+                                total: nuevoTotal,
+                                saldo_disponible: nuevoTotal
+                              };
+                            });
+                          }
+                        }}
+                        required
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Precio Unitario *</Form.Label>
+                      <InputGroup>
+                        <InputGroup.Text>$</InputGroup.Text>
+                        <Form.Control
+                          type="text"
+                          value={currentTarea?.precio_unitario === 0 ? '' : currentTarea?.precio_unitario || ''}
+                          onChange={(e) => {
+                            const rawValue = e.target.value;
+                            
+                            // Si está vacío, establecer a vacío para permitir borrar
+                            if (rawValue === '') {
+                              setCurrentTarea(prev => prev ? {...prev, precio_unitario: 0} : null);
+                              return;
+                            }
+                            
+                            // Validación mejorada: permite punto decimal y limita a 2 decimales
+                            // Primero verifica si el valor es un formato válido de número con máximo 2 decimales
+                            const isValidFormat = /^\d*\.?\d{0,2}$/.test(rawValue);
+                            
+                            if (isValidFormat) {
+                              // Usamos este valor para almacenar en el estado
+                              const inputValue = rawValue;
+                              
+                              // Para cálculos, convertimos a número (si termina en punto, consideramos 0 decimales)
+                              const numericValue = rawValue.endsWith('.') 
+                                ? parseFloat(rawValue + '0') 
+                                : parseFloat(rawValue) || 0;
+                              
+                              setCurrentTarea(prev => {
+                                if (!prev) return prev;
+                                const nuevoTotal = (prev.cantidad || 0) * numericValue;
+                                
+                                return {
+                                  ...prev,
+                                  precio_unitario: inputValue, // Guardamos como está para mantener el formato durante edición
+                                  total: nuevoTotal,
+                                  saldo_disponible: nuevoTotal
+                                };
+                              });
+                            }
+                          }}
+                          required
+                        />
+                      </InputGroup>
+                    </Form.Group>
+                  </Col>
+                </Row>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Total</Form.Label>
+                  <InputGroup>
+                    <InputGroup.Text>$</InputGroup.Text>
+                    <Form.Control
+                      type="text"
+                      value={currentTarea?.total ? currentTarea.total.toFixed(2).toLocaleString('es-CO') : '0.00'}
+                      disabled
+                    />
+                  </InputGroup>
+                  <Form.Text className="text-muted">
+                    Este valor se calcula automáticamente (Cantidad × Precio Unitario).
+                  </Form.Text>
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>Saldo Disponible</Form.Label>
+                  <InputGroup>
+                    <InputGroup.Text>$</InputGroup.Text>
+                    <Form.Control
+                      type="text"
+                      value={currentTarea?.saldo_disponible === 0 ? '' : currentTarea?.saldo_disponible || ''}
+                      onChange={(e) => {
+                        const rawValue = e.target.value;
+                        // Si está vacío, establecer a vacío para permitir borrar
+                        if (rawValue === '') {
+                          setCurrentTarea(prev => prev ? {...prev, saldo_disponible: 0} : null);
+                          return;
+                        }
+                        
+                        // Permitir solo números con hasta 2 decimales
+                        if (/^\d*\.?\d{0,2}$/.test(rawValue)) {
+                          setCurrentTarea(prev => {
+                            if (!prev) return prev;
+                            return {
+                              ...prev,
+                              saldo_disponible: rawValue === '' ? 0 : parseFloat(rawValue) || 0
+                            };
+                          });
+                        }
+                      }}
+                    />
+                  </InputGroup>
+                  <Form.Text className="text-muted">
+                    Por defecto es igual al total, pero puede ser modificado.
+                  </Form.Text>
+                </Form.Group>
+                
+              </Modal.Body>
+              <Modal.Footer>
+                <Button variant="secondary" onClick={() => setShowTareaModal(false)}>
+                  Cancelar
+                </Button>
+                <Button variant="primary" onClick={guardarTarea}>
+                  {isEditingTarea ? 'Actualizar Tarea' : 'Agregar Tarea'}
+                </Button>
+              </Modal.Footer>
+            </Modal>
+
+            {/* Indicador de carga */}
+            {isLoading && (
+              <div className="position-fixed top-0 left-0 w-100 h-100 d-flex justify-content-center align-items-center bg-white bg-opacity-75" style={{ zIndex: 1050 }}>
+                <div className="text-center">
+                  <Spinner animation="border" variant="primary" />
+                  <p className="mt-2">{loadingMessage}</p>
+                </div>
+              </div>
+            )}
           </Form>
-        </Card.Body>
-      </Card>
-
-      {/* Modal o spinner para indicar carga */}
-      {isLoading && (
-        <div className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-dark bg-opacity-50" style={{ zIndex: 1050 }}>
-          <div className="bg-white p-4 rounded shadow-lg text-center">
-            <Spinner animation="border" role="status" variant="primary" className="mb-3" />
-            <p className="mb-0">Procesando su solicitud...</p>
-          </div>
-        </div>
-      )}
-
-      {/* Toast para mensajes */}
-      <div 
-        className="position-fixed bottom-0 end-0 p-3" 
-        style={{ zIndex: 1055 }}
-      >
-        {error && (
-          <Toast 
-            onClose={() => setError(null)}
-            show={!!error}
-            delay={5000}
-            autohide
-            bg="danger"
-            text="white"
-          >
-            <Toast.Header closeButton>
-              <strong className="me-auto">Error</strong>
-            </Toast.Header>
-            <Toast.Body>{error}</Toast.Body>
-          </Toast>
-        )}
-        
-        {success && (
-          <Toast 
-            onClose={() => setSuccess(null)}
-            show={!!success}
-            delay={5000}
-            autohide
-            bg="success"
-            text="white"
-          >
-            <Toast.Header closeButton>
-              <strong className="me-auto">Éxito</strong>
-            </Toast.Header>
-            <Toast.Body>{success}</Toast.Body>
-          </Toast>
-        )}
-      </div>
-    </Container>
+                </Card.Body>
+              </Card>
+            </Container>
   );
-};
+}
 
-export default CrearActividades;
+export default AgregarActividad;
