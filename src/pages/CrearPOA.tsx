@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Form, Button, Container, Card, Row, Col, ListGroup, Badge, Collapse } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { Proyecto } from '../interfaces/project';
-import { EstadoPOA, TipoPOA, PoaCreate } from '../interfaces/poa';
+import { EstadoPOA, TipoPOA, PoaCreate, POA } from '../interfaces/poa';
 import { Periodo, PeriodoCreate } from '../interfaces/periodo';
 import { poaAPI } from '../api/poaAPI';
 import { periodoAPI } from '../api/periodoAPI';
@@ -123,8 +123,10 @@ const CrearPOA: React.FC = () => {
     setPresupuestoTotalAsignado(total);
     
     if (proyectoSeleccionado) {
-      const presupuestoAprobado = parseFloat(proyectoSeleccionado.presupuesto_aprobado.toString());
-      setPresupuestoRestante(presupuestoAprobado - total);
+      calcularPresupuestoRestante(proyectoSeleccionado, total)
+        .then(({ presupuestoRestante }) => {
+          setPresupuestoRestante(presupuestoRestante);
+        });
     }
   }, [presupuestoPorPeriodo, proyectoSeleccionado]);
 
@@ -162,6 +164,88 @@ const CrearPOA: React.FC = () => {
     
     return () => clearTimeout(timeoutId);
   }, [busquedaProyecto, proyectos]);
+
+  const calcularPresupuestoRestante = async (proyecto: Proyecto, presupuestoActualAsignado: number = 0) => {
+    try {
+      const poasExistentes = await poaAPI.getPOAsByProyecto(proyecto.id_proyecto);
+      const presupuestoYaGastado = poasExistentes.reduce((total, poa) => {
+        const presupuestoAsignado = parseFloat(poa.presupuesto_asignado?.toString() || '0');
+        return total + (isNaN(presupuestoAsignado) ? 0 : presupuestoAsignado);
+      }, 0);
+      
+      const presupuestoAprobado = parseFloat(proyecto.presupuesto_aprobado.toString());
+      const presupuestoRestante = presupuestoAprobado - presupuestoYaGastado - presupuestoActualAsignado;
+      
+      return {
+        presupuestoAprobado,
+        presupuestoYaGastado,
+        presupuestoRestante
+      };
+    } catch (error) {
+      console.error('Error calculando presupuesto:', error);
+      const presupuestoAprobado = parseFloat(proyecto.presupuesto_aprobado.toString());
+      return {
+        presupuestoAprobado,
+        presupuestoYaGastado: 0,
+        presupuestoRestante: presupuestoAprobado - presupuestoActualAsignado
+      };
+    }
+  };
+
+  const validarDisponibilidadProyecto = async (proyecto: Proyecto): Promise<{ esValido: boolean; razon?: string }> => {
+    try {
+      // Obtener todos los POAs existentes para este proyecto
+      const poasExistentes = await poaAPI.getPOAsByProyecto(proyecto.id_proyecto);
+      
+      // Si no tiene POAs, está disponible
+      if (poasExistentes.length === 0) {
+        return { esValido: true };
+      }
+
+      // Calcular periodos totales del proyecto
+      const periodosProyecto = calcularPeriodos(proyecto.fecha_inicio, proyecto.fecha_fin);
+      
+      // Si incluye fechas de prórroga, calcular periodos adicionales
+      let periodosTotales = periodosProyecto;
+      if (proyecto.fecha_prorroga_inicio && proyecto.fecha_prorroga_fin) {
+        const periodosProrroga = calcularPeriodos(proyecto.fecha_prorroga_inicio, proyecto.fecha_prorroga_fin);
+        // Combinar periodos evitando duplicados por año
+        const aniosExistentes = new Set(periodosProyecto.map(p => p.anio));
+        const periodosNuevos = periodosProrroga.filter(p => !aniosExistentes.has(p.anio));
+        periodosTotales = [...periodosProyecto, ...periodosNuevos];
+      }
+
+      // Verificar si ya existen POAs para todos los periodos posibles
+      const aniosPOAsExistentes = new Set(poasExistentes.map(poa => poa.anio_ejecucion));
+      const aniosTotalesProyecto = new Set(periodosTotales.map(p => p.anio));
+      
+      // Si todos los años del proyecto ya tienen POAs asignados
+      const todosLosAniosCubiertos = [...aniosTotalesProyecto]
+        .filter((anio): anio is string => typeof anio === 'string' && anio !== undefined)
+        .every(anio => aniosPOAsExistentes.has(anio));
+      
+      if (todosLosAniosCubiertos) {
+        return { 
+          esValido: false, 
+          razon: `Este proyecto ya tiene POAs asignados para todos sus periodos (${[...aniosPOAsExistentes].sort().join(', ')})` 
+        };
+      }
+
+      // Si llegamos aquí, el proyecto tiene algunos POAs pero no todos los periodos están cubiertos
+      const aniosFaltantes = [...aniosTotalesProyecto]
+        .filter((anio): anio is string => typeof anio === 'string' && anio !== undefined)
+        .filter(anio => !aniosPOAsExistentes.has(anio));
+      return { 
+        esValido: true, 
+        razon: `Periodos disponibles: ${aniosFaltantes.sort().join(', ')}` 
+      };
+
+    } catch (error) {
+      console.error('Error validando disponibilidad del proyecto:', error);
+      // En caso de error, permitir la selección
+      return { esValido: true, razon: 'Error al validar, proceder con precaución' };
+    }
+  };
 
   // Calcular periodos fiscales basados en las fechas del proyecto
   const calcularPeriodos = (fechaInicio: string, fechaFin: string): Periodo[] => {
@@ -225,6 +309,12 @@ const CrearPOA: React.FC = () => {
     return periodos;
   };
 
+  // Opcional: Agregar una función mejorada para filtrar periodos ya utilizados
+  const filtrarPeriodosDisponibles = (periodosCalculados: Periodo[], poasExistentes: POA[]): Periodo[] => {
+    const aniosConPOA = new Set(poasExistentes.map(poa => poa.anio_ejecucion));
+    return periodosCalculados.filter(periodo => !aniosConPOA.has(periodo.anio || ''));
+  };
+
   // Seleccionar un proyecto de la búsqueda y establecer datos automáticamente
   const seleccionarProyecto = async (proyecto: Proyecto) => {
     setIdProyecto(proyecto.id_proyecto);
@@ -235,20 +325,32 @@ const CrearPOA: React.FC = () => {
     try {
       // Establecer el código POA base basado en el código del proyecto
       setCodigoPoaBase(`${proyecto.codigo_proyecto}-POA`);
-    // Obtener y establecer tipo POA usando el id_tipo_proyecto directamente
-      if (proyecto.id_tipo_proyecto) {
-        // Cambio: Usar getTipoPOA con el id_tipo_proyecto directamente
-        const tipoPOA = await poaAPI.getTipoPOA(proyecto.id_tipo_proyecto);
-        if (tipoPOA) {
-          setIdTipoPoa(tipoPOA.id_tipo_poa);
-          setTipoPoaSeleccionado(tipoPOA); // Guardar el objeto completo
-        }
-      }
+
+      // Obtener POAs existentes para este proyecto
+      const poasExistentes = await poaAPI.getPOAsByProyecto(proyecto.id_proyecto);
       
-      // Establecer el presupuesto restante desde el presupuesto aprobado del proyecto
+      // CALCULAR EL PRESUPUESTO YA GASTADO
+      const presupuestoYaGastado = poasExistentes.reduce((total, poa) => {
+        const presupuestoAsignado = parseFloat(poa.presupuesto_asignado?.toString() || '0');
+        return total + (isNaN(presupuestoAsignado) ? 0 : presupuestoAsignado);
+      }, 0);
+
+      // Establecer el presupuesto aprobado y restante
       if (proyecto.presupuesto_aprobado) {
         const presupuestoAprobado = parseFloat(proyecto.presupuesto_aprobado.toString());
-        setPresupuestoRestante(presupuestoAprobado);
+        
+        // IMPORTANTE: Inicializar presupuestoTotalAsignado en 0 al seleccionar proyecto
+        setPresupuestoTotalAsignado(0);
+        
+        // Calcular presupuesto restante considerando lo ya gastado
+        const presupuestoRestanteCalculado = presupuestoAprobado - presupuestoYaGastado;
+        setPresupuestoRestante(presupuestoRestanteCalculado);
+        
+        // Log para debugging
+        console.log(`Proyecto: ${proyecto.codigo_proyecto}`);
+        console.log(`Presupuesto aprobado: ${presupuestoAprobado.toLocaleString('es-CO')}`);
+        console.log(`Presupuesto ya gastado: ${presupuestoYaGastado.toLocaleString('es-CO')}`);
+        console.log(`Presupuesto restante: ${presupuestoRestanteCalculado.toLocaleString('es-CO')}`);
       }
       
       // Limpiar selecciones previas
@@ -259,8 +361,26 @@ const CrearPOA: React.FC = () => {
       
       // Calcular periodos fiscales basados en fecha_inicio y fecha_fin del proyecto
       if (proyecto.fecha_inicio && proyecto.fecha_fin) {
-        const periodosProyecto = calcularPeriodos(proyecto.fecha_inicio, proyecto.fecha_fin);
-        setPeriodosCalculados(periodosProyecto);
+        let periodosProyecto = calcularPeriodos(proyecto.fecha_inicio, proyecto.fecha_fin);
+        
+        // Si hay prórroga, agregar esos periodos también
+        if (proyecto.fecha_prorroga_inicio && proyecto.fecha_prorroga_fin) {
+          const periodosProrroga = calcularPeriodos(proyecto.fecha_prorroga_inicio, proyecto.fecha_prorroga_fin);
+          const aniosExistentes = new Set(periodosProyecto.map(p => p.anio));
+          const periodosNuevos = periodosProrroga.filter(p => !aniosExistentes.has(p.anio));
+          periodosProyecto = [...periodosProyecto, ...periodosNuevos];
+        }
+        
+        // Filtrar periodos que ya tienen POAs asignados
+        const periodosDisponibles = filtrarPeriodosDisponibles(periodosProyecto, poasExistentes);
+        setPeriodosCalculados(periodosDisponibles);
+        
+        // Mostrar información sobre POAs existentes si los hay
+        if (poasExistentes.length > 0) {
+          const aniosConPOA = poasExistentes.map(poa => poa.anio_ejecucion).sort();
+          console.log(`Este proyecto ya tiene POAs para los años: ${aniosConPOA.join(', ')}`);
+          console.log(`Total presupuesto asignado en POAs existentes: ${presupuestoYaGastado.toLocaleString('es-CO')}`);
+        }
       }
     } catch (err) {
       console.error('Error al procesar el proyecto seleccionado:', err);
@@ -301,7 +421,7 @@ const CrearPOA: React.FC = () => {
   // Quitar un periodo de los seleccionados
   const quitarPeriodo = (index: number) => {
     const nuevosSeleccionados = [...periodosSeleccionados];
-    const periodoQuitado = nuevosSeleccionados[index];
+    //const periodoQuitado = nuevosSeleccionados[index];
     nuevosSeleccionados.splice(index, 1);
     
     setPeriodosSeleccionados(nuevosSeleccionados);
@@ -695,6 +815,8 @@ const handleSubmit = async (e: React.FormEvent) => {
               setBusquedaProyecto={setBusquedaProyecto}
               setMostrarBusqueda={setMostrarBusqueda}
               seleccionarProyecto={seleccionarProyecto}
+              validarProyecto={validarDisponibilidadProyecto}
+              mostrarValidacion={true}
             />
             
             {/* Información sobre el proyecto seleccionado */}
