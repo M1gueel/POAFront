@@ -1,3 +1,5 @@
+import { TareaForm, DetalleTarea } from './tarea'; 
+
 export interface Actividad {
     id_actividad: string;
     id_poa: string;
@@ -33,3 +35,15 @@ export interface POAConActividades {
         codigo_actividad: string;
     }[];
   }
+
+  export interface ActividadConTareas {
+  actividad_id: string;
+  codigo_actividad: string;
+  id_actividad_real?: string; // ID real generado por el backend
+  tareas: TareaForm[];
+}
+
+export interface POAConActividadesYTareas extends POAConActividades {
+  actividades: ActividadConTareas[];
+  detallesTarea: DetalleTarea[];
+}
