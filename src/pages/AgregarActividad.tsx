@@ -57,6 +57,9 @@ const AgregarActividad: React.FC = () => {
   const [actividadesDisponiblesModal, setActividadesDisponiblesModal] = useState<ActividadOpciones[]>([]);
   const [actividadSeleccionadaModal, setActividadSeleccionadaModal] = useState<string>('');
 
+  //Estado para detalles filtrados en el modal
+  const [detallesFiltrados, setDetallesFiltrados] = useState<DetalleTarea[]>([]);
+  const [cargandoDetalles, setCargandoDetalles] = useState(false);
 
   const [actividadesSeleccionadasPorPoa, setActividadesSeleccionadasPorPoa] = useState<{[key: string]: string[]}>({});
 
@@ -212,6 +215,8 @@ const AgregarActividad: React.FC = () => {
       // Cargar los POAs del proyecto seleccionado
       const poasData = await poaAPI.getPOAsByProyecto(proyecto.id_proyecto);
       setPoasProyecto(poasData);
+      // Limpiar cache de items presupuestarios al cambiar de proyecto
+      cacheItemsPresupuestarios.clear();
       
       // Extraer los periodos de los POAs
       const periodos: Periodo[] = [];
@@ -384,16 +389,17 @@ const confirmarSeleccionActividad = () => {
   };
 
   // Mostrar modal para agregar/editar tarea
-  const mostrarModalTarea = (poaId: string, actividadId: string, tarea?: TareaForm) => {
+  const mostrarModalTarea = async (poaId: string, actividadId: string, tarea?: TareaForm) => {
     setCurrentPoa(poaId);
     setCurrentActividad(actividadId);
+    
+    // Obtener información de la actividad y POA
+    const poa = poasConActividades.find(p => p.id_poa === poaId);
+    const actividad = poa?.actividades.find(act => act.actividad_id === actividadId);
     
     if (tarea) {
       // Editar tarea existente
       setCurrentTarea(tarea);
-
-      console.log("Inicializando currentTarea:", currentTarea);
-
       setIsEditingTarea(true);
     } else {
       // Crear nueva tarea
@@ -407,6 +413,28 @@ const confirmarSeleccionActividad = () => {
         codigo_item: 'N/A',
       });
       setIsEditingTarea(false);
+    }
+    
+    // Filtrar detalles de tarea según la actividad seleccionada
+    if (poa && actividad && actividad.codigo_actividad) {
+      setCargandoDetalles(true);
+      try {
+        const detallesFiltradosParaActividad = await filtrarDetallesPorActividadConConsultas(
+          poa.detallesTarea,
+          actividad.codigo_actividad,
+          poa.tipo_poa,
+          (id: string) => getItemPresupuestarioConCache(id, tareaAPI.getItemPresupuestarioPorId)
+        );
+        setDetallesFiltrados(detallesFiltradosParaActividad);
+      } catch (error) {
+        console.error('Error al filtrar detalles:', error);
+        setDetallesFiltrados(poa.detallesTarea); // Fallback: mostrar todos
+      } finally {
+        setCargandoDetalles(false);
+      }
+    } else {
+      // Si no hay actividad seleccionada, mostrar todos los detalles
+      setDetallesFiltrados(poa?.detallesTarea || []);
     }
     
     setShowTareaModal(true);
@@ -809,6 +837,256 @@ const confirmarSeleccionActividad = () => {
     return numero === '0' ? '' : numero;
   };
 
+  // Función para obtener el número de actividad del código de actividad
+  // Función para obtener el número de actividad del código de actividad
+  const obtenerNumeroActividad = (codigoActividad: string): string => {
+    // Manejar diferentes formatos de códigos de actividad
+    if (codigoActividad.includes('PTT')) {
+      // Para PTT: "ACT-PTT-1" -> "1"
+      const partes = codigoActividad.split('-');
+      return partes[partes.length - 1] || '';
+    } else if (codigoActividad.includes('PVIF')) {
+      // Para PVIF: "ACT-PVIF-1" -> "1"
+      const partes = codigoActividad.split('-');
+      return partes[partes.length - 1] || '';
+    } else {
+      // Para formatos estándar: "ACT-1" -> "1"
+      const partes = codigoActividad.split('-');
+      return partes[partes.length - 1] || '';
+    }
+  };
+
+  // Función para mapear códigos de actividad a números según el tipo de POA
+  const mapearCodigoActividadANumero = (codigoActividad: string, tipoPoa: string): string => {
+    // Mapeo específico según el tipo de POA y las listas del segundo archivo
+    const mapeos: { [key: string]: { [key: string]: string } } = {
+      'PIM': {
+        'ACT-1': '1', 'ACT-2': '2', 'ACT-3': '3', 'ACT-4': '4', 'ACT-5': '5',
+        'ACT-6': '6', 'ACT-7': '7', 'ACT-8': '8', 'ACT-9': '9', 'ACT-10': '10', 'ACT-11': '11'
+      },
+      'PIGR': {
+        'ACT-1': '1', 'ACT-2': '2', 'ACT-3': '3', 'ACT-4': '4', 'ACT-5': '5',
+        'ACT-6': '6', 'ACT-7': '7', 'ACT-8': '8', 'ACT-9': '9', 'ACT-10': '10', 'ACT-11': '11'
+      },
+      'PIS': {
+        'ACT-1': '1', 'ACT-2': '2', 'ACT-3': '3', 'ACT-4': '4', 'ACT-5': '5',
+        'ACT-6': '6', 'ACT-7': '7', 'ACT-8': '8', 'ACT-9': '9', 'ACT-10': '10', 'ACT-11': '11'
+      },
+      'PIIF': {
+        'ACT-1': '1', 'ACT-2': '2', 'ACT-3': '3', 'ACT-4': '4', 'ACT-5': '5',
+        'ACT-6': '6', 'ACT-7': '7', 'ACT-8': '8', 'ACT-9': '9', 'ACT-10': '10', 'ACT-11': '11'
+      },
+      'PTT': {
+        'ACT-PTT-1': '1', 'ACT-PTT-2': '2', 'ACT-PTT-3': '3', 'ACT-PTT-4': '4',
+        'ACT-PTT-5': '5', 'ACT-PTT-6': '6', 'ACT-PTT-7': '7', 'ACT-PTT-8': '8'
+      },
+      'PVIF': {
+        'ACT-PVIF-1': '1', 'ACT-PVIF-2': '2', 'ACT-PVIF-3': '3', 'ACT-PVIF-4': '4',
+        'ACT-PVIF-5': '5', 'ACT-PVIF-6': '6', 'ACT-PVIF-7': '7', 'ACT-PVIF-8': '8'
+      },
+      'PVIS': {
+        'ACT-PVIF-1': '1', 'ACT-PVIF-2': '2', 'ACT-PVIF-3': '3', 'ACT-PVIF-4': '4',
+        'ACT-PVIF-5': '5', 'ACT-PVIF-6': '6', 'ACT-PVIF-7': '7', 'ACT-PVIF-8': '8'
+      }
+    };
+
+    return mapeos[tipoPoa]?.[codigoActividad] || obtenerNumeroActividad(codigoActividad);
+  };
+
+  // Función para filtrar detalles de tarea según la actividad y tipo de POA
+  // Ahora hace consultas individuales para obtener los items presupuestarios
+  const filtrarDetallesPorActividadConConsultas = async (
+    detallesTarea: DetalleTarea[], 
+    codigoActividad: string, 
+    tipoPoa: string,
+    getItemPresupuestarioPorId: (id: string) => Promise<ItemPresupuestario>
+  ): Promise<DetalleTarea[]> => {
+    const numeroActividad = mapearCodigoActividadANumero(codigoActividad, tipoPoa);
+    
+    console.log("=== DEBUG FILTRADO CON CONSULTAS ===");
+    console.log("Código actividad:", codigoActividad);
+    console.log("Número actividad extraído:", numeroActividad);
+    console.log("Tipo POA:", tipoPoa);
+    console.log("Total detalles a filtrar:", detallesTarea.length);
+    
+    if (!numeroActividad) {
+      console.log("No se pudo extraer número de actividad");
+      return detallesTarea; // Retorna todos si no puede filtrar
+    }
+
+    // Validación adicional para asegurar que el número es válido
+    if (!/^\d+$/.test(numeroActividad)) {
+      console.log("Número de actividad no es válido:", numeroActividad);
+      return detallesTarea;
+    }
+    
+    // Procesar cada detalle de forma asíncrona
+    const detallesConItems = await Promise.allSettled(
+      detallesTarea.map(async (detalle) => {
+        console.log("=== PROCESANDO DETALLE ===");
+        console.log("ID detalle:", detalle.id_detalle_tarea);
+        console.log("Nombre detalle:", detalle.nombre);
+        console.log("ID item presupuestario:", detalle.id_item_presupuestario);
+        
+        try {
+          // Obtener el item presupuestario usando la función proporcionada
+          const itemPresupuestario = await getItemPresupuestarioPorId(detalle.id_item_presupuestario);
+          
+          console.log("✅ Item presupuestario obtenido:", itemPresupuestario);
+          console.log("Nombre del item:", itemPresupuestario.nombre);
+          
+          // Verificar formato del nombre (debe ser "X.Y; A.B; C.D")
+          if (!itemPresupuestario.nombre || typeof itemPresupuestario.nombre !== 'string') {
+            console.log("❌ Nombre del item presupuestario no válido");
+            return { detalle, incluir: false, itemPresupuestario: null };
+          }
+          
+          // Obtener los números del nombre (formato: "X.Y; A.B; C.D")
+          const numeros = itemPresupuestario.nombre.split('; ');
+          console.log("Números extraídos:", numeros);
+          
+          if (numeros.length !== 3) {
+            console.log("❌ Formato incorrecto de números, esperado 3 partes separadas por '; '");
+            return { detalle, incluir: false, itemPresupuestario };
+          }
+          
+          // Determinar qué posición revisar según el tipo de POA
+          let indice = 0;
+          switch (tipoPoa) {
+            case 'PIM':
+            case 'PIGR':
+            case 'PIS':
+            case 'PIIF':
+              indice = 0;
+              break;
+            case 'PTT':
+              indice = 1;
+              break;
+            case 'PVIF':
+            case 'PVIS':
+              indice = 2;
+              break;
+            default:
+              indice = 0;
+          }
+          
+          const numeroTarea = numeros[indice];
+          console.log(`Número de tarea para ${tipoPoa} (índice ${indice}):`, numeroTarea);
+          
+          // Si es "0", no está disponible para este tipo de POA
+          if (numeroTarea === '0') {
+            console.log("❌ Tarea no disponible para este tipo de POA (valor = 0)");
+            return { detalle, incluir: false, itemPresupuestario };
+          }
+          
+          // Verificar si el número de la tarea comienza con el número de actividad
+          const coincide = numeroTarea.startsWith(numeroActividad + '.');
+          console.log(`¿${numeroTarea} comienza con ${numeroActividad}.?`, coincide);
+          
+          if (coincide) {
+            console.log("✅ Detalle incluido en filtro");
+          } else {
+            console.log("❌ Detalle excluido del filtro");
+          }
+          
+          return { detalle, incluir: coincide, itemPresupuestario, numeroTarea };
+          
+        } catch (error) {
+          console.error(`❌ Error al obtener item presupuestario para ${detalle.nombre}:`, error);
+          return { detalle, incluir: false, itemPresupuestario: null, error };
+        }
+      })
+    );
+    
+    // Filtrar solo los que se resolvieron correctamente y deben incluirse
+    const filtrados = detallesConItems
+      .filter(result => result.status === 'fulfilled' && result.value.incluir)
+      .map(result => (result as PromiseFulfilledResult<any>).value);
+    
+    console.log("=== RESULTADO FILTRADO ===");
+    console.log("Detalles filtrados:", filtrados.length);
+    filtrados.forEach((item, index) => {
+      console.log(`${index + 1}. ${item.detalle.nombre} - Tarea: ${item.numeroTarea}`);
+    });
+    
+    // Ordenar los resultados filtrados según el número de tarea
+    const filtradosOrdenados = filtrados.sort((a, b) => {
+      const valorA = parseFloat(a.numeroTarea);
+      const valorB = parseFloat(b.numeroTarea);
+      
+      console.log(`Comparando orden: ${a.numeroTarea} (${valorA}) vs ${b.numeroTarea} (${valorB})`);
+      
+      return valorA - valorB; // Orden ascendente
+    });
+    
+    console.log("=== RESULTADO FINAL ORDENADO ===");
+    console.log("Total detalles ordenados:", filtradosOrdenados.length);
+    
+    // Retornar solo los detalles, no los objetos con metadata
+    return filtradosOrdenados.map(item => item.detalle);
+  };
+
+  // Función auxiliar para obtener el número de tarea haciendo consulta individual
+  const obtenerNumeroTareaConConsulta = async (
+    idItemPresupuestario: string, 
+    tipoPoa: string,
+    getItemPresupuestarioPorId: (id: string) => Promise<ItemPresupuestario>
+  ): Promise<string> => {
+    try {
+      const itemPresupuestario = await getItemPresupuestarioPorId(idItemPresupuestario);
+      
+      if (!itemPresupuestario?.nombre) return '';
+      
+      const numeros = itemPresupuestario.nombre.split('; ');
+      if (numeros.length !== 3) return '';
+      
+      let indice = 0;
+      switch (tipoPoa) {
+        case 'PIM':
+        case 'PIGR':
+        case 'PIS':
+        case 'PIIF':
+          indice = 0;
+          break;
+        case 'PTT':
+          indice = 1;
+          break;
+        case 'PVIF':
+        case 'PVIS':
+          indice = 2;
+          break;
+        default:
+          indice = 0;
+      }
+      
+      return numeros[indice];
+    } catch (error) {
+      console.error('Error al obtener número de tarea:', error);
+      return '';
+    }
+  };
+
+  // Cache simple para evitar consultas repetidas
+  const cacheItemsPresupuestarios = new Map<string, ItemPresupuestario>();
+
+  const getItemPresupuestarioConCache = async (
+    id: string,
+    getItemPresupuestarioPorId: (id: string) => Promise<ItemPresupuestario>
+  ): Promise<ItemPresupuestario> => {
+    if (cacheItemsPresupuestarios.has(id)) {
+      console.log(`📋 Usando cache para item: ${id}`);
+      return cacheItemsPresupuestarios.get(id)!;
+    }
+    
+    console.log(`🔍 Consultando item desde API: ${id}`);
+    const item = await getItemPresupuestarioPorId(id);
+    cacheItemsPresupuestarios.set(id, item);
+    return item;
+  };
+    
+
+  
+
   return (
     <Container className="py-4">
       <Card className="shadow-lg">
@@ -1136,14 +1414,26 @@ const confirmarSeleccionActividad = () => {
                       console.log("Seleccionando detalle de tarea:", e.target.value);
                       await handleDetalleTareaChange(e.target.value);
                     }}
+                    disabled={cargandoDetalles}
                   >
-                    <option value="">Seleccione un detalle...</option>
-                    {currentPoa && poasConActividades.find(p => p.id_poa === currentPoa)?.detallesTarea.map(dt => (
-                      <option key={dt.id_detalle_tarea} value={dt.id_detalle_tarea}>
-                        {dt.nombre}
-                      </option>
-                    ))}
+                    <option value="">
+                      {cargandoDetalles ? 'Cargando detalles...' : 'Seleccione un detalle...'}
+                    </option>
+                    {detallesFiltrados.map(dt => {
+                      // Para mostrar el número de tarea en la opción, podrías hacer otra consulta
+                      // o mantenerlo simple por ahora
+                      return (
+                        <option key={dt.id_detalle_tarea} value={dt.id_detalle_tarea}>
+                          {dt.nombre}
+                        </option>
+                      );
+                    })}
                   </Form.Select>
+                  {cargandoDetalles && (
+                    <Form.Text className="text-muted">
+                      Filtrando detalles según la actividad seleccionada...
+                    </Form.Text>
+                  )}
                 </Form.Group>
                 
                 {/* Campo para mostrar el código del ítem */}
