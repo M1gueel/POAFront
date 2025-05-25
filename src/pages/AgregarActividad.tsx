@@ -1236,7 +1236,10 @@ const confirmarSeleccionActividad = () => {
                                 id={`actividad-${actividad.actividad_id}`}
                               >
                                 <Card.Header className="bg-light d-flex justify-content-between align-items-center">
-                                  <h6 className="mb-0 text-primary">Actividad #{indexActividad + 1}</h6>
+                                  <div className="d-flex align-items-center">
+                                    <h6 className="mb-0 text-primary me-2">Actividad ({indexActividad + 1}):</h6>
+                                    <span>{getDescripcionActividad(poa.id_poa, actividad.codigo_actividad)}</span>
+                                  </div>
                                   <Button
                                     variant="outline-danger"
                                     size="sm"
@@ -1245,15 +1248,9 @@ const confirmarSeleccionActividad = () => {
                                     <i className="bi bi-trash"></i> Eliminar
                                   </Button>
                                 </Card.Header>
+
                                 <Card.Body className="p-3">
-                                  {/* Ya no mostrar el select, solo la descripción */}
-                                  <div className="mb-3 p-2 bg-light rounded border">
-                                    <p className="mb-1"><strong>Descripción:</strong></p>
-                                    <p className="mb-0">{getDescripcionActividad(poa.id_poa, actividad.codigo_actividad)}</p>
-                                  </div>
-
                                   <hr className="my-3" />
-
                                   {/* Sección de Tareas - Se mantiene igual */}
                                   <div className="mt-3">
                                     <div className="d-flex justify-content-between align-items-center mb-3">

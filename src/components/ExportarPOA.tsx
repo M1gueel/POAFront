@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button, Dropdown, DropdownButton } from 'react-bootstrap';
-import * as XLSX from 'xlsx';
+import * as ExcelJS from 'exceljs';
 
 interface ExportarPOAProps {
   codigoProyecto: string;
@@ -15,75 +15,127 @@ interface ExportarPOAProps {
 }
 
 const ExportarPOA: React.FC<ExportarPOAProps> = ({ codigoProyecto, poas, onExport }) => {
-  // Función para exportar un POA específico
-  const exportarPOA = (poa: any) => {
-    // Crear un libro de Excel
-    const workbook = XLSX.utils.book_new();
-    
-    // Datos para la hoja principal con información del POA
-    const poaInfo = [
-      ['Código de Proyecto', codigoProyecto],
-      ['Código POA', poa.codigo_poa],
-      ['Año de Ejecución', poa.anio_ejecucion],
-      ['Tipo de POA', poa.tipo_poa || 'No especificado'],
-      ['Presupuesto Asignado', poa.presupuesto_asignado.toLocaleString('es-CO')]
-    ];
-    
-    // Crear hoja de datos
-    const worksheet = XLSX.utils.aoa_to_sheet(poaInfo);
-    
+  // Función para aplicar estilos a una celda
+  const aplicarEstiloTitulo = (cell: ExcelJS.Cell, fontSize: number = 12) => {
+    cell.font = { bold: true, size: fontSize, color: { argb: '000000' } };
+    cell.alignment = { horizontal: 'center' };
+    cell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'E6E6FA' }
+    };
+  };
+
+  const aplicarEstiloEtiqueta = (cell: ExcelJS.Cell) => {
+    cell.font = { bold: true };
+  };
+
+  // Función para crear una hoja con información del POA
+  const crearHojaPOA = (workbook: ExcelJS.Workbook, poa: any, nombreHoja: string) => {
+    const worksheet = workbook.addWorksheet(nombreHoja);
+
+    // Agregar datos
+    worksheet.addRow(['VICERRECTORADO DE INVESTIGACIÓN, INNOVACIÓN Y VINCULACIÓN']);
+    worksheet.addRow(['DIRECCIÓN DE INVESTIGACIÓN']);
+    worksheet.addRow([`PROGRAMACIÓN PARA EL POA ${poa.anio_ejecucion}`]);
+    worksheet.addRow([]); // Fila vacía
+    worksheet.addRow(['Código de Proyecto', codigoProyecto]);
+    worksheet.addRow(['Presupuesto Asignado', poa.presupuesto_asignado.toLocaleString('es-CO')]);
+    worksheet.addRow([]); // Fila vacía
+    worksheet.addRow(['Código POA', poa.codigo_poa]);
+    worksheet.addRow(['Año de Ejecución', poa.anio_ejecucion]);
+    worksheet.addRow(['Tipo de POA', poa.tipo_poa || 'No especificado']);
+
+    // Aplicar estilos a los títulos principales
+    aplicarEstiloTitulo(worksheet.getCell('A1'), 14);
+    aplicarEstiloTitulo(worksheet.getCell('A2'), 12);
+    aplicarEstiloTitulo(worksheet.getCell('A3'), 12);
+
+    // Aplicar estilos a las etiquetas
+    aplicarEstiloEtiqueta(worksheet.getCell('A5'));
+    aplicarEstiloEtiqueta(worksheet.getCell('A6'));
+    aplicarEstiloEtiqueta(worksheet.getCell('A8'));
+    aplicarEstiloEtiqueta(worksheet.getCell('A9'));
+    aplicarEstiloEtiqueta(worksheet.getCell('A10'));
+
     // Ajustar ancho de columnas
-    const wscols = [{ wch: 25 }, { wch: 30 }];
-    worksheet['!cols'] = wscols;
-    
-    // Añadir la hoja al libro
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Información POA');
-    
-    // Generar archivo Excel
-    const nombreArchivo = `POA_${poa.codigo_poa}_${codigoProyecto}.xlsx`;
-    XLSX.writeFile(workbook, nombreArchivo);
-    
-    // Notificar que se completó la exportación si hay un callback
-    if (onExport) {
-      onExport();
+    worksheet.getColumn('A').width = 50;
+    worksheet.getColumn('B').width = 55;
+
+    // Combinar celdas para los títulos principales y centra el texto
+    worksheet.mergeCells('A1:G1');
+    worksheet.getCell('A1').alignment = { horizontal: 'center', vertical: 'middle' };
+
+    worksheet.mergeCells('A2:G2');
+    worksheet.getCell('A2').alignment = { horizontal: 'center', vertical: 'middle' };
+
+    worksheet.mergeCells('A3:G3');
+    worksheet.getCell('A3').alignment = { horizontal: 'center', vertical: 'middle' };
+
+  };
+
+  // Función para descargar el archivo Excel
+  const descargarArchivo = async (workbook: ExcelJS.Workbook, nombreArchivo: string) => {
+    try {
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { 
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+      });
+      const url = URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = nombreArchivo;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      // Notificar que se completó la exportación si hay un callback
+      if (onExport) {
+        onExport();
+      }
+    } catch (error) {
+      console.error('Error al generar el archivo Excel:', error);
     }
   };
 
+  // Función para exportar un POA específico
+  const exportarPOA = async (poa: any) => {
+    const workbook = new ExcelJS.Workbook();
+    
+    // Configurar propiedades del libro
+    workbook.creator = 'Sistema POA';
+    workbook.lastModifiedBy = 'Sistema POA';
+    workbook.created = new Date();
+    workbook.modified = new Date();
+
+    // Crear hoja con información del POA
+    crearHojaPOA(workbook, poa, 'Información POA');
+
+    // Generar y descargar archivo
+    const nombreArchivo = `POA_${poa.codigo_poa}_${codigoProyecto}.xlsx`;
+    await descargarArchivo(workbook, nombreArchivo);
+  };
+
   // Función para exportar todos los POAs
-  const exportarTodosPOAs = () => {
-    // Crear un libro de Excel
-    const workbook = XLSX.utils.book_new();
+  const exportarTodosPOAs = async () => {
+    const workbook = new ExcelJS.Workbook();
     
-    // Exportar una hoja para cada POA
+    // Configurar propiedades del libro
+    workbook.creator = 'Sistema POA';
+    workbook.lastModifiedBy = 'Sistema POA';
+    workbook.created = new Date();
+    workbook.modified = new Date();
+
+    // Crear una hoja para cada POA
     poas.forEach((poa, index) => {
-      // Datos para la hoja principal con información del POA
-      const poaInfo = [
-        ['Código de Proyecto', codigoProyecto],
-        ['Código POA', poa.codigo_poa],
-        ['Año de Ejecución', poa.anio_ejecucion],
-        ['Tipo de POA', poa.tipo_poa || 'No especificado'],
-        ['Presupuesto Asignado', poa.presupuesto_asignado.toLocaleString('es-CO')]
-      ];
-      
-      // Crear hoja de datos
-      const worksheet = XLSX.utils.aoa_to_sheet(poaInfo);
-      
-      // Ajustar ancho de columnas
-      const wscols = [{ wch: 25 }, { wch: 30 }];
-      worksheet['!cols'] = wscols;
-      
-      // Añadir la hoja al libro
-      XLSX.utils.book_append_sheet(workbook, worksheet, `POA ${index + 1}`);
+      crearHojaPOA(workbook, poa, `POA ${index + 1}`);
     });
-    
-    // Generar archivo Excel
+
+    // Generar y descargar archivo
     const nombreArchivo = `POAs_Proyecto_${codigoProyecto}.xlsx`;
-    XLSX.writeFile(workbook, nombreArchivo);
-    
-    // Notificar que se completó la exportación si hay un callback
-    if (onExport) {
-      onExport();
-    }
+    await descargarArchivo(workbook, nombreArchivo);
   };
 
   // No mostrar el componente si no hay POAs para exportar

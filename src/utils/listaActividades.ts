@@ -16,42 +16,46 @@ const actividadesPIM_PIGR_PIS_PIIF: ActividadOpciones[] = [
   },
   {
     id: "ACT-2",
-    descripcion: "Actividades donde sea necesario la adquisición de equipos informaticos"
+    descripcion: "Actividades donde se involucre personal para el desarrollo del proyecto"
   },
   {
     id: "ACT-3",
-    descripcion: "Actividades donde sea necesario la adquisición de equipos especializados y maquinaria"
+    descripcion: "Actividades donde sea necesario la adquisición de equipos informaticos"
   },
   {
     id: "ACT-4",
-    descripcion: "Actividades que requieran insumos materiales y reactivos necesarios para la construcción del prototipo"
+    descripcion: "Actividades donde sea necesario la adquisición de equipos especializados y maquinaria"
   },
   {
     id: "ACT-5",
+    descripcion: "Actividades que requieran insumos materiales y reactivos necesarios para la construcción del prototipo"
+  },
+  {
+    id: "ACT-6",
     descripcion: "Actividades donde se involucren pago de publicaciones"
   },
     {
-    id: "ACT-6",
+    id: "ACT-7",
     descripcion: "Actividades donde se involucren pago de inscripción para participación en eventos académicos"
   },
   {
-    id: "ACT-7",
+    id: "ACT-8",
     descripcion: "Actividades donde se involucren salidas de campo y de muestreo, ponencias nacionales, asistencia a eventos académicos (Salidas Nacionales, talleres, conferencias u otros eventos académicos)"
   },
   {
-    id: "ACT-8",
+    id: "ACT-9",
     descripcion: "Actividades donde sea necesario la contratación de servicios especializados, analisis de laboratorios"
   },
     {
-    id: "ACT-9",
+    id: "ACT-10",
     descripcion: "Actividades donde se involucre la utilización de literatura especializada"
   },
   {
-    id: "ACT-10",
+    id: "ACT-11",
     descripcion: "Actividades donde se involucren salidas al exterior para participación en eventos académicos o presentación de resultados del proyecto(Salidas al Exterior)"
   },
   {
-    id: "ACT-11",
+    id: "ACT-12",
     descripcion: "Actividades donde se involucren la atención a delegados (investigadores colaboradores externos)"
   }
 ];

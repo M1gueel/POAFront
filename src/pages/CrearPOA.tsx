@@ -96,6 +96,7 @@ const CrearPOA: React.FC = () => {
         // Seleccionar automáticamente el primer tipo de POA
         if (tiposData.length > 0) {
           setIdTipoPoa(tiposData[0].id_tipo_poa);
+          setTipoPoaSeleccionado(tiposData[0]);
         }
         // Cargar periodos desde la API
         const periodosData = await periodoAPI.getPeriodos();
