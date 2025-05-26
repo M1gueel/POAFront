@@ -103,10 +103,11 @@ export const userAPI = {
     getPerfilUsuario: async (): Promise<PerfilUsuario> => {
         try {
           const response = await API.get('/perfil');
+          const data = response.data as { id: string; nombre: string; rol: string };
           return {
-            id: response.data.id,
-            nombre: response.data.nombre,
-            rol: response.data.rol
+            id: data.id,
+            nombre: data.nombre,
+            rol: data.rol
           };
         } catch (error) {
           console.error('Error al cargar el perfil del usuario:', error);

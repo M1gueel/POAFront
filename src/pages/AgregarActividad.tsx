@@ -6,11 +6,12 @@ import { Periodo } from '../interfaces/periodo';
 import { poaAPI } from '../api/poaAPI';
 import { projectAPI } from '../api/projectAPI';
 import { actividadAPI } from '../api/actividadAPI';
+import { tareaAPI } from '../api/tareaAPI';
+
 import BusquedaProyecto from '../components/BusquedaProyecto';
 
 // Componente para exportar POA
 import ExportarPOA from '../components/ExportarPOA';
-import { tareaAPI } from '../api/tareaAPI';
 
 // Interfaces para actividades
 import { ActividadCreate, ActividadForm, POAConActividades, ActividadConTareas, POAConActividadesYTareas } from '../interfaces/actividad';
@@ -362,10 +363,11 @@ const confirmarSeleccionActividad = () => {
   };
   
   // Manejar cambios en la selección de actividad para un POA específico
+  /* 
   const handleActividadSeleccionChange = (poaId: string, actividadId: string, codigoActividad: string) => {
     // Primero encontramos la actividad correspondiente al código seleccionado
-    const actividadesDisponibles = actividadesDisponiblesPorPoa[poaId] || [];
-    const actividadSeleccionada = actividadesDisponibles.find(act => act.id === codigoActividad);
+    //const actividadesDisponibles = actividadesDisponiblesPorPoa[poaId] || [];
+    //const actividadSeleccionada = actividadesDisponibles.find(act => act.id === codigoActividad);
     
     // Si es el primer POA, actualizar todos los POAs con la misma actividad
     const isFirstPoa = poasConActividades.length > 0 && poasConActividades[0].id_poa === poaId;
@@ -387,7 +389,7 @@ const confirmarSeleccionActividad = () => {
     
     setPoasConActividades(nuevosPoasConActividades);
   };
-
+*/
   // Mostrar modal para agregar/editar tarea
   const mostrarModalTarea = async (poaId: string, actividadId: string, tarea?: TareaForm) => {
     setCurrentPoa(poaId);
@@ -490,13 +492,12 @@ const confirmarSeleccionActividad = () => {
           console.log("Respuesta completa del item presupuestario:", item);
           console.log("Estructura de la respuesta:", {
             tieneCodigoDirecto: !!item.codigo,
-            tieneData: !!item.data,
-            tieneCodigo: item.data ? !!item.data.codigo : false,
+            tieneData: !!item,
+            tieneCodigo: item ? !!item.codigo : false,
             keys: Object.keys(item)
           });
 
           if (item) {
-            // Verificar diferentes posibles ubicaciones del código
             // Verificar diferentes posibles ubicaciones del código
             let codigoItem = 'N/D';
 
@@ -504,8 +505,8 @@ const confirmarSeleccionActividad = () => {
             if (item.codigo) {
               codigoItem = item.codigo;
               console.log("✓ Código encontrado en item.codigo:", codigoItem);
-            } else if (item.data && item.data.codigo) {
-              codigoItem = item.data.codigo;
+            } else if (item && item.codigo) {
+              codigoItem = item.codigo;
               console.log("✓ Código encontrado en item.data.codigo:", codigoItem);
             } else {
               console.log("✗ Código NO encontrado");
@@ -532,9 +533,14 @@ const confirmarSeleccionActividad = () => {
         } catch (itemError) {
           console.error('=== ERROR AL CARGAR ÍTEM PRESUPUESTARIO ===');
           console.error('Error completo:', itemError);
-          console.error('Respuesta del error:', itemError.response);
-          console.error('Status del error:', itemError.response?.status);
-          console.error('Data del error:', itemError.response?.data);
+          if (typeof itemError === 'object' && itemError !== null && 'response' in itemError) {
+            // @ts-ignore
+            console.error('Respuesta del error:', itemError.response);
+            // @ts-ignore
+            console.error('Status del error:', itemError.response?.status);
+            // @ts-ignore
+            console.error('Data del error:', itemError.response?.data);
+          }
           tareaActualizada = {
             ...tareaActualizada,
             codigo_item: 'Error'
@@ -1026,6 +1032,7 @@ const confirmarSeleccionActividad = () => {
     return filtradosOrdenados.map(item => item.detalle);
   };
 
+  /*
   // Función auxiliar para obtener el número de tarea haciendo consulta individual
   const obtenerNumeroTareaConConsulta = async (
     idItemPresupuestario: string, 
@@ -1065,6 +1072,7 @@ const confirmarSeleccionActividad = () => {
       return '';
     }
   };
+  */
 
   // Cache simple para evitar consultas repetidas
   const cacheItemsPresupuestarios = new Map<string, ItemPresupuestario>();
@@ -1183,7 +1191,7 @@ const confirmarSeleccionActividad = () => {
                       id_poa: poa.id_poa,
                       codigo_poa: poa.codigo_poa,
                       anio_ejecucion: poa.anio_ejecucion,
-                      tipo_poa: poa.tipo_poa || 'No especificado',
+                      //tipo_poa: poa.tipo_poa || 'No especificado',
                       presupuesto_asignado: parseFloat(poa.presupuesto_asignado)
                     }))}
                     onExport={() => setSuccess("POA exportado correctamente")}
@@ -1529,24 +1537,24 @@ const confirmarSeleccionActividad = () => {
                             
                             if (isValidFormat) {
                               // Usamos este valor para almacenar en el estado
-                              const inputValue = rawValue;
+                              //const inputValue = rawValue;
                               
                               // Para cálculos, convertimos a número (si termina en punto, consideramos 0 decimales)
                               const numericValue = rawValue.endsWith('.') 
                                 ? parseFloat(rawValue + '0') 
                                 : parseFloat(rawValue) || 0;
                               
-                              setCurrentTarea(prev => {
+                                setCurrentTarea(prev => {
                                 if (!prev) return prev;
                                 const nuevoTotal = (prev.cantidad || 0) * numericValue;
-                                
+
                                 return {
                                   ...prev,
-                                  precio_unitario: inputValue, // Guardamos como está para mantener el formato durante edición
+                                  precio_unitario: numericValue, // Guardamos como número (no string)
                                   total: nuevoTotal,
                                   saldo_disponible: nuevoTotal
                                 };
-                              });
+                                });
                             }
                           }}
                           required
@@ -1562,7 +1570,7 @@ const confirmarSeleccionActividad = () => {
                     <InputGroup.Text>$</InputGroup.Text>
                     <Form.Control
                       type="text"
-                      value={currentTarea?.total ? currentTarea.total.toFixed(2).toLocaleString('es-CO') : '0.00'}
+                      value={currentTarea?.total ? currentTarea.total.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
                       disabled
                     />
                   </InputGroup>
