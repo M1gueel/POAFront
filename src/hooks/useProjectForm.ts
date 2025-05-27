@@ -34,6 +34,7 @@ export const useProjectForm = ({ initialTipoProyecto }: UseProjectFormProps) => 
   const [fecha_prorroga_inicio, setFecha_prorroga_inicio] = useState('');
   const [fecha_prorroga_fin, setFecha_prorroga_fin] = useState('');
   const [tiempo_prorroga_meses, setTiempo_prorroga_meses] = useState('');
+  const [calculandoProrroga, setCalculandoProrroga] = useState(false);
   
   // Options lists
   const [estadosProyecto, setEstadosProyecto] = useState<EstadoProyecto[]>([]);
@@ -41,6 +42,40 @@ export const useProjectForm = ({ initialTipoProyecto }: UseProjectFormProps) => 
   // Status states
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Función para obtener la fecha de hoy en formato YYYY-MM-DD
+  const obtenerFechaHoy = (): string => {
+    const hoy = new Date();
+    return hoy.toISOString().split('T')[0];
+  };
+
+  // Función para calcular diferencia en meses entre dos fechas
+  const calcularDiferenciaMeses = (fechaInicio: string, fechaFin: string): number => {
+    if (!fechaInicio || !fechaFin) return 0;
+    
+    const inicio = new Date(fechaInicio);
+    const fin = new Date(fechaFin);
+    
+    let meses = (fin.getFullYear() - inicio.getFullYear()) * 12;
+    meses += fin.getMonth() - inicio.getMonth();
+    
+    // Ajustar si el día del mes final es menor que el inicial
+    if (fin.getDate() < inicio.getDate()) {
+      meses--;
+    }
+    
+    return Math.max(0, meses);
+  };
+
+  // Función para agregar meses a una fecha
+  const agregarMeses = (fecha: string, meses: number): string => {
+    if (!fecha || !meses) return '';
+    
+    const fechaObj = new Date(fecha);
+    fechaObj.setMonth(fechaObj.getMonth() + meses);
+    
+    return fechaObj.toISOString().split('T')[0];
+  };
 
   // Manejador para cambios en el código del proyecto
   const handleCodigoProyectoChange = (value: string) => {
@@ -55,6 +90,77 @@ export const useProjectForm = ({ initialTipoProyecto }: UseProjectFormProps) => 
       setCodigo_proyecto(codigo);
     }
   };
+
+  // Manejadores de prórroga
+  const handleFechaProrrogaChange = (value: string) => {
+    setFecha_prorroga(value);
+  };
+
+  const handleFechaProrrogaInicioChange = (value: string) => {
+    setCalculandoProrroga(true);
+    setFecha_prorroga_inicio(value);
+    
+    // Si hay fecha de fin de prórroga, calcular meses
+    if (fecha_prorroga_fin && value) {
+      const meses = calcularDiferenciaMeses(value, fecha_prorroga_fin);
+      setTiempo_prorroga_meses(meses.toString());
+    }
+    setCalculandoProrroga(false);
+  };
+
+  const handleFechaProrrogaFinChange = (value: string) => {
+    setCalculandoProrroga(true);
+    setFecha_prorroga_fin(value);
+    
+    // Si hay fecha de inicio de prórroga, calcular meses
+    if (fecha_prorroga_inicio && value) {
+      const meses = calcularDiferenciaMeses(fecha_prorroga_inicio, value);
+      setTiempo_prorroga_meses(meses.toString());
+    }
+    setCalculandoProrroga(false);
+  };
+
+  const handleTiempoProrrogaMesesChange = (value: string) => {
+    setCalculandoProrroga(true);
+    setTiempo_prorroga_meses(value);
+    
+    // Si hay fecha de inicio de prórroga y meses, calcular fecha de fin
+    if (fecha_prorroga_inicio && value && parseInt(value) > 0) {
+      const nuevaFechaFin = agregarMeses(fecha_prorroga_inicio, parseInt(value));
+      setFecha_prorroga_fin(nuevaFechaFin);
+    }
+    setCalculandoProrroga(false);
+  };
+
+  // Manejador personalizado para abrir/cerrar la sección de prórroga
+  const handleSetProrrogaOpen = (open: boolean) => {
+    setProrrogaOpen(open);
+    
+    // Solo inicializar valores cuando se abre la sección (open = true)
+    if (open && !fecha_prorroga) {
+      // Establecer fecha de prórroga como hoy
+      setFecha_prorroga(obtenerFechaHoy());
+      
+      // Establecer fecha de inicio de prórroga como la fecha de fin del proyecto
+      if (fecha_fin) {
+        setFecha_prorroga_inicio(fecha_fin);
+      }
+    }
+  };
+
+  // Efecto para actualizar fecha de inicio de prórroga cuando cambia fecha_fin
+  // Solo si la sección está abierta
+  useEffect(() => {
+    if (prorrogaOpen && fecha_fin && !calculandoProrroga) {
+      setFecha_prorroga_inicio(fecha_fin);
+      
+      // Recalcular meses si hay fecha de fin de prórroga
+      if (fecha_prorroga_fin) {
+        const meses = calcularDiferenciaMeses(fecha_fin, fecha_prorroga_fin);
+        setTiempo_prorroga_meses(meses.toString());
+      }
+    }
+  }, [fecha_fin, prorrogaOpen, calculandoProrroga]);
 
   // Load initial data
   useEffect(() => {
@@ -194,7 +300,7 @@ export const useProjectForm = ({ initialTipoProyecto }: UseProjectFormProps) => 
   return {
     // Form states
     codigo_proyecto,
-    setCodigo_proyecto: handleCodigoProyectoChange, // Ahora exportamos esta función
+    setCodigo_proyecto: handleCodigoProyectoChange,
     titulo,
     setTitulo,
     tipoProyecto,
@@ -211,15 +317,15 @@ export const useProjectForm = ({ initialTipoProyecto }: UseProjectFormProps) => 
     
     // Prorroga states
     prorrogaOpen,
-    setProrrogaOpen,
+    setProrrogaOpen: handleSetProrrogaOpen, // Usar el manejador personalizado
     fecha_prorroga,
-    setFecha_prorroga,
+    setFecha_prorroga: handleFechaProrrogaChange,
     fecha_prorroga_inicio,
-    setFecha_prorroga_inicio,
+    setFecha_prorroga_inicio: handleFechaProrrogaInicioChange,
     fecha_prorroga_fin,
-    setFecha_prorroga_fin,
+    setFecha_prorroga_fin: handleFechaProrrogaFinChange,
     tiempo_prorroga_meses,
-    setTiempo_prorroga_meses,
+    setTiempo_prorroga_meses: handleTiempoProrrogaMesesChange,
     
     // Lists
     estadosProyecto,

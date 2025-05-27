@@ -5,19 +5,19 @@ import { PerfilUsuario } from '../interfaces/user';
 export const projectAPI = {
     // Obtener todos los tipos de proyecto
     getTiposProyecto: async (): Promise<TipoProyecto[]> => {
-        const response = await API.get('/tipos-proyecto/');
+        const response = await API.get<TipoProyecto[]>('/tipos-proyecto/');
         return response.data;
     },
     
     // Obtener estados de proyecto
     getEstadosProyecto: async (): Promise<{ id_estado_proyecto: string, nombre: string }[]> => {
-        const response = await API.get('/estados-proyecto/');
+        const response = await API.get<{ id_estado_proyecto: string, nombre: string }[]>('/estados-proyecto/');
         return response.data;
     },
     
     // Obtener usuarios que pueden ser directores
     getDirectoresProyecto: async (): Promise<PerfilUsuario[]> => {
-        const response = await API.get('/usuarios/directores/');
+        const response = await API.get<PerfilUsuario[]>('/usuarios/directores/');
         return response.data;
     },
     
@@ -28,7 +28,7 @@ export const projectAPI = {
           fecha_creacion: new Date().toISOString().split('T')[0] // Formato YYYY-MM-DD
         };
         
-        const response = await API.post('/proyectos/', datosAEnviar);
+        const response = await API.post<Proyecto>('/proyectos/', datosAEnviar);
         return response.data;
     },
 

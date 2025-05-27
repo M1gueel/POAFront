@@ -5,19 +5,19 @@ import { POA, EstadoPOA, TipoPOA, PoaCreate } from '../interfaces/poa';
 export const poaAPI = {
     // Obtener todos los estados de POA
     getEstadosPOA: async (): Promise<EstadoPOA[]> => {
-        const response = await API.get('/estados-poa/');
+        const response = await API.get<EstadoPOA[]>('/estados-poa/');
         return response.data;
     },
 
     // Obtener todos los tipos de POA
     getTiposPOA: async (): Promise<TipoPOA[]> => {
-        const response = await API.get('/tipos-poa/');
+        const response = await API.get<TipoPOA[]>('/tipos-poa/');
         return response.data;
     },
 
     // Obtener tipo POA por id
     getTipoPOA: async (id: string): Promise<TipoPOA> => {
-        const response = await API.get(`/tipos-poa/${id}`);
+        const response = await API.get<TipoPOA>(`/tipos-poa/${id}`);
         return response.data;
     },
 
@@ -32,14 +32,15 @@ export const poaAPI = {
         console.log("POA data being sent to API:", datosAEnviar);
 
         try {
-            const response = await API.post('/poas/', datosAEnviar);
+            const response = await API.post<POA>('/poas/', datosAEnviar);
             console.log("Respuesta del servidor:", response.data);
             return response.data;
         } catch (error) {
             console.error("Error detallado al crear POA:", error);
-            if (error.response) {
-                console.error("Respuesta del servidor:", error.response.data);
-                console.error("Status:", error.response.status);
+            if (typeof error === 'object' && error !== null && 'response' in error) {
+                const err = error as { response: { data: any; status: any } };
+                console.error("Respuesta del servidor:", err.response.data);
+                console.error("Status:", err.response.status);
             }
             throw error;
         }
@@ -47,19 +48,19 @@ export const poaAPI = {
 
     // Obtener todos los POAs
     getPOAs: async (): Promise<POA[]> => {
-        const response = await API.get('/poas/');
+        const response = await API.get<POA[]>('/poas/');
         return response.data;
     },
 
     // Obtener un POA específico
     getPOA: async (id: string): Promise<POA> => {
-        const response = await API.get(`/poas/${id}`);
+        const response = await API.get<POA>(`/poas/${id}`);
         return response.data;
     },
 
     // Editar un POA existente
     editarPOA: async (id: string, poaData: Partial<PoaCreate>): Promise<POA> => {
-        const response = await API.put(`/poas/${id}`, poaData);
+        const response = await API.put<POA>(`/poas/${id}`, poaData);
         return response.data;
     },
 
@@ -77,13 +78,14 @@ export const poaAPI = {
     // Obtener POAs por Proyecto
     getPOAsByProyecto: async (idProyecto: string): Promise<POA[]> => {
         try {
-            const response = await API.get(`/proyectos/${idProyecto}/poas`);
+            const response = await API.get<POA[]>(`/proyectos/${idProyecto}/poas`);
             return response.data;
         } catch (error) {
             console.error("Error al obtener POAs por proyecto:", error);
-            if (error.response) {
-                console.error("Respuesta del servidor:", error.response.data);
-                console.error("Status:", error.response.status);
+            if (typeof error === 'object' && error !== null && 'response' in error) {
+                const err = error as { response: { data: any; status: any } };
+                console.error("Respuesta del servidor:", err.response.data);
+                console.error("Status:", err.response.status);
             }
             throw error;
         }

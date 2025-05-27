@@ -15,22 +15,22 @@ export interface Proyecto {
 }
 
 export interface TipoProyecto {
-    prefijo: any;
-    id_tipo_proyecto: string;
-    codigo_tipo: string;
-    nombre: string;
-    descripcion: string;
-    duracion_meses: number;
-    cantidad_periodos: number;
-    presupuesto_maximo: number;
-  }
+  prefijo: any;
+  id_tipo_proyecto: string;
+  codigo_tipo: string;
+  nombre: string;
+  descripcion: string;
+  duracion_meses: number;
+  cantidad_periodos: number;
+  presupuesto_maximo: number;
+}
 
- export interface EstadoProyecto {
-    id_estado_proyecto: string;
-    nombre: string;
-  }
-  
- export interface DirectorProyecto {
-    id_usuario: string;
-    nombre_usuario: string;
-  }
+export interface EstadoProyecto {
+  id_estado_proyecto: string;
+  nombre: string;
+}
+
+export interface DirectorProyecto {
+  id_usuario: string;
+  nombre_usuario: string;
+}

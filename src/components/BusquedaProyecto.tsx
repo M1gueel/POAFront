@@ -3,31 +3,47 @@ import { Row, Col, Form, Table, Badge } from 'react-bootstrap';
 import { Proyecto } from '../interfaces/project';
 
 interface BusquedaProyectoProps {
-  busquedaProyecto: string;
-  mostrarBusqueda: boolean;
+  proyectos: Proyecto[]; // Recibe todos los proyectos
   isLoading: boolean;
-  proyectosFiltrados: Proyecto[];
-  setBusquedaProyecto: (value: string) => void;
-  setMostrarBusqueda: (value: boolean) => void;
   seleccionarProyecto: (proyecto: Proyecto) => void;
-  // Nuevas props opcionales para validación
+  // Props opcionales para validación
   validarProyecto?: (proyecto: Proyecto) => Promise<{ esValido: boolean; razon?: string }>;
   mostrarValidacion?: boolean;
 }
 
 const BusquedaProyecto: React.FC<BusquedaProyectoProps> = ({
-  busquedaProyecto,
-  mostrarBusqueda,
+  proyectos,
   isLoading,
-  proyectosFiltrados,
-  setBusquedaProyecto,
-  setMostrarBusqueda,
   seleccionarProyecto,
   validarProyecto,
   mostrarValidacion = false
 }) => {
+  // Estados locales del componente hijo
+  const [busquedaProyecto, setBusquedaProyecto] = React.useState('');
+  const [mostrarBusqueda, setMostrarBusqueda] = React.useState(false);
+  const [proyectosFiltrados, setProyectosFiltrados] = React.useState<Proyecto[]>([]);
   const [validaciones, setValidaciones] = React.useState<{ [key: string]: { esValido: boolean; razon?: string } }>({});
   const [validandoProyectos, setValidandoProyectos] = React.useState(false);
+
+  // Filtrar proyectos cuando cambie el texto de búsqueda o la lista de proyectos
+  React.useEffect(() => {
+    if (!busquedaProyecto.trim()) {
+      setProyectosFiltrados(proyectos);
+      return;
+    }
+
+    const filtrados = proyectos.filter(proyecto => {
+      const busquedaLower = busquedaProyecto.toLowerCase().trim();
+      
+      // Buscar en código_proyecto y título
+      const coincideCodigo = proyecto.codigo_proyecto?.toLowerCase().includes(busquedaLower);
+      const coincideTitulo = proyecto.titulo?.toLowerCase().includes(busquedaLower);
+      
+      return coincideCodigo || coincideTitulo;
+    });
+
+    setProyectosFiltrados(filtrados);
+  }, [busquedaProyecto, proyectos]);
 
   // Validar proyectos cuando cambie la lista filtrada
   React.useEffect(() => {
@@ -63,12 +79,20 @@ const BusquedaProyecto: React.FC<BusquedaProyectoProps> = ({
     validarProyectosFiltrados();
   }, [proyectosFiltrados, validarProyecto, mostrarValidacion]);
 
+  const manejarCambioBusqueda = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setBusquedaProyecto(e.target.value);
+    setMostrarBusqueda(true);
+  };
+
   const manejarSeleccionProyecto = (proyecto: Proyecto) => {
     if (mostrarValidacion && validaciones[proyecto.id_proyecto] && !validaciones[proyecto.id_proyecto].esValido) {
       // No permitir selección si no es válido
       return;
     }
+    
     seleccionarProyecto(proyecto);
+    setBusquedaProyecto(`${proyecto.codigo_proyecto} - ${proyecto.titulo}`);
+    setMostrarBusqueda(false);
   };
 
   const obtenerEstiloFila = (proyecto: Proyecto) => {
@@ -84,6 +108,21 @@ const BusquedaProyecto: React.FC<BusquedaProyectoProps> = ({
     };
   };
 
+  // Cerrar búsqueda al hacer clic fuera
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest('.position-relative')) {
+        setMostrarBusqueda(false);
+      }
+    };
+
+    if (mostrarBusqueda) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [mostrarBusqueda]);
+
   return (
     <Row>
       <Col md={12} className="mb-4">
@@ -94,10 +133,7 @@ const BusquedaProyecto: React.FC<BusquedaProyectoProps> = ({
               type="text"
               placeholder="Buscar proyecto por código o título"
               value={busquedaProyecto}
-              onChange={(e) => {
-                setBusquedaProyecto(e.target.value);
-                setMostrarBusqueda(true);
-              }}
+              onChange={manejarCambioBusqueda}
               onFocus={() => setMostrarBusqueda(true)}
               className="form-control-lg"
             />
@@ -129,7 +165,9 @@ const BusquedaProyecto: React.FC<BusquedaProyectoProps> = ({
                               onClick={() => manejarSeleccionProyecto(proyecto)}
                               style={obtenerEstiloFila(proyecto)}
                             >
-                              <td style={{ width: '30%' }}>{proyecto.codigo_proyecto}</td>
+                              <td style={{ width: '30%' }}>
+                                <strong>{proyecto.codigo_proyecto}</strong>
+                              </td>
                               <td style={{ width: mostrarValidacion ? '50%' : '70%' }}>
                                 {proyecto.titulo}
                               </td>
@@ -162,7 +200,7 @@ const BusquedaProyecto: React.FC<BusquedaProyectoProps> = ({
                       ) : (
                         <tr>
                           <td colSpan={mostrarValidacion ? 3 : 2} className="text-center py-2">
-                            No se encontraron proyectos
+                            {busquedaProyecto.trim() ? 'No se encontraron proyectos que coincidan con la búsqueda' : 'No hay proyectos disponibles'}
                           </td>
                         </tr>
                       )}

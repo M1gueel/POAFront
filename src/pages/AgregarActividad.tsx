@@ -29,9 +29,6 @@ const AgregarActividad: React.FC = () => {
   const [id_proyecto, setIdProyecto] = useState('');
   const [proyectoSeleccionado, setProyectoSeleccionado] = useState<Proyecto | null>(null);
   const [proyectos, setProyectos] = useState<Proyecto[]>([]);
-  const [proyectosFiltrados, setProyectosFiltrados] = useState<Proyecto[]>([]);
-  const [busquedaProyecto, setBusquedaProyecto] = useState('');
-  const [mostrarBusqueda, setMostrarBusqueda] = useState(false);
 
   // Estados para POAs y periodos
   const [poasProyecto, setPoasProyecto] = useState<any[]>([]);
@@ -81,7 +78,7 @@ const AgregarActividad: React.FC = () => {
         // Obtener proyectos desde la API
         const proyectosData = await projectAPI.getProyectos();
         setProyectos(proyectosData);
-        setProyectosFiltrados(proyectosData);
+        // ELIMINAR: setProyectosFiltrados(proyectosData);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error desconocido');
         console.error(err);
@@ -92,42 +89,6 @@ const AgregarActividad: React.FC = () => {
     
     cargarDatos();
   }, []);
-
-  // Filtrar proyectos según la búsqueda
-  useEffect(() => {
-    const filtrarProyectos = async () => {
-      if (busquedaProyecto.length > 0) {
-        setIsLoading(true);
-        setLoadingMessage('Filtrando proyectos...');
-        try {
-          // Usar el método getProyectos con filtro
-          const filtrados = await projectAPI.getProyectos({
-            codigo: busquedaProyecto,
-            titulo: busquedaProyecto
-          });
-          setProyectosFiltrados(filtrados);
-        } catch (err) {
-          console.error('Error al filtrar proyectos:', err);
-          // En caso de error, realizar filtrado en cliente con datos ya cargados
-          const filtrados = proyectos.filter(proyecto => 
-            proyecto.codigo_proyecto.toLowerCase().includes(busquedaProyecto.toLowerCase()) ||
-            proyecto.titulo.toLowerCase().includes(busquedaProyecto.toLowerCase())
-          );
-          setProyectosFiltrados(filtrados);
-        } finally {
-          setIsLoading(false);
-        }
-      } else {
-        setProyectosFiltrados(proyectos);
-      }
-    };
-    // Debounce para evitar demasiadas llamadas API durante la escritura
-    const timeoutId = setTimeout(() => {
-      filtrarProyectos();
-    }, 300);
-    
-    return () => clearTimeout(timeoutId);
-  }, [busquedaProyecto, proyectos]);
 
   // Inicializar las actividades disponibles por tipo de POA cuando cambian los POAs del proyecto
   useEffect(() => {
@@ -205,8 +166,6 @@ const AgregarActividad: React.FC = () => {
   // Seleccionar un proyecto y cargar sus POAs
   const seleccionarProyecto = async (proyecto: Proyecto) => {
     setIdProyecto(proyecto.id_proyecto);
-    setBusquedaProyecto(`${proyecto.codigo_proyecto} - ${proyecto.titulo}`);
-    setMostrarBusqueda(false);
     setProyectoSeleccionado(proyecto);
     
     try {
@@ -1117,12 +1076,8 @@ const confirmarSeleccionActividad = () => {
           <Form onSubmit={handleSubmit}>
             {/* Sección de Búsqueda de Proyecto */}
             <BusquedaProyecto 
-              busquedaProyecto={busquedaProyecto}
-              mostrarBusqueda={mostrarBusqueda}
+              proyectos={proyectos}
               isLoading={isLoading}
-              proyectosFiltrados={proyectosFiltrados}
-              setBusquedaProyecto={setBusquedaProyecto}
-              setMostrarBusqueda={setMostrarBusqueda}
               seleccionarProyecto={seleccionarProyecto}
             />
             
