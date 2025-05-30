@@ -226,7 +226,7 @@ const Dashboard: React.FC = () => {
   return (
     <div className="dashboard-container">
       <div className="dashboard-header mb-4">
-        <h1 className="dashboard-title">Gestión de Planes Operativos Anuales</h1>
+        <h1 className="dashboard-title">SGP -Gestión de Planes Operativos Anuales</h1>
       </div>
 
       <div className="kanban-board">

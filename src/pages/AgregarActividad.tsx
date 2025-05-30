@@ -124,7 +124,7 @@ const AgregarActividad: React.FC = () => {
           
           // Precargamos todas las actividades disponibles para este POA
           const actividadesPreCargadas: ActividadConTareas[] = [];
-          const actividadesPorTipo = getActividadesPorTipoPOA(poa.tipo_poa || 'PIM');
+          const actividadesPorTipo = getActividadesPorTipoPOA(poa.tipo_poa || 'PVIF');
           
           // Creamos una actividad precargada para cada actividad disponible
           actividadesPorTipo.forEach((act, index) => {
@@ -138,7 +138,7 @@ const AgregarActividad: React.FC = () => {
           nuevosPoasConActividades.push({
             id_poa: poa.id_poa,
             codigo_poa: poa.codigo_poa,
-            tipo_poa: poa.tipo_poa || 'PIM',
+            tipo_poa: poa.tipo_poa || 'PVIF',
             presupuesto_asignado: parseFloat(poa.presupuesto_asignado),
             actividades: actividadesPreCargadas, // Actividades precargadas
             detallesTarea // Guardamos los detalles de tarea disponibles
@@ -437,7 +437,7 @@ const confirmarSeleccionActividad = () => {
 
       // Obtener el tipo de POA actual
       const poaActual = poasConActividades.find(p => p.id_poa === currentPoa);
-      const tipoPoa = poaActual?.tipo_poa || 'PIM';
+      const tipoPoa = poaActual?.tipo_poa || 'PVIF'; // Valor por defecto si no hay tipo
       
       // Solo intentar cargar el ítem presupuestario si hay un ID válido
       if (detalleTarea.id_item_presupuestario) {
@@ -795,7 +795,7 @@ const confirmarSeleccionActividad = () => {
         indice = 2;
         break;
       default:
-        indice = 0; // Por defecto PIM
+        indice = 2; // Por defecto PVIF
     }
     
     const numero = numeros[indice];
@@ -806,12 +806,13 @@ const confirmarSeleccionActividad = () => {
   // Función para obtener el número de actividad del código de actividad
   const obtenerNumeroActividad = (codigoActividad: string): string => {
     // Manejar diferentes formatos de códigos de actividad
-    if (codigoActividad.includes('PTT')) {
-      // Para PTT: "ACT-PTT-1" -> "1"
+    if (codigoActividad.includes('PIM')) {
+      // Para PIM: "ACT-PIM-1" -> "1"
       const partes = codigoActividad.split('-');
       return partes[partes.length - 1] || '';
-    } else if (codigoActividad.includes('PVIF')) {
-      // Para PVIF: "ACT-PVIF-1" -> "1"
+      
+    } else if (codigoActividad.includes('PTT')) {
+      // Para PTT: "ACT-PTT-1" -> "1"
       const partes = codigoActividad.split('-');
       return partes[partes.length - 1] || '';
     } else {
@@ -826,32 +827,32 @@ const confirmarSeleccionActividad = () => {
     // Mapeo específico según el tipo de POA y las listas del segundo archivo
     const mapeos: { [key: string]: { [key: string]: string } } = {
       'PIM': {
-        'ACT-1': '1', 'ACT-2': '2', 'ACT-3': '3', 'ACT-4': '4', 'ACT-5': '5',
-        'ACT-6': '6', 'ACT-7': '7', 'ACT-8': '8', 'ACT-9': '9', 'ACT-10': '10', 'ACT-11': '11'
-      },
-      'PIGR': {
-        'ACT-1': '1', 'ACT-2': '2', 'ACT-3': '3', 'ACT-4': '4', 'ACT-5': '5',
-        'ACT-6': '6', 'ACT-7': '7', 'ACT-8': '8', 'ACT-9': '9', 'ACT-10': '10', 'ACT-11': '11'
-      },
-      'PIS': {
-        'ACT-1': '1', 'ACT-2': '2', 'ACT-3': '3', 'ACT-4': '4', 'ACT-5': '5',
-        'ACT-6': '6', 'ACT-7': '7', 'ACT-8': '8', 'ACT-9': '9', 'ACT-10': '10', 'ACT-11': '11'
-      },
-      'PIIF': {
-        'ACT-1': '1', 'ACT-2': '2', 'ACT-3': '3', 'ACT-4': '4', 'ACT-5': '5',
-        'ACT-6': '6', 'ACT-7': '7', 'ACT-8': '8', 'ACT-9': '9', 'ACT-10': '10', 'ACT-11': '11'
+        'ACT-PIM-1': '1', 'ACT-PIM-2': '2', 'ACT-PIM-3': '3', 'ACT-PIM-4': '4', 'ACT-PIM-5': '5', 'ACT-PIM-6': '6',
+        'ACT-PIM-7': '7', 'ACT-PIM-8': '8', 'ACT-PIM-9': '9', 'ACT-PIM-10': '10', 'ACT-PIM-11': '11', 'ACT-PIM-12': '12'
       },
       'PTT': {
         'ACT-PTT-1': '1', 'ACT-PTT-2': '2', 'ACT-PTT-3': '3', 'ACT-PTT-4': '4',
         'ACT-PTT-5': '5', 'ACT-PTT-6': '6', 'ACT-PTT-7': '7', 'ACT-PTT-8': '8'
       },
       'PVIF': {
-        'ACT-PVIF-1': '1', 'ACT-PVIF-2': '2', 'ACT-PVIF-3': '3', 'ACT-PVIF-4': '4',
-        'ACT-PVIF-5': '5', 'ACT-PVIF-6': '6', 'ACT-PVIF-7': '7', 'ACT-PVIF-8': '8'
+        'ACT-1': '1', 'ACT-2': '2', 'ACT-3': '3', 'ACT-4': '4',
+        'ACT-5': '5', 'ACT-6': '6', 'ACT-7': '7', 'ACT-8': '8'
       },
       'PVIS': {
-        'ACT-PVIF-1': '1', 'ACT-PVIF-2': '2', 'ACT-PVIF-3': '3', 'ACT-PVIF-4': '4',
-        'ACT-PVIF-5': '5', 'ACT-PVIF-6': '6', 'ACT-PVIF-7': '7', 'ACT-PVIF-8': '8'
+        'ACT-1': '1', 'ACT-2': '2', 'ACT-3': '3', 'ACT-4': '4',
+        'ACT-5': '5', 'ACT-6': '6', 'ACT-7': '7', 'ACT-8': '8'
+      },
+      'PIGR': {
+        'ACT-1': '1', 'ACT-2': '2', 'ACT-3': '3', 'ACT-4': '4',
+        'ACT-5': '5', 'ACT-6': '6', 'ACT-7': '7', 'ACT-8': '8'
+      },
+      'PIS': {
+       'ACT-1': '1', 'ACT-2': '2', 'ACT-3': '3', 'ACT-4': '4',
+        'ACT-5': '5', 'ACT-6': '6', 'ACT-7': '7', 'ACT-8': '8'
+      },
+      'PIIF': {
+        'ACT-1': '1', 'ACT-2': '2', 'ACT-3': '3', 'ACT-4': '4',
+        'ACT-5': '5', 'ACT-6': '6', 'ACT-7': '7', 'ACT-8': '8'
       }
     };
 
@@ -919,9 +920,6 @@ const confirmarSeleccionActividad = () => {
           let indice = 0;
           switch (tipoPoa) {
             case 'PIM':
-            case 'PIGR':
-            case 'PIS':
-            case 'PIIF':
               indice = 0;
               break;
             case 'PTT':
@@ -929,10 +927,13 @@ const confirmarSeleccionActividad = () => {
               break;
             case 'PVIF':
             case 'PVIS':
+            case 'PIGR':
+            case 'PIS':
+            case 'PIIF':
               indice = 2;
               break;
             default:
-              indice = 0;
+              indice = 2;
           }
           
           const numeroTarea = numeros[indice];
@@ -1009,9 +1010,6 @@ const confirmarSeleccionActividad = () => {
       let indice = 0;
       switch (tipoPoa) {
         case 'PIM':
-        case 'PIGR':
-        case 'PIS':
-        case 'PIIF':
           indice = 0;
           break;
         case 'PTT':
@@ -1019,6 +1017,9 @@ const confirmarSeleccionActividad = () => {
           break;
         case 'PVIF':
         case 'PVIS':
+        case 'PIGR':
+        case 'PIS':
+        case 'PIIF':
           indice = 2;
           break;
         default:
