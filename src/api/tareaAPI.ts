@@ -1,4 +1,4 @@
-import { DetalleTarea, Tarea, TareaCreate, TareaUpdate, ItemPresupuestario } from "../interfaces/tarea";
+import { DetalleTarea, Tarea, TareaCreate, TareaUpdate, ItemPresupuestario, ProgramacionMensualCreate } from "../interfaces/tarea";
 import { API } from "./userAPI";
 
     
@@ -90,7 +90,30 @@ export const tareaAPI = {
     getDetallesTareaPorPOA: async (idPoa: string): Promise<DetalleTarea[]> => {
         const response = await API.get(`/poas/${idPoa}/detalles_tarea`);
         return response.data;
-    }
+    },
+
+    // Crear programación mensual
+    crearProgramacionMensual: async (programacionData: ProgramacionMensualCreate): Promise<ProgramacionMensualOut> => {
+        try {
+            console.log("Creando programación mensual:", programacionData);
+            const response = await API.post("/programacion-mensual", programacionData);
+            console.log("Programación mensual creada exitosamente:", response.data);
+            return response.data;
+        } catch (error) {
+            console.error("Error al crear programación mensual:", error);
+            if (error.response) {
+                console.error("Respuesta del servidor:", error.response.data);
+                console.error("Status:", error.response.status);
+                
+                // Manejar el error específico de duplicación
+                if (error.response.status === 400 && 
+                    error.response.data?.detail === "Ya existe programación para ese mes y tarea.") {
+                    throw new Error("Ya existe una programación para ese mes y tarea");
+                }
+            }
+            throw error;
+        }
+    },
 
 
 }
