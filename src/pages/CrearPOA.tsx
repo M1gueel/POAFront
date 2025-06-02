@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { Form, Button, Container, Card, Row, Col, ListGroup, Badge, Collapse } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-import { Proyecto } from '../interfaces/project';
+import { Proyecto, TipoProyecto } from '../interfaces/project';
 import { EstadoPOA, TipoPOA, PoaCreate, POA } from '../interfaces/poa';
 import { Periodo, PeriodoCreate } from '../interfaces/periodo';
 import { poaAPI } from '../api/poaAPI';
@@ -38,6 +39,7 @@ const CrearPOA: React.FC = () => {
   const [periodos, setPeriodos] = useState<Periodo[]>([]);
   const [estadosPoa, setEstadosPoa] = useState<EstadoPOA[]>([]);
   const [tiposPoa, setTiposPoa] = useState<TipoPOA[]>([]);
+  const [tiposProyecto, setTiposProyecto] = useState<TipoProyecto[]>([]); // Nuevo estado
   const [tipoPoaSeleccionado, setTipoPoaSeleccionado] = useState<TipoPOA | null>(null);
 
   
@@ -92,11 +94,12 @@ const CrearPOA: React.FC = () => {
         const tiposData = await poaAPI.getTiposPOA();
         setTiposPoa(tiposData);
         
-        // Seleccionar automáticamente el primer tipo de POA
-        if (tiposData.length > 0) {
-          setIdTipoPoa(tiposData[0].id_tipo_poa);
-          setTipoPoaSeleccionado(tiposData[0]);
-        }
+        // Cargar tipos de proyecto desde la API - NUEVO
+        const tiposProyectoData = await projectAPI.getTiposProyecto();
+        setTiposProyecto(tiposProyectoData);
+        
+        // NO seleccionar automáticamente el primer tipo - se seleccionará según el proyecto
+        
         // Cargar periodos desde la API
         const periodosData = await periodoAPI.getPeriodos();
         setPeriodos(periodosData);
@@ -130,6 +133,33 @@ const CrearPOA: React.FC = () => {
     }
   }, [presupuestoPorPeriodo, proyectoSeleccionado]);
 
+  // Función para determinar el tipo de POA basado en el tipo de proyecto - NUEVA
+  const determinarTipoPOA = async (proyecto: Proyecto): Promise<TipoPOA | null> => {
+    try {
+      // Buscar el tipo de proyecto correspondiente
+      const tipoProyecto = tiposProyecto.find(tp => tp.id_tipo_proyecto === proyecto.id_tipo_proyecto);
+      
+      if (!tipoProyecto) {
+        console.warn('No se encontró el tipo de proyecto:', proyecto.id_tipo_proyecto);
+        return null;
+      }
+
+      // Usar la función del API para obtener el tipo POA correspondiente
+      const tipoPOA = await poaAPI.getTipoPOAByTipoProyecto(tipoProyecto.codigo_tipo);
+      
+      if (!tipoPOA) {
+        console.warn('No se encontró un tipo POA para el tipo de proyecto:', tipoProyecto.codigo_tipo);
+        // En caso de no encontrar coincidencia, usar el primer tipo disponible como fallback
+        return tiposPoa.length > 0 ? tiposPoa[0] : null;
+      }
+
+      return tipoPOA;
+    } catch (error) {
+      console.error('Error determinando tipo POA:', error);
+      // En caso de error, usar el primer tipo disponible como fallback
+      return tiposPoa.length > 0 ? tiposPoa[0] : null;
+    }
+  };
 
   const calcularPresupuestoRestante = async (proyecto: Proyecto, presupuestoActualAsignado: number = 0) => {
     try {
@@ -289,6 +319,21 @@ const CrearPOA: React.FC = () => {
     setProyectoSeleccionado(proyecto);
     
     try {
+      // DETERMINAR EL TIPO DE POA CORRECTO - MODIFICADO
+      const tipoPOADeterminado = await determinarTipoPOA(proyecto);
+      if (tipoPOADeterminado) {
+        setIdTipoPoa(tipoPOADeterminado.id_tipo_poa);
+        setTipoPoaSeleccionado(tipoPOADeterminado);
+        console.log('Tipo POA asignado:', {
+          id: tipoPOADeterminado.id_tipo_poa,
+          codigo: tipoPOADeterminado.codigo_tipo,
+          nombre: tipoPOADeterminado.nombre
+        });
+      } else {
+        console.warn('No se pudo determinar el tipo POA para el proyecto');
+        setError('No se pudo determinar el tipo de POA adecuado para este proyecto');
+      }
+      
       // Establecer el código POA base basado en el código del proyecto
       setCodigoPoaBase(`${proyecto.codigo_proyecto}-POA`);
 
