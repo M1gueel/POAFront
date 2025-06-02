@@ -14,26 +14,13 @@ import BusquedaProyecto from '../components/BusquedaProyecto';
 import ExportarPOA from '../components/ExportarPOA';
 
 // Interfaces para actividades
-import { ActividadCreate, ActividadForm, POAConActividades, ActividadConTareas, POAConActividadesYTareas } from '../interfaces/actividad';
+import { ActividadCreate, ActividadConTareas, POAConActividadesYTareas } from '../interfaces/actividad';
 
 // Interfaces para tareas
-import { DetalleTarea, ItemPresupuestario, Tarea, TareaCreate, TareaForm } from '../interfaces/tarea';
+import { DetalleTarea, ItemPresupuestario, TareaCreate, TareaForm } from '../interfaces/tarea';
 
 // Importamos la lista de actividades
 import { getActividadesPorTipoPOA, ActividadOpciones } from '../utils/listaActividades';
-
-// Interfaces adicionales para logging
-interface TareaResponse {
-  id_tarea: string;
-  total: number;
-  [key: string]: any;
-}
-
-interface ProgramacionMensualCreate {
-  id_tarea: string;
-  mes: string;
-  valor: string;
-}
 
 const AgregarActividad: React.FC = () => {
   const navigate = useNavigate();
@@ -109,15 +96,21 @@ const AgregarActividad: React.FC = () => {
     const nuevasActividadesSeleccionadas: {[key: string]: string[]} = {};
 
     poasProyecto.forEach(poa => {
-    const tipoPOA = poa.tipo_poa || 'PIM'; // Valor por defecto si no hay tipo
-    nuevasActividadesDisponibles[poa.id_poa] = getActividadesPorTipoPOA(tipoPOA);
-    nuevasActividadesSeleccionadas[poa.id_poa] = [];
-  });
+      // CORRECCIÓN: Asegurar que tipo_poa tenga un valor válido
+      const tipoPOA = poa.tipo_poa || 'PVIF'; // Valor por defecto si no hay tipo
+      console.log(`POA ${poa.id_poa} (${poa.codigo_poa}) - Tipo: ${tipoPOA}`); // Debug
+      
+      // CORRECCIÓN: Obtener las actividades correctas según el tipo
+      const actividadesPorTipo = getActividadesPorTipoPOA(tipoPOA);
+      console.log(`Actividades para ${tipoPOA}:`, actividadesPorTipo); // Debug
+      
+      nuevasActividadesDisponibles[poa.id_poa] = actividadesPorTipo;
+      nuevasActividadesSeleccionadas[poa.id_poa] = [];
+    });
     
+    console.log('Actividades disponibles por POA:', nuevasActividadesDisponibles); // Debug
     setActividadesDisponiblesPorPoa(nuevasActividadesDisponibles);
     setActividadesSeleccionadasPorPoa(nuevasActividadesSeleccionadas);
-    // Si no hay pestaña activa, seleccionar la primera
-    
   }, [poasProyecto]);
 
   // Inicializar la estructura de poasConActividades cuando cambian los POAs y precarga las actividades
@@ -135,29 +128,37 @@ const AgregarActividad: React.FC = () => {
         for (const poa of poasProyecto) {
           const detallesTarea = await tareaAPI.getDetallesTareaPorPOA(poa.id_poa);
           
+          // CORRECCIÓN: Usar el tipo correcto del POA para obtener las actividades
+          const tipoPOA = poa.tipo_poa || 'PVIF';
+          const actividadesPorTipo = getActividadesPorTipoPOA(tipoPOA);
+          
+          console.log(`Precargando actividades para POA ${poa.codigo_poa} (${tipoPOA}):`, actividadesPorTipo);
+          
           // Precargamos todas las actividades disponibles para este POA
           const actividadesPreCargadas: ActividadConTareas[] = [];
-          const actividadesPorTipo = getActividadesPorTipoPOA(poa.tipo_poa || 'PVIF');
           
           // Creamos una actividad precargada para cada actividad disponible
           actividadesPorTipo.forEach((act, index) => {
             actividadesPreCargadas.push({
               actividad_id: `pre-${poa.id_poa}-${act.id}-${Date.now()}-${index}`,
-              codigo_actividad: act.id,
+              codigo_actividad: act.id, // CORRECCIÓN: Precargar con el código ya asignado
               tareas: []
             });
           });
           
+          console.log(`Actividades precargadas para ${poa.codigo_poa}:`, actividadesPreCargadas);
+          
           nuevosPoasConActividades.push({
             id_poa: poa.id_poa,
             codigo_poa: poa.codigo_poa,
-            tipo_poa: poa.tipo_poa || 'PVIF',
+            tipo_poa: tipoPOA, // CORRECCIÓN: Usar el tipo correcto
             presupuesto_asignado: parseFloat(poa.presupuesto_asignado),
-            actividades: actividadesPreCargadas, // Actividades precargadas
+            actividades: actividadesPreCargadas, // Actividades precargadas con códigos
             detallesTarea // Guardamos los detalles de tarea disponibles
           });
         }
         
+        console.log('POAs con actividades precargadas:', nuevosPoasConActividades);
         setPoasConActividades(nuevosPoasConActividades);
         
         // Si no hay pestaña activa, seleccionar la primera
@@ -166,7 +167,7 @@ const AgregarActividad: React.FC = () => {
         }
         
       } catch (err) {
-        console.error('Error al cargar detalles de tarea:', err);
+        console.error('Error al cargar los detalles de tareas:', err);
         setError('Error al cargar los detalles de tareas');
       } finally {
         setIsLoading(false);
@@ -220,16 +221,23 @@ const AgregarActividad: React.FC = () => {
     const poa = poasConActividades.find(p => p.id_poa === poaId);
     if (!poa) return;
     
-    // Obtener actividades disponibles para este POA
-    const actividadesDisponibles = actividadesDisponiblesPorPoa[poaId] || [];
+    // CORRECCIÓN: Obtener actividades disponibles usando el tipo correcto del POA
+    const actividadesDisponibles = getActividadesPorTipoPOA(poa.tipo_poa);
+    console.log(`Actividades disponibles para agregar en ${poa.codigo_poa}:`, actividadesDisponibles);
     
     // Obtener códigos de actividades ya seleccionadas
-    const actividadesYaSeleccionadas = poa.actividades.map(act => act.codigo_actividad).filter(codigo => codigo !== "");
+    const actividadesYaSeleccionadas = poa.actividades
+      .map(act => act.codigo_actividad)
+      .filter(codigo => codigo && codigo !== "");
+    
+    console.log(`Actividades ya seleccionadas en ${poa.codigo_poa}:`, actividadesYaSeleccionadas);
     
     // Filtrar actividades no utilizadas
     const actividadesNoUtilizadas = actividadesDisponibles.filter(
       act => !actividadesYaSeleccionadas.includes(act.id)
     );
+    
+    console.log(`Actividades no utilizadas en ${poa.codigo_poa}:`, actividadesNoUtilizadas);
     
     // Si no hay actividades disponibles, mostrar mensaje
     if (actividadesNoUtilizadas.length === 0) {
@@ -261,14 +269,32 @@ const AgregarActividad: React.FC = () => {
       return;
     }
 
-    // Buscar la actividad precargada que corresponde al código seleccionado
-    const actividadPrecargada = poa.actividades.find(act => 
-      act.codigo_actividad === "" && act.actividad_id.startsWith(`pre-${poaId}`)
+    // CORRECCIÓN: Buscar una actividad vacía (sin código) o crear una nueva
+    let actividadPrecargada = poa.actividades.find(act => 
+      !act.codigo_actividad || act.codigo_actividad === ""
     );
 
+    // Si no hay actividad vacía, crear una nueva
     if (!actividadPrecargada) {
-      setError('No se encontró una actividad disponible para configurar');
-      return;
+      const nuevaActividad: ActividadConTareas = {
+        actividad_id: `new-${poaId}-${actividadSeleccionadaModal}-${Date.now()}`,
+        codigo_actividad: "",
+        tareas: []
+      };
+      
+      // Actualizar el POA con la nueva actividad
+      const nuevosPoasConActividades = poasConActividades.map(poaActual => {
+        if (poaActual.id_poa === poaId) {
+          return {
+            ...poaActual,
+            actividades: [...poaActual.actividades, nuevaActividad]
+          };
+        }
+        return poaActual;
+      });
+      
+      setPoasConActividades(nuevosPoasConActividades);
+      actividadPrecargada = nuevaActividad;
     }
 
     // Si es el primer POA, replicar la selección a todos los POAs
@@ -277,22 +303,53 @@ const AgregarActividad: React.FC = () => {
     // Actualizar el estado de POAs con actividades
     const nuevosPoasConActividades = poasConActividades.map(poaActual => {
       if (poaActual.id_poa === poaId || (isFirstPoa && poaActual.id_poa !== poaId)) {
-        // Buscar la actividad precargada correspondiente en este POA
-        const actPrecargadaLocal = poaActual.actividades.find(act => 
-          act.codigo_actividad === "" && 
-          act.actividad_id.includes(actividadSeleccionadaModal.replace('ACT-', ''))
-        );
+        // CORRECCIÓN: Buscar o crear actividad para actualizar
+        let actPrecargadaLocal;
         
-        if (actPrecargadaLocal) {
-          // Actualizar la actividad precargada con el código seleccionado
-          const actividadesActualizadas = poaActual.actividades.map(act => 
-            act.actividad_id === actPrecargadaLocal.actividad_id
-              ? { ...act, codigo_actividad: actividadSeleccionadaModal }
-              : act
+        if (poaActual.id_poa === poaId) {
+          // Para el POA actual, usar la actividad que encontramos
+          actPrecargadaLocal = actividadPrecargada;
+        } else {
+          // Para otros POAs, buscar una actividad vacía o crear una nueva
+          actPrecargadaLocal = poaActual.actividades.find(act => 
+            !act.codigo_actividad || act.codigo_actividad === ""
           );
           
-          // Ordenar según el orden de actividades disponibles
-          const actividadesDisponibles = actividadesDisponiblesPorPoa[poaActual.id_poa] || [];
+          if (!actPrecargadaLocal) {
+            // Crear nueva actividad para este POA
+            actPrecargadaLocal = {
+              actividad_id: `new-${poaActual.id_poa}-${actividadSeleccionadaModal}-${Date.now()}`,
+              codigo_actividad: "",
+              tareas: []
+            };
+          }
+        }
+        
+        if (actPrecargadaLocal) {
+          // Actualizar o añadir la actividad con el código seleccionado
+          let actividadesActualizadas;
+          
+          const actividadExiste = poaActual.actividades.some(act => 
+            act.actividad_id === actPrecargadaLocal!.actividad_id
+          );
+          
+          if (actividadExiste) {
+            // Actualizar actividad existente
+            actividadesActualizadas = poaActual.actividades.map(act => 
+              act.actividad_id === actPrecargadaLocal!.actividad_id
+                ? { ...act, codigo_actividad: actividadSeleccionadaModal }
+                : act
+            );
+          } else {
+            // Añadir nueva actividad
+            actividadesActualizadas = [
+              ...poaActual.actividades,
+              { ...actPrecargadaLocal, codigo_actividad: actividadSeleccionadaModal }
+            ];
+          }
+          
+          // CORRECCIÓN: Ordenar según el orden de actividades disponibles del tipo correcto
+          const actividadesDisponibles = getActividadesPorTipoPOA(poaActual.tipo_poa);
           actividadesActualizadas.sort((a, b) => {
             const indexA = actividadesDisponibles.findIndex(act => act.id === a.codigo_actividad);
             const indexB = actividadesDisponibles.findIndex(act => act.id === b.codigo_actividad);
@@ -316,13 +373,12 @@ const AgregarActividad: React.FC = () => {
     
     // Hacer scroll a la actividad actualizada
     setTimeout(() => {
-      const activityElement = document.getElementById(`actividad-${actividadPrecargada.actividad_id}`);
+      const activityElement = document.getElementById(`actividad-${actividadPrecargada?.actividad_id}`);
       if (activityElement) {
         activityElement.scrollIntoView({ behavior: 'smooth' });
       }
     }, 100);
   };
-
 
   // Eliminar actividad de un POA específico
   const eliminarActividad = (poaId: string, actividadId: string) => {
@@ -670,8 +726,14 @@ const AgregarActividad: React.FC = () => {
 
   // Obtener la descripción de una actividad a partir de su código
   const getDescripcionActividad = (poaId: string, codigoActividad: string) => {
-    const actividadesDisponibles = actividadesDisponiblesPorPoa[poaId] || [];
+    // CORRECCIÓN: Obtener el POA para usar su tipo correcto
+    const poa = poasConActividades.find(p => p.id_poa === poaId);
+    if (!poa) return 'POA no encontrado';
+    
+    // Usar el tipo del POA para obtener las actividades correctas
+    const actividadesDisponibles = getActividadesPorTipoPOA(poa.tipo_poa);
     const actividad = actividadesDisponibles.find(act => act.id === codigoActividad);
+    
     return actividad ? actividad.descripcion : 'Seleccione una actividad';
   };
 
@@ -975,7 +1037,7 @@ const AgregarActividad: React.FC = () => {
 
       // Opcional: redirigir a otra página después de un tiempo
       setTimeout(() => {
-        navigate('/poas');
+        navigate('/Dashboard');
       }, 3000);
     } catch (err) {
       console.error('Error al crear actividades y tareas:', err);
@@ -1213,48 +1275,6 @@ const AgregarActividad: React.FC = () => {
     // Retornar solo los detalles, no los objetos con metadata
     return filtradosOrdenados.map(item => item.detalle);
   };
-
-  /*
-  // Función auxiliar para obtener el número de tarea haciendo consulta individual
-  const obtenerNumeroTareaConConsulta = async (
-    idItemPresupuestario: string, 
-    tipoPoa: string,
-    getItemPresupuestarioPorId: (id: string) => Promise<ItemPresupuestario>
-  ): Promise<string> => {
-    try {
-      const itemPresupuestario = await getItemPresupuestarioPorId(idItemPresupuestario);
-      
-      if (!itemPresupuestario?.nombre) return '';
-      
-      const numeros = itemPresupuestario.nombre.split('; ');
-      if (numeros.length !== 3) return '';
-      
-      let indice = 0;
-      switch (tipoPoa) {
-        case 'PIM':
-          indice = 0;
-          break;
-        case 'PTT':
-          indice = 1;
-          break;
-        case 'PVIF':
-        case 'PVIS':
-        case 'PIGR':
-        case 'PIS':
-        case 'PIIF':
-          indice = 2;
-          break;
-        default:
-          indice = 0;
-      }
-      
-      return numeros[indice];
-    } catch (error) {
-      console.error('Error al obtener número de tarea:', error);
-      return '';
-    }
-  };
-  */
 
   // Cache simple para evitar consultas repetidas
   const cacheItemsPresupuestarios = new Map<string, ItemPresupuestario>();
@@ -1591,7 +1611,7 @@ const AgregarActividad: React.FC = () => {
             {proyectoSeleccionado && poasProyecto.length > 0 && (
               <Row className="mt-4">
                 <Col className="d-flex justify-content-center">
-                  <Button variant="secondary" className="me-2" onClick={() => navigate('/poas')}>
+                  <Button variant="secondary" className="me-2" onClick={() => navigate('/Dashboard')}>
                     Cancelar
                   </Button>
                   <Button variant="primary" type="submit" disabled={isLoading}>
