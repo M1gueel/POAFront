@@ -4,21 +4,6 @@ import { API } from "./userAPI";
     
 export const tareaAPI = {
 
-    //Obtener detalles tarea segun el tipo de POA
-    // getDetallesTareaPorTipoPoa: async (idPoa: string): Promise<DetalleTarea[]> => {
-    //     try {
-    //         const response = await API.get(`/poas/${idPoa}/detalles_tarea`);
-    //         return response.data;
-    //     } catch (error) {
-    //         console.error("Error al obtener detalles de tarea por tipo de POA:", error);
-    //         if (error.response) {
-    //             console.error("Respuesta del servidor:", error.response.data);
-    //             console.error("Status:", error.response.status);
-    //         }
-    //         throw error;
-    //     }
-    // },
-
     // Obtener item presupuestario por id
     getItemPresupuestarioPorId: async (idItemPresupuestario: string): Promise<ItemPresupuestario> => {
         try {

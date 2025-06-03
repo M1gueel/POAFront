@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Form, Button, Container, Card, Row, Col, ListGroup, Spinner, Tabs, Tab, Toast, Alert, Modal, InputGroup } from 'react-bootstrap';
+import { Form, Button, Container, Card, Row, Col, ListGroup, Spinner, Tabs, Tab, Alert, Modal, InputGroup } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { Proyecto } from '../interfaces/project';
 import { Periodo } from '../interfaces/periodo';
@@ -942,8 +942,8 @@ const AgregarActividad: React.FC = () => {
                   id_detalle_tarea: tarea.id_detalle_tarea,
                   nombre: tarea.nombre,
                   detalle_descripcion: tarea.detalle_descripcion,
-                  cantidad: tarea.cantidad,
-                  precio_unitario: tarea.precio_unitario
+                  cantidad: tarea.cantidad.toString(),
+                  precio_unitario: tarea.precio_unitario.toString()
                 };
                 
                 console.log(`      📡 Enviando tarea al API...`);
@@ -1344,7 +1344,7 @@ const AgregarActividad: React.FC = () => {
                     </Card.Header>
                     <Card.Body>
                       <ListGroup>
-                        {poasProyecto.map((poa, index) => (
+                        {poasProyecto.map((poa) => (
                           <ListGroup.Item key={poa.id_poa} className="mb-2">
                             <Row>
                               <Col md={6}>
@@ -1353,7 +1353,7 @@ const AgregarActividad: React.FC = () => {
                                 <p className="mb-1"><strong>Tipo:</strong> {poa.tipo_poa || 'No especificado'}</p>
                               </Col>
                               <Col md={6}>
-                                <p className="mb-1"><strong>Presupuesto Asignado:</strong> ${parseFloat(poa.presupuesto_asignado).toLocaleString('es-CO')}</p>
+                                <p className="mb-1"><strong>Presupuesto Asignado:</strong> ${parseFloat(poa.presupuesto_asignado.toString()).toLocaleString('es-CO')}</p>
                                 {poa.periodo && <p className="mb-1"><strong>Periodo:</strong> {poa.periodo.nombre_periodo}</p>}
                               </Col>
                             </Row>
@@ -1376,7 +1376,7 @@ const AgregarActividad: React.FC = () => {
                       codigo_poa: poa.codigo_poa,
                       anio_ejecucion: poa.anio_ejecucion,
                       //tipo_poa: poa.tipo_poa || 'No especificado',
-                      presupuesto_asignado: parseFloat(poa.presupuesto_asignado)
+                      presupuesto_asignado: poa.presupuesto_asignado
                     }))}
                     onExport={() => setSuccess("POA exportado correctamente")}
                   />
