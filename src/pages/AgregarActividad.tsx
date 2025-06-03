@@ -468,15 +468,20 @@ const AgregarActividad: React.FC = () => {
           poa.tipo_poa,
           (id: string) => getItemPresupuestarioConCache(id, tareaAPI.getItemPresupuestarioPorId)
         );
-        setDetallesFiltrados(detallesFiltradosParaActividad);
+        
+        // NUEVO: Agrupar detalles duplicados
+        const detallesAgrupados = await agruparDetallesDuplicados(
+          detallesFiltradosParaActividad,
+          (id: string) => getItemPresupuestarioConCache(id, tareaAPI.getItemPresupuestarioPorId)
+        );
+        
+        setDetallesFiltrados(detallesAgrupados);
       } catch (error) {
-        console.error('Error al filtrar detalles:', error);
-        setDetallesFiltrados(poa.detallesTarea); // Fallback: mostrar todos
+        setDetallesFiltrados(poa.detallesTarea);
       } finally {
         setCargandoDetalles(false);
       }
     } else {
-      // Si no hay actividad seleccionada, mostrar todos los detalles
       setDetallesFiltrados(poa?.detallesTarea || []);
     }
     
@@ -509,122 +514,88 @@ const AgregarActividad: React.FC = () => {
 
 
   const handleDetalleTareaChange = async (idDetalleTarea: string) => {
-  if (!currentTarea || !currentPoa) return;
-  
-  console.log("handleDetalleTareaChange llamado con ID:", idDetalleTarea);
-  console.log("currentPoa:", currentPoa);
-  console.log("currentTarea existe:", !!currentTarea);
-
-  const poa = poasConActividades.find(p => p.id_poa === currentPoa);
-  if (!poa) return;
-  
-  const detalleTarea = poa.detallesTarea.find(dt => dt.id_detalle_tarea === idDetalleTarea);
-  
-  if (detalleTarea) {
-    console.log("=== DETALLE DE TAREA ENCONTRADO ===");
-    console.log("detalleTarea completo:", detalleTarea);
-    console.log("id_item_presupuestario:", detalleTarea.id_item_presupuestario);
-    console.log("nombre del detalle:", detalleTarea.nombre);
-    console.log("descripcion del detalle:", detalleTarea.descripcion);
-
-    setIsLoading(true);
-    setLoadingMessage('Cargando información del ítem presupuestario...');
+    if (!currentTarea || !currentPoa) return;
     
-    try {
-      // Preparar la tarea actualizada con la información básica
-      let tareaActualizada = {
-        ...currentTarea,
-        id_detalle_tarea: idDetalleTarea,
-        nombre: detalleTarea.nombre || '',
-        detalle_descripcion: detalleTarea.descripcion || '',
-        detalle: detalleTarea,
-        saldo_disponible: currentTarea.total || 0,
-        codigo_item: 'N/A', // Valor por defecto
-      };
-
-      // Obtener el tipo de POA actual
-      const poaActual = poasConActividades.find(p => p.id_poa === currentPoa);
-      const tipoPoa = poaActual?.tipo_poa || 'PVIF'; // Valor por defecto si no hay tipo
+    const detalleTarea = detallesFiltrados.find(dt => dt.id_detalle_tarea === idDetalleTarea);
+    
+    if (detalleTarea) {
+      setIsLoading(true);
+      setLoadingMessage('Cargando información del ítem presupuestario...');
       
-      // Solo intentar cargar el ítem presupuestario si hay un ID válido
-      if (detalleTarea.id_item_presupuestario) {
-        try {
-          console.log("=== CONSULTANDO ÍTEM PRESUPUESTARIO ===");
-          console.log("ID a consultar:", detalleTarea.id_item_presupuestario);
-          console.log("Tipo del ID:", typeof detalleTarea.id_item_presupuestario);
+      try {
+        const poaActual = poasConActividades.find(p => p.id_poa === currentPoa);
+        const tipoPoa = poaActual?.tipo_poa || 'PVIF';
+        
+        // Preparar la tarea actualizada con la información básica
+        let tareaActualizada = {
+          ...currentTarea,
+          id_detalle_tarea: idDetalleTarea,
+          nombre: detalleTarea.nombre || '',
+          detalle_descripcion: detalleTarea.descripcion || '',
+          detalle: detalleTarea,
+          saldo_disponible: currentTarea.total || 0,
+          codigo_item: 'N/A',
+        };
 
-          const item = await tareaAPI.getItemPresupuestarioPorId(detalleTarea.id_item_presupuestario);
-          console.log("=== RESPUESTA DEL API ÍTEM PRESUPUESTARIO ===");
-          console.log("Respuesta completa del item presupuestario:", item);
-          console.log("Estructura de la respuesta:", {
-            tieneCodigoDirecto: !!item.codigo,
-            tieneData: !!item,
-            tieneCodigo: item ? !!item.codigo : false,
-            keys: Object.keys(item)
-          });
-
-          if (item) {
-            // Verificar diferentes posibles ubicaciones del código
-            let codigoItem = 'N/D';
-
-            console.log("=== EXTRAYENDO CÓDIGO DEL ÍTEM ===");
-            if (item.codigo) {
-              codigoItem = item.codigo;
-              console.log("✓ Código encontrado en item.codigo:", codigoItem);
-            } else if (item && item.codigo) {
-              codigoItem = item.codigo;
-              console.log("✓ Código encontrado en item.data.codigo:", codigoItem);
-            } else {
-              console.log("✗ Código NO encontrado");
-              console.log("Estructura completa del item:", JSON.stringify(item, null, 2));
-              console.log("¿Tiene propiedad codigo?", item.hasOwnProperty('codigo'));
-              console.log("Valor de item.codigo:", item.codigo);
-              console.log("Todas las propiedades del item:", Object.getOwnPropertyNames(item));
-            }
-
-            console.log("Código final asignado:", codigoItem);
-            
-            // Obtener el número de tarea según el tipo de POA
-            const numeroTarea = obtenerNumeroTarea(item, tipoPoa);
-
-            tareaActualizada = {
-              ...tareaActualizada,
-              itemPresupuestario: item,
-              codigo_item: codigoItem,
-              numero_tarea: numeroTarea,
-              // Si hay número de tarea, usarlo como prefijo en el nombre
-              nombre: numeroTarea ? `${numeroTarea} - ${detalleTarea.nombre || ''}` : (detalleTarea.nombre || '')
-            };
-          }
-        } catch (itemError) {
-          console.error('=== ERROR AL CARGAR ÍTEM PRESUPUESTARIO ===');
-          console.error('Error completo:', itemError);
-          if (typeof itemError === 'object' && itemError !== null && 'response' in itemError) {
-            // @ts-ignore
-            console.error('Respuesta del error:', itemError.response);
-            // @ts-ignore
-            console.error('Status del error:', itemError.response?.status);
-            // @ts-ignore
-            console.error('Data del error:', itemError.response?.data);
-          }
+        // Si tiene múltiples items, usar el primero por defecto
+        if (detalleTarea.tiene_multiples_items && detalleTarea.items_presupuestarios && detalleTarea.items_presupuestarios.length > 0) {
+          const itemPorDefecto = detalleTarea.items_presupuestarios[0];
+          const numeroTarea = obtenerNumeroTarea(itemPorDefecto, tipoPoa);
+          
           tareaActualizada = {
             ...tareaActualizada,
-            codigo_item: 'Error'
+            itemPresupuestario: itemPorDefecto,
+            codigo_item: itemPorDefecto.codigo || 'N/D',
+            numero_tarea: numeroTarea,
+            id_item_presupuestario_seleccionado: itemPorDefecto.id_item_presupuestario,
+            nombre: numeroTarea ? `${numeroTarea} - ${detalleTarea.nombre || ''}` : (detalleTarea.nombre || '')
+          };
+        } else if (detalleTarea.item_presupuestario) {
+          // Un solo item, usar directamente
+          const numeroTarea = obtenerNumeroTarea(detalleTarea.item_presupuestario, tipoPoa);
+          
+          tareaActualizada = {
+            ...tareaActualizada,
+            itemPresupuestario: detalleTarea.item_presupuestario,
+            codigo_item: detalleTarea.item_presupuestario.codigo || 'N/D',
+            numero_tarea: numeroTarea,
+            nombre: numeroTarea ? `${numeroTarea} - ${detalleTarea.nombre || ''}` : (detalleTarea.nombre || '')
           };
         }
+        
+        setCurrentTarea(tareaActualizada);
+        
+      } catch (err) {
+        setError('Error al procesar el detalle de tarea');
+      } finally {
+        setIsLoading(false);
       }
-      
-      // Actualizar el estado una sola vez con toda la información
-      setCurrentTarea(tareaActualizada);
-      
-    } catch (err) {
-      console.error('Error general en handleDetalleTareaChange:', err);
-      setError('Error al procesar el detalle de tarea');
-    } finally {
-      setIsLoading(false);
     }
-  }
-};
+  };
+
+  // Nueva función para manejar el cambio del item presupuestario seleccionado
+  const handleItemPresupuestarioChange = async (idItemPresupuestario: string) => {
+    if (!currentTarea || !currentTarea.detalle) return;
+    
+    const item = currentTarea.detalle.items_presupuestarios?.find(
+      item => item.id_item_presupuestario === idItemPresupuestario
+    );
+    
+    if (item) {
+      const poaActual = poasConActividades.find(p => p.id_poa === currentPoa);
+      const tipoPoa = poaActual?.tipo_poa || 'PVIF';
+      const numeroTarea = obtenerNumeroTarea(item, tipoPoa);
+      
+      setCurrentTarea(prev => ({
+        ...prev!,
+        itemPresupuestario: item,
+        codigo_item: item.codigo || 'N/D',
+        numero_tarea: numeroTarea,
+        id_item_presupuestario_seleccionado: idItemPresupuestario,
+        nombre: numeroTarea ? `${numeroTarea} - ${currentTarea.detalle!.nombre || ''}` : (currentTarea.detalle!.nombre || '')
+      }));
+    }
+  };
 
   // Guardar tarea (nueva o editada)
     const guardarTarea = () => {
@@ -651,6 +622,12 @@ const AgregarActividad: React.FC = () => {
         return;
       }
 
+      // Nueva validación para items múltiples
+      if (currentTarea.detalle?.tiene_multiples_items && !currentTarea.id_item_presupuestario_seleccionado) {
+        setError('Debe seleccionar un código de ítem presupuestario');
+        return;
+      }
+
       // Validar que haya planificación mensual
       const totalPlanificado = currentTarea.gastos_mensuales?.reduce((sum, val) => sum + (val || 0), 0) || 0;
       if (totalPlanificado === 0) {
@@ -663,7 +640,10 @@ const AgregarActividad: React.FC = () => {
         ...currentTarea,
         cantidad: Math.floor(currentTarea.cantidad),
         precio_unitario: parseFloat(currentTarea.precio_unitario.toString()),
-        // No calculamos total ni saldo_disponible aquí, lo hace el backend
+        // Para items múltiples, usar el seleccionado; sino usar el del detalle original
+        id_detalle_tarea: currentTarea.detalle?.tiene_multiples_items 
+          ? currentTarea.id_detalle_tarea // Mantener el ID del detalle agrupado
+          : currentTarea.id_detalle_tarea
       };
 
       // Actualizar las tareas en el estado local
@@ -1266,6 +1246,69 @@ const AgregarActividad: React.FC = () => {
     return filtradosOrdenados.map(item => item.detalle);
   };
 
+  // Función para agrupar detalles de tarea con el mismo nombre y descripción
+  const agruparDetallesDuplicados = async (
+    detallesFiltrados: DetalleTarea[],
+    getItemPresupuestarioPorId: (id: string) => Promise<ItemPresupuestario>
+  ): Promise<DetalleTarea[]> => {
+    // Agrupar por nombre y descripción
+    const grupos = new Map<string, DetalleTarea[]>();
+    
+    detallesFiltrados.forEach(detalle => {
+      const clave = `${detalle.nombre}|${detalle.descripcion || ''}`;
+      if (!grupos.has(clave)) {
+        grupos.set(clave, []);
+      }
+      grupos.get(clave)!.push(detalle);
+    });
+    
+    // Procesar cada grupo
+    const detallesProcessados: DetalleTarea[] = [];
+    
+    for (const [clave, detallesGrupo] of grupos.entries()) {
+      if (detallesGrupo.length === 1) {
+        // Solo un detalle, procesar normalmente
+        const detalle = detallesGrupo[0];
+        try {
+          const item = await getItemPresupuestarioPorId(detalle.id_item_presupuestario);
+          detallesProcessados.push({
+            ...detalle,
+            item_presupuestario: item,
+            tiene_multiples_items: false
+          });
+        } catch (error) {
+          detallesProcessados.push({
+            ...detalle,
+            tiene_multiples_items: false
+          });
+        }
+      } else {
+        // Múltiples detalles con mismo nombre, obtener todos los items
+        const items: ItemPresupuestario[] = [];
+        
+        for (const detalle of detallesGrupo) {
+          try {
+            const item = await getItemPresupuestarioPorId(detalle.id_item_presupuestario);
+            items.push(item);
+          } catch (error) {
+            console.error(`Error al obtener item ${detalle.id_item_presupuestario}:`, error);
+          }
+        }
+        
+        // Crear un solo detalle con múltiples items
+        const detalleBase = detallesGrupo[0];
+        detallesProcessados.push({
+          ...detalleBase,
+          items_presupuestarios: items,
+          tiene_multiples_items: true,
+          item_presupuestario: items[0] // Item por defecto
+        });
+      }
+    }
+    
+    return detallesProcessados;
+  };
+
   // Cache simple para evitar consultas repetidas
   const cacheItemsPresupuestarios = new Map<string, ItemPresupuestario>();
 
@@ -1692,19 +1735,33 @@ const AgregarActividad: React.FC = () => {
                   )}
                 </Form.Group>
                 
-                {/* Campo para mostrar el código del ítem */}
+                {/* Campo para mostrar/seleccionar el código del ítem */}
                 <Form.Group className="mb-3">
                   <Form.Label>Código del Ítem</Form.Label>
-                  <Form.Control
-                    type="text"
-                    value={currentTarea?.codigo_item || ''}
-                    disabled
-                    onChange={() => {
-                      console.log("Código del ítem actual:", currentTarea?.codigo_item);
-                    }}
-                  />
+                  {currentTarea?.detalle?.tiene_multiples_items ? (
+                    <Form.Select
+                      value={currentTarea?.id_item_presupuestario_seleccionado || ''}
+                      onChange={(e) => handleItemPresupuestarioChange(e.target.value)}
+                    >
+                      <option value="">Seleccione un código...</option>
+                      {currentTarea.detalle.items_presupuestarios?.map((item) => (
+                        <option key={item.id_item_presupuestario} value={item.id_item_presupuestario}>
+                          {item.codigo}
+                        </option>
+                      ))}
+                    </Form.Select>
+                  ) : (
+                    <Form.Control
+                      type="text"
+                      value={currentTarea?.codigo_item || ''}
+                      disabled
+                    />
+                  )}
                   <Form.Text className="text-muted">
-                    Este código se asigna automáticamente según el detalle de tarea.
+                    {currentTarea?.detalle?.tiene_multiples_items 
+                      ? "Seleccione el código específico para esta tarea."
+                      : "Este código se asigna automáticamente según el detalle de tarea."
+                    }
                   </Form.Text>
                 </Form.Group>
                 

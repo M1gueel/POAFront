@@ -6,7 +6,6 @@ export interface ItemPresupuestario {
     descripcion: string;
 }
 
-//TODO: Comprobar si el ultimo campo es correcto o si me srive para obtener el 012506 o 010504
 export interface DetalleTarea {
     id_detalle_tarea: string;
     id_item_presupuestario: string;
@@ -15,6 +14,9 @@ export interface DetalleTarea {
     caracteristicas?: string;
     codigo_item?: string;
     item_presupuestario?: ItemPresupuestario;
+    // Nuevos campos para manejar múltiples items
+    items_presupuestarios?: ItemPresupuestario[]; // Array de todos los items disponibles
+    tiene_multiples_items?: boolean; // Flag para saber si tiene múltiples opciones
 }
 
 export interface Tarea {
@@ -60,7 +62,6 @@ export interface LimiteActividadesTipoPoa {
 }
 
 // Agrega este campo a la interfaz TareaForm en el archivo interfaces/tarea.ts
-// Actualizar la interfaz TareaForm (línea ~15)
 export interface TareaForm {
   tempId: string;
   id_detalle_tarea: string;
@@ -68,14 +69,16 @@ export interface TareaForm {
   detalle_descripcion: string;
   cantidad: number;
   precio_unitario: number;
-  total?: number; // Opcional, se calcula en backend
-  saldo_disponible?: number; // Opcional, se calcula en backend
-  gastos_mensuales?: number[]; // Array de 12 posiciones
+  total?: number;
+  saldo_disponible?: number;
+  gastos_mensuales?: number[];
   expanded?: boolean;
   detalle?: DetalleTarea;
   itemPresupuestario?: ItemPresupuestario;
   codigo_item?: string;
   numero_tarea?: string;
+  // Nuevo campo para el item seleccionado cuando hay múltiples opciones
+  id_item_presupuestario_seleccionado?: string;
 }
 
 // Nueva interfaz para la respuesta del backend
