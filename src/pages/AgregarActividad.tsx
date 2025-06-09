@@ -105,7 +105,7 @@ const AgregarActividad: React.FC = () => {
         tipoPOAData: tipoPOAData
       };
     } catch (error) {
-      console.error(`Error al cargar tipo POA para ${poa.id_poa}:`, error);
+        console.error(`Error al cargar tipo POA para ${poa.id_poa}:`, error);
       return {
         ...poa,
         tipo_poa: 'PVIF', // Valor por defecto
@@ -759,27 +759,17 @@ const AgregarActividad: React.FC = () => {
     
     try {
       // Paso 1: Crear actividades
-      console.log('=== INICIANDO CREACIÓN DE ACTIVIDADES ===');
       const actividadesCreadas: { [key: string]: string } = {};
       let totalActividadesCreadas = 0;
 
       // Para cada POA, crear sus actividades seleccionadas
       for (const poa of poasConActividades) {
-        console.log(`📁 Procesando POA: ${poa.codigo_poa} (ID: ${poa.id_poa})`);
-        console.log(`   Tipo POA: ${poa.tipo_poa}`);
         
         // Filtrar solo las actividades que tienen código seleccionado
-        const actividadesConCodigo = poa.actividades.filter(act => act.codigo_actividad && act.codigo_actividad !== "");
-        console.log(`   Actividades a crear: ${actividadesConCodigo.length}`);
-        
+        const actividadesConCodigo = poa.actividades.filter(act => act.codigo_actividad && act.codigo_actividad !== "");        
         // Preparar las actividades para este POA específico
         const actividadesParaEnviar: ActividadCreate[] = actividadesConCodigo.map((actPoa, index) => {
           const descripcion = getDescripcionActividad(poa.id_poa, actPoa.codigo_actividad);
-          console.log(`   📋 Actividad ${index + 1}:`);
-          console.log(`      Código: ${actPoa.codigo_actividad}`);
-          console.log(`      Descripción: ${descripcion}`);
-          console.log(`      Tareas asociadas: ${actPoa.tareas.length}`);
-          console.log(`      ID temporal: ${actPoa.actividad_id}`);
           
           return {
             descripcion_actividad: descripcion,
@@ -789,14 +779,10 @@ const AgregarActividad: React.FC = () => {
         });
 
         // Validar planificación mensual antes de crear actividades
-        console.log('🔍 Validando planificación mensual...');
         for (const actividad of actividadesConCodigo) {
-          console.log(`   Validando actividad: ${actividad.codigo_actividad}`);
           for (const tarea of actividad.tareas) {
             const totalPlanificado = tarea.gastos_mensuales?.reduce((sum, val) => sum + (val || 0), 0) || 0;
-            console.log(`      Tarea "${tarea.nombre}": Total planificado = ${totalPlanificado}`);
             if (totalPlanificado === 0) {
-              console.error(`❌ ERROR: Tarea sin planificación mensual: ${tarea.nombre}`);
               setError(`La tarea "${tarea.nombre}" debe tener planificación mensual`);
               setActivePoaTab(poa.id_poa);
               return;
@@ -805,13 +791,9 @@ const AgregarActividad: React.FC = () => {
         }
         
         // Crear las actividades para este POA solo si hay actividades para enviar
-        if (actividadesParaEnviar.length > 0) {
-          console.log(`🚀 Enviando ${actividadesParaEnviar.length} actividades al API...`);
-          
+        if (actividadesParaEnviar.length > 0) {          
           try {
-            const actividadesRespuesta = await actividadAPI.crearActividadesPorPOA(poa.id_poa, actividadesParaEnviar);
-            console.log('✅ Respuesta del API para actividades:', actividadesRespuesta);
-            
+            const actividadesRespuesta = await actividadAPI.crearActividadesPorPOA(poa.id_poa, actividadesParaEnviar);            
             // Guardar mapeo de IDs temporales a IDs reales - CORREGIDO
             if (actividadesRespuesta && Array.isArray(actividadesRespuesta)) {
               actividadesConCodigo.forEach((act, index) => {
@@ -819,49 +801,24 @@ const AgregarActividad: React.FC = () => {
                   const idReal = actividadesRespuesta[index].id_actividad;
                   actividadesCreadas[act.actividad_id] = idReal;
                   totalActividadesCreadas++;
-                  
-                  console.log(`   📝 Mapeo creado: ${act.actividad_id} → ${idReal}`);
-                  console.log(`      Actividad: ${act.codigo_actividad}`);
-                  console.log(`      Índice: ${index}`);
-                } else {
-                  console.error(`   ❌ No se pudo mapear actividad en índice ${index}:`, actividadesRespuesta[index]);
                 }
               });
-            } else {
-              console.error('❌ Respuesta de actividades no es un array válido:', actividadesRespuesta);
-            }
-            
+            }            
           } catch (error) {
-            console.error(`❌ ERROR al crear actividades para POA ${poa.codigo_poa}:`, error);
             throw error;
           }
         }
       }
 
-      console.log(`✅ ACTIVIDADES CREADAS: ${totalActividadesCreadas} total`);
-      console.log('📋 Mapeo completo de IDs:', actividadesCreadas);
-
       // Actualizar el estado con los IDs reales de actividades
-      console.log('🔄 Actualizando estado local con IDs reales...');
       const poasActualizados = poasConActividades.map(poa => {
       const actividadesActualizadas = poa.actividades.map(act => {
         // Solo actualizar actividades que tienen código seleccionado Y tienen ID real mapeado
         if (act.codigo_actividad && act.codigo_actividad !== "" && actividadesCreadas[act.actividad_id]) {
-          console.log(`🔗 Asignando ID real a actividad: ${act.codigo_actividad}`);
-          console.log(`   ID temporal: ${act.actividad_id}`);
-          console.log(`   ID real: ${actividadesCreadas[act.actividad_id]}`);
           return {
             ...act,
             id_actividad_real: actividadesCreadas[act.actividad_id]
           };
-        } else {
-          // Log para debugging
-          if (act.codigo_actividad && act.codigo_actividad !== "") {
-            console.warn(`⚠️ Actividad ${act.codigo_actividad} no tiene ID real mapeado`);
-            console.warn(`   ID temporal: ${act.actividad_id}`);
-            console.warn(`   ¿Existe en mapeo?`, actividadesCreadas.hasOwnProperty(act.actividad_id));
-            console.warn(`   Mapeo disponible:`, Object.keys(actividadesCreadas));
-          }
         }
         return act;
       });
@@ -871,7 +828,6 @@ const AgregarActividad: React.FC = () => {
       setPoasConActividades(poasActualizados);
 
       // Paso 2: Crear tareas para cada actividad
-      console.log('\n=== INICIANDO CREACIÓN DE TAREAS ===');
       setLoadingMessage('Guardando tareas...');
 
       let totalTareasCreadas = 0;
@@ -879,43 +835,22 @@ const AgregarActividad: React.FC = () => {
 
       // Para cada POA
       for (const poa of poasActualizados) {
-        console.log(`\n📁 Procesando tareas para POA: ${poa.codigo_poa}`);
         
         // Para cada actividad
-
         // Debug: Verificar el estado antes de procesar tareas
-        console.log(`📊 Estado del POA antes de crear tareas:`);
-        console.log(`   Actividades totales: ${poa.actividades.length}`);
-        poa.actividades.forEach((act, idx) => {
-          console.log(`   ${idx + 1}. Código: ${act.codigo_actividad}, ID temporal: ${act.actividad_id}, ID real: ${act.id_actividad_real}, Tareas: ${act.tareas.length}`);
-        });
 
         for (const actividad of poa.actividades) {
-          console.log(`\n📋 Procesando actividad: ${actividad.codigo_actividad}`);
-
           // Verificar si realmente tiene ID real antes de continuar
           if (!actividad.id_actividad_real) {
-            console.error(`❌ CRÍTICO: Actividad ${actividad.codigo_actividad} sin ID real, saltando creación de tareas`);
-            console.error(`   ID temporal: ${actividad.actividad_id}`);
-            console.error(`   Mapeo existente:`, actividadesCreadas);
             continue; // Saltar a la siguiente actividad
           }
 
-          console.log(`   ID temporal: ${actividad.actividad_id}`);
-          console.log(`   ID real: ${actividad.id_actividad_real}`);
-          console.log(`   Tareas a crear: ${actividad.tareas.length}`);
-          
           // Si la actividad tiene ID real y tareas
           if (actividad.id_actividad_real && actividad.tareas.length > 0) {
             
             // Crear tareas secuencialmente
             for (let i = 0; i < actividad.tareas.length; i++) {
               const tarea = actividad.tareas[i];
-              console.log(`\n   🔨 Creando tarea ${i + 1}/${actividad.tareas.length}:`);
-              console.log(`      Nombre: ${tarea.nombre}`);
-              console.log(`      Detalle ID: ${tarea.id_detalle_tarea}`);
-              console.log(`      Cantidad: ${tarea.cantidad}`);
-              console.log(`      Precio unitario: ${tarea.precio_unitario}`);
               
               try {
                 const tareaDatos: TareaCreate = {
@@ -926,29 +861,16 @@ const AgregarActividad: React.FC = () => {
                   precio_unitario: tarea.precio_unitario.toString()
                 };
                 
-                console.log(`      📡 Enviando tarea al API...`);
-                console.log(`      Datos enviados:`, tareaDatos);
-                
                 // Crear la tarea
                 const tareaCreada = await tareaAPI.crearTarea(actividad.id_actividad_real!, tareaDatos);
 
                 if (!tareaCreada || !tareaCreada.id_tarea) {
-                  console.error(`❌ ERROR: No se recibió ID de tarea válido`);
-                  console.error(`   Respuesta completa:`, tareaCreada);
                   throw new Error(`No se pudo obtener ID de la tarea creada: ${tarea.nombre}`);
                 }
-
                 totalTareasCreadas++;
-                
-                console.log(`      ✅ Tarea creada exitosamente:`);
-                console.log(`         ID tarea: ${tareaCreada.id_tarea}`);
-                console.log(`         Total: ${tareaCreada.total}`);
-                
+
                 // Crear la programación mensual para esta tarea
-                console.log(`      📅 Creando programación mensual...`);
-                if (tarea.gastos_mensuales && tarea.gastos_mensuales.length === 12) {
-                  console.log(`         Gastos mensuales:`, tarea.gastos_mensuales);
-                  
+                if (tarea.gastos_mensuales && tarea.gastos_mensuales.length === 12) {                  
                   for (let index = 0; index < tarea.gastos_mensuales.length; index++) {
                     const valor = tarea.gastos_mensuales[index];
                     if (valor > 0) {
@@ -961,47 +883,23 @@ const AgregarActividad: React.FC = () => {
                         mes: mesFormateado,
                         valor: valor.toString()
                       };
-                      
-                      console.log(`         📝 Mes ${mesNumero} (${mesFormateado}): $${valor}`);
-                      console.log(`            Datos programación:`, programacionDatos);
-                      
+
                       try {
                         await tareaAPI.crearProgramacionMensual(programacionDatos);
                         totalProgramacionesCreadas++;
-                        console.log(`            ✅ Programación creada para mes ${mesNumero}`);
                       } catch (progError) {
-                        console.error(`            ❌ ERROR en programación mes ${mesNumero}:`, progError);
                         throw progError;
                       }
                     }
                   }
-                } else {
-                  console.warn(`      ⚠️  Sin gastos mensuales válidos para tarea: ${tarea.nombre}`);
                 }
-                
               } catch (error) {
-                console.error(`      ❌ ERROR al crear tarea ${tarea.nombre}:`, error);
-                console.error(`         Actividad ID: ${actividad.id_actividad_real}`);
-                console.error(`         Error completo:`, error);
                 throw new Error(`Error al crear la tarea "${tarea.nombre}": ${error}`);
               }
-            }
-          } else {
-            if (!actividad.id_actividad_real) {
-              console.warn(`   ⚠️  Actividad sin ID real: ${actividad.codigo_actividad}`);
-            }
-            if (actividad.tareas.length === 0) {
-              console.warn(`   ⚠️  Actividad sin tareas: ${actividad.codigo_actividad}`);
             }
           }
         }
       }
-
-      console.log('\n=== RESUMEN FINAL ===');
-      console.log(`✅ Actividades creadas: ${totalActividadesCreadas}`);
-      console.log(`✅ Tareas creadas: ${totalTareasCreadas}`);
-      console.log(`✅ Programaciones mensuales creadas: ${totalProgramacionesCreadas}`);
-      console.log(`📊 POAs procesados: ${poasProyecto.length}`);
 
       setSuccess(`Se han creado exitosamente ${totalActividadesCreadas} actividades, ${totalTareasCreadas} tareas y ${totalProgramacionesCreadas} programaciones mensuales para ${poasProyecto.length} POAs del proyecto`);
 
@@ -1010,7 +908,6 @@ const AgregarActividad: React.FC = () => {
         navigate('/Dashboard');
       }, 3000);
     } catch (err) {
-      console.error('Error al crear actividades y tareas:', err);
       setError(err instanceof Error ? err.message : 'Error al crear las actividades y tareas');
     } finally {
       setIsLoading(false);
@@ -1123,50 +1020,32 @@ const AgregarActividad: React.FC = () => {
   ): Promise<DetalleTarea[]> => {
     const numeroActividad = mapearCodigoActividadANumero(codigoActividad, tipoPoa);
     
-    console.log("=== DEBUG FILTRADO CON CONSULTAS ===");
-    console.log("Código actividad:", codigoActividad);
-    console.log("Número actividad extraído:", numeroActividad);
-    console.log("Tipo POA:", tipoPoa);
-    console.log("Total detalles a filtrar:", detallesTarea.length);
-    
     if (!numeroActividad) {
-      console.log("No se pudo extraer número de actividad");
       return detallesTarea; // Retorna todos si no puede filtrar
     }
 
     // Validación adicional para asegurar que el número es válido
     if (!/^\d+$/.test(numeroActividad)) {
-      console.log("Número de actividad no es válido:", numeroActividad);
       return detallesTarea;
     }
     
     // Procesar cada detalle de forma asíncrona
     const detallesConItems = await Promise.allSettled(
       detallesTarea.map(async (detalle) => {
-        console.log("=== PROCESANDO DETALLE ===");
-        console.log("ID detalle:", detalle.id_detalle_tarea);
-        console.log("Nombre detalle:", detalle.nombre);
-        console.log("ID item presupuestario:", detalle.id_item_presupuestario);
         
         try {
           // Obtener el item presupuestario usando la función proporcionada
           const itemPresupuestario = await getItemPresupuestarioPorId(detalle.id_item_presupuestario);
           
-          console.log("✅ Item presupuestario obtenido:", itemPresupuestario);
-          console.log("Nombre del item:", itemPresupuestario.nombre);
-          
           // Verificar formato del nombre (debe ser "X.Y; A.B; C.D")
           if (!itemPresupuestario.nombre || typeof itemPresupuestario.nombre !== 'string') {
-            console.log("❌ Nombre del item presupuestario no válido");
             return { detalle, incluir: false, itemPresupuestario: null };
           }
           
           // Obtener los números del nombre (formato: "X.Y; A.B; C.D")
           const numeros = itemPresupuestario.nombre.split('; ');
-          console.log("Números extraídos:", numeros);
           
           if (numeros.length !== 3) {
-            console.log("❌ Formato incorrecto de números, esperado 3 partes separadas por '; '");
             return { detalle, incluir: false, itemPresupuestario };
           }
           
@@ -1191,28 +1070,17 @@ const AgregarActividad: React.FC = () => {
           }
           
           const numeroTarea = numeros[indice];
-          console.log(`Número de tarea para ${tipoPoa} (índice ${indice}):`, numeroTarea);
           
           // Si es "0", no está disponible para este tipo de POA
           if (numeroTarea === '0') {
-            console.log("❌ Tarea no disponible para este tipo de POA (valor = 0)");
             return { detalle, incluir: false, itemPresupuestario };
           }
           
           // Verificar si el número de la tarea comienza con el número de actividad
-          const coincide = numeroTarea.startsWith(numeroActividad + '.');
-          console.log(`¿${numeroTarea} comienza con ${numeroActividad}.?`, coincide);
-          
-          if (coincide) {
-            console.log("✅ Detalle incluido en filtro");
-          } else {
-            console.log("❌ Detalle excluido del filtro");
-          }
-          
+          const coincide = numeroTarea.startsWith(numeroActividad + '.');          
           return { detalle, incluir: coincide, itemPresupuestario, numeroTarea };
           
         } catch (error) {
-          console.error(`❌ Error al obtener item presupuestario para ${detalle.nombre}:`, error);
           return { detalle, incluir: false, itemPresupuestario: null, error };
         }
       })
@@ -1223,24 +1091,13 @@ const AgregarActividad: React.FC = () => {
       .filter(result => result.status === 'fulfilled' && result.value.incluir)
       .map(result => (result as PromiseFulfilledResult<any>).value);
     
-    console.log("=== RESULTADO FILTRADO ===");
-    console.log("Detalles filtrados:", filtrados.length);
-    filtrados.forEach((item, index) => {
-      console.log(`${index + 1}. ${item.detalle.nombre} - Tarea: ${item.numeroTarea}`);
-    });
-    
     // Ordenar los resultados filtrados según el número de tarea
     const filtradosOrdenados = filtrados.sort((a, b) => {
       const valorA = parseFloat(a.numeroTarea);
       const valorB = parseFloat(b.numeroTarea);
-      
-      console.log(`Comparando orden: ${a.numeroTarea} (${valorA}) vs ${b.numeroTarea} (${valorB})`);
-      
+            
       return valorA - valorB; // Orden ascendente
     });
-    
-    console.log("=== RESULTADO FINAL ORDENADO ===");
-    console.log("Total detalles ordenados:", filtradosOrdenados.length);
     
     // Retornar solo los detalles, no los objetos con metadata
     return filtradosOrdenados.map(item => item.detalle);
@@ -1265,7 +1122,7 @@ const AgregarActividad: React.FC = () => {
     // Procesar cada grupo
     const detallesProcessados: DetalleTarea[] = [];
     
-    for (const [clave, detallesGrupo] of grupos.entries()) {
+    for (const [, detallesGrupo] of grupos.entries()) {
       if (detallesGrupo.length === 1) {
         // Solo un detalle, procesar normalmente
         const detalle = detallesGrupo[0];
@@ -1291,7 +1148,7 @@ const AgregarActividad: React.FC = () => {
             const item = await getItemPresupuestarioPorId(detalle.id_item_presupuestario);
             items.push(item);
           } catch (error) {
-            console.error(`Error al obtener item ${detalle.id_item_presupuestario}:`, error);
+              throw error;
           }
         }
         
@@ -1710,7 +1567,6 @@ const AgregarActividad: React.FC = () => {
                   <Form.Select
                     value={currentTarea?.id_detalle_tarea || ''}
                     onChange={async (e) => {
-                      console.log("Seleccionando detalle de tarea:", e.target.value);
                       await handleDetalleTareaChange(e.target.value);
                     }}
                     disabled={cargandoDetalles}

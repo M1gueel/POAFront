@@ -28,6 +28,7 @@ export interface TipoProyecto {
 export interface EstadoProyecto {
   id_estado_proyecto: string;
   nombre: string;
+  descripcion: string;
 }
 
 export interface DirectorProyecto {

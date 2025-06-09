@@ -32,15 +32,15 @@ const CrearPOA: React.FC = () => {
   const [presupuestoPorPeriodo, setPresupuestoPorPeriodo] = useState<{ [key: string]: string }>({});
   const [codigoPorPeriodo, setCodigoPorPeriodo] = useState<{ [key: string]: string }>({});
   const [anioPorPeriodo, setAnioPorPeriodo] = useState<{ [key: string]: string }>({});
-  const [anioPorPeriodoError, setAnioPorPeriodoError] = useState<{ [key: string]: string }>({});
+  const [anioPorPeriodoError] = useState<{ [key: string]: string }>({});
   
   // Estados para las listas de opciones
   const [proyectos, setProyectos] = useState<Proyecto[]>([]);
-  const [periodos, setPeriodos] = useState<Periodo[]>([]);
-  const [estadosPoa, setEstadosPoa] = useState<EstadoPOA[]>([]);
+  const [, setPeriodos] = useState<Periodo[]>([]);
+  const [, setEstadosPoa] = useState<EstadoPOA[]>([]);
   const [tiposPoa, setTiposPoa] = useState<TipoPOA[]>([]);
   const [tiposProyecto, setTiposProyecto] = useState<TipoProyecto[]>([]); // Nuevo estado
-  const [tipoPoaSeleccionado, setTipoPoaSeleccionado] = useState<TipoPOA | null>(null);
+  const [, setTipoPoaSeleccionado] = useState<TipoPOA | null>(null);
 
   
   // Estado para proyectos filtrados para la búsqueda
@@ -963,50 +963,6 @@ const handleSubmit = async (e: React.FormEvent) => {
               {/* Sección de Configuración de POA */}
               {proyectoSeleccionado && periodosSeleccionados.length > 0 && (
                 <>
-                  <Row className="mb-4">
-                    <Col md={12}>
-                      <Card>
-                        <Card.Header className="bg-light">
-                          <h5 className="mb-0">Configuración General del POA</h5>
-                        </Card.Header>
-                        <Card.Body>
-                          <Row>
-                            <Col md={6}>
-                            <Form.Group className="mb-3" controlId="id_tipo_poa">
-                              <Form.Label className="fw-semibold">Tipo de POA <span className="text-danger">*</span></Form.Label>
-                              <Form.Control 
-                                type="text" 
-                                value={tipoPoaSeleccionado 
-                                  ? `${tipoPoaSeleccionado.codigo_tipo} - ${tipoPoaSeleccionado.nombre}` 
-                                  : 'Tipo no seleccionado'} 
-                                readOnly 
-                                className="bg-light"
-                              />
-                              {/* Mantener el id_tipo_poa como campo oculto para el submit */}
-                              <input type="hidden" name="id_tipo_poa" value={id_tipo_poa} />
-                            </Form.Group>
-                            </Col>
-                            <Col md={6}>
-                              <Form.Group className="mb-3" controlId="codigo_poa_base">
-                                <Form.Label className="fw-semibold">Código POA Base <span className="text-danger">*</span></Form.Label>
-                                <Form.Control 
-                                  type="text" 
-                                  value={codigo_poa_base} 
-                                  onChange={(e) => setCodigoPoaBase(e.target.value)}
-                                  required
-                                  placeholder="Código base para todos los POAs"
-                                />
-                                <Form.Text className="text-muted">
-                                  Este código se usará como base y se complementará con el año para cada periodo
-                                </Form.Text>
-                              </Form.Group>
-                            </Col>
-                          </Row>
-                        </Card.Body>
-                      </Card>
-                    </Col>
-                  </Row>
-                  
                   {/* Pestañas para cada periodo */}
                   <Row className="mb-4">
                     <Col md={12}>

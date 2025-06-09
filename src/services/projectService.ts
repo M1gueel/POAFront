@@ -35,15 +35,9 @@ export const projectService = {
     const fechaInicioObj = new Date(fechaInicio);
     const fechaFinObj = new Date(fechaInicioObj);
     
-    // Set the exact day after adding months
+    // Set the day before, after adding months
     fechaFinObj.setMonth(fechaInicioObj.getMonth() + duracionMeses);
-    
-    // Adjust to ensure it's the same day of the month (or last day if target month is shorter)
-    if (fechaFinObj.getDate() !== fechaInicioObj.getDate()) {
-      // If we're on a different day, it means the target month doesn't have that day
-      // Go back to the last day of the previous month
-      fechaFinObj.setDate(0);
-    }
+    fechaFinObj.setDate(fechaFinObj.getDate() - 1);
     
     // Format to YYYY-MM-DD for date input value
     return fechaFinObj.toISOString().split('T')[0];
