@@ -33,13 +33,13 @@ const AgregarActividad: React.FC = () => {
   const navigate = useNavigate();
 
   // Estados para el proyecto
-  const [id_proyecto, setIdProyecto] = useState('');
+  const [, setIdProyecto] = useState('');
   const [proyectoSeleccionado, setProyectoSeleccionado] = useState<Proyecto | null>(null);
   const [proyectos, setProyectos] = useState<Proyecto[]>([]);
 
   // Estados para POAs y periodos - CORREGIDO: usar POAExtendido
   const [poasProyecto, setPoasProyecto] = useState<POAExtendido[]>([]);
-  const [periodosProyecto, setPeriodosProyecto] = useState<Periodo[]>([]);
+  const [, setPeriodosProyecto] = useState<Periodo[]>([]);
   
   // Estados para la pestaña activa de POA
   const [activePoaTab, setActivePoaTab] = useState('');
@@ -48,7 +48,7 @@ const AgregarActividad: React.FC = () => {
   const [poasConActividades, setPoasConActividades] = useState<POAConActividadesYTareas[]>([]);
 
   // Estado para almacenar las actividades disponibles según el tipo de POA
-  const [actividadesDisponiblesPorPoa, setActividadesDisponiblesPorPoa] = useState<{[key: string]: ActividadOpciones[]}>({});
+  const [, setActividadesDisponiblesPorPoa] = useState<{[key: string]: ActividadOpciones[]}>({});
 
   // Estados para modales de tareas
   const [showTareaModal, setShowTareaModal] = useState(false);
@@ -66,7 +66,7 @@ const AgregarActividad: React.FC = () => {
   const [detallesFiltrados, setDetallesFiltrados] = useState<DetalleTarea[]>([]);
   const [cargandoDetalles, setCargandoDetalles] = useState(false);
 
-  const [actividadesSeleccionadasPorPoa, setActividadesSeleccionadasPorPoa] = useState<{[key: string]: string[]}>({});
+  const [, setActividadesSeleccionadasPorPoa] = useState<{[key: string]: string[]}>({});
 
   // Estados para mensajes y carga
   const [isLoading, setIsLoading] = useState(false);
@@ -597,6 +597,17 @@ const AgregarActividad: React.FC = () => {
     }
   };
 
+  // Nueva función para manejar el cambio de descripción seleccionada
+  const handleDescripcionChange = (descripcionSeleccionada: string) => {
+    if (!currentTarea) return;
+    
+    setCurrentTarea(prev => ({
+      ...prev!,
+      descripcion_seleccionada: descripcionSeleccionada,
+      detalle_descripcion: descripcionSeleccionada
+    }));
+  };
+
   // Guardar tarea (nueva o editada)
     const guardarTarea = () => {
       if (!currentTarea || !currentPoa || !currentActividad) return;
@@ -768,7 +779,7 @@ const AgregarActividad: React.FC = () => {
         // Filtrar solo las actividades que tienen código seleccionado
         const actividadesConCodigo = poa.actividades.filter(act => act.codigo_actividad && act.codigo_actividad !== "");        
         // Preparar las actividades para este POA específico
-        const actividadesParaEnviar: ActividadCreate[] = actividadesConCodigo.map((actPoa, index) => {
+        const actividadesParaEnviar: ActividadCreate[] = actividadesConCodigo.map((actPoa) => {
           const descripcion = getDescripcionActividad(poa.id_poa, actPoa.codigo_actividad);
           
           return {
@@ -1103,38 +1114,38 @@ const AgregarActividad: React.FC = () => {
     return filtradosOrdenados.map(item => item.detalle);
   };
 
-  // Función para agrupar detalles de tarea con el mismo nombre y descripción
+  // Función para agrupar detalles de tarea con el mismo nombre y item presupuestario
   const agruparDetallesDuplicados = async (
     detallesFiltrados: DetalleTarea[],
     getItemPresupuestarioPorId: (id: string) => Promise<ItemPresupuestario>
   ): Promise<DetalleTarea[]> => {
-    // Agrupar por nombre y descripción
-    const grupos = new Map<string, DetalleTarea[]>();
+    // PRIMERA FASE: Agrupar por nombre y descripción (lógica existente para items)
+    const gruposPorNombre = new Map<string, DetalleTarea[]>();
     
     detallesFiltrados.forEach(detalle => {
       const clave = `${detalle.nombre}|${detalle.descripcion || ''}`;
-      if (!grupos.has(clave)) {
-        grupos.set(clave, []);
+      if (!gruposPorNombre.has(clave)) {
+        gruposPorNombre.set(clave, []);
       }
-      grupos.get(clave)!.push(detalle);
+      gruposPorNombre.get(clave)!.push(detalle);
     });
     
-    // Procesar cada grupo
-    const detallesProcessados: DetalleTarea[] = [];
+    // Procesar grupos de items múltiples
+    const detallesConItemsProcessados: DetalleTarea[] = [];
     
-    for (const [, detallesGrupo] of grupos.entries()) {
+    for (const [, detallesGrupo] of gruposPorNombre.entries()) {
       if (detallesGrupo.length === 1) {
         // Solo un detalle, procesar normalmente
         const detalle = detallesGrupo[0];
         try {
           const item = await getItemPresupuestarioPorId(detalle.id_item_presupuestario);
-          detallesProcessados.push({
+          detallesConItemsProcessados.push({
             ...detalle,
             item_presupuestario: item,
             tiene_multiples_items: false
           });
         } catch (error) {
-          detallesProcessados.push({
+          detallesConItemsProcessados.push({
             ...detalle,
             tiene_multiples_items: false
           });
@@ -1148,22 +1159,73 @@ const AgregarActividad: React.FC = () => {
             const item = await getItemPresupuestarioPorId(detalle.id_item_presupuestario);
             items.push(item);
           } catch (error) {
-              throw error;
+            throw error;
           }
         }
         
         // Crear un solo detalle con múltiples items
         const detalleBase = detallesGrupo[0];
-        detallesProcessados.push({
+        detallesConItemsProcessados.push({
           ...detalleBase,
           items_presupuestarios: items,
           tiene_multiples_items: true,
-          item_presupuestario: items[0] // Item por defecto
+          item_presupuestario: items[0]
         });
       }
     }
+
+    // SEGUNDA FASE: Agrupar por nombre e item presupuestario (NUEVA LÓGICA para descripciones)
+    const gruposPorNombreEItem = new Map<string, DetalleTarea[]>();
     
-    return detallesProcessados;
+    detallesConItemsProcessados.forEach(detalle => {
+      const itemId = detalle.tiene_multiples_items 
+        ? detalle.items_presupuestarios?.[0]?.id_item_presupuestario || detalle.id_item_presupuestario
+        : detalle.id_item_presupuestario;
+      const clave = `${detalle.nombre}|${itemId}`;
+      
+      if (!gruposPorNombreEItem.has(clave)) {
+        gruposPorNombreEItem.set(clave, []);
+      }
+      gruposPorNombreEItem.get(clave)!.push(detalle);
+    });
+
+    // Procesar grupos de descripciones múltiples
+    const detallesFinales: DetalleTarea[] = [];
+    
+    for (const [, detallesGrupo] of gruposPorNombreEItem.entries()) {
+      if (detallesGrupo.length === 1) {
+        // Solo un detalle, mantener como está
+        detallesFinales.push({
+          ...detallesGrupo[0],
+          tiene_multiples_descripciones: false
+        });
+      } else {
+        // Múltiples detalles con mismo nombre e item, pero diferentes descripciones
+        const descripciones = detallesGrupo
+          .map(d => d.descripcion || '')
+          .filter((desc, index, arr) => arr.indexOf(desc) === index) // Eliminar duplicados
+          .filter(desc => desc.trim() !== ''); // Eliminar vacías
+        
+        if (descripciones.length > 1) {
+          // Crear un solo detalle con múltiples descripciones
+          const detalleBase = detallesGrupo[0];
+          detallesFinales.push({
+            ...detalleBase,
+            descripciones_disponibles: descripciones,
+            tiene_multiples_descripciones: true,
+            descripcion: descripciones[0] // Descripción por defecto
+          });
+        } else {
+          // Mismo nombre, item y descripción: mantener solo uno
+          detallesFinales.push({
+            ...detallesGrupo[0],
+            tiene_multiples_descripciones: false
+          });
+        }
+      }
+    }
+    
+    return detallesFinales;
   };
 
   // Cache simple para evitar consultas repetidas
@@ -1633,12 +1695,32 @@ const AgregarActividad: React.FC = () => {
                 
                 <Form.Group className="mb-3">
                   <Form.Label>Descripción</Form.Label>
-                  <Form.Control
-                    as="textarea"
-                    rows={2}
-                    value={currentTarea?.detalle_descripcion || ''}
-                    onChange={(e) => setCurrentTarea(prev => prev ? {...prev, detalle_descripcion: e.target.value} : null)}
-                  />
+                  {currentTarea?.detalle?.tiene_multiples_descripciones ? (
+                    <Form.Select
+                      value={currentTarea?.descripcion_seleccionada || currentTarea?.detalle_descripcion || ''}
+                      onChange={(e) => handleDescripcionChange(e.target.value)}
+                    >
+                      <option value="">Seleccione una descripción...</option>
+                      {currentTarea.detalle.descripciones_disponibles?.map((descripcion, index) => (
+                        <option key={index} value={descripcion}>
+                          {descripcion}
+                        </option>
+                      ))}
+                    </Form.Select>
+                  ) : (
+                    <Form.Control
+                      as="textarea"
+                      rows={2}
+                      value={currentTarea?.detalle_descripcion || ''}
+                      onChange={(e) => setCurrentTarea(prev => prev ? {...prev, detalle_descripcion: e.target.value} : null)}
+                    />
+                  )}
+                  <Form.Text className="text-muted">
+                    {currentTarea?.detalle?.tiene_multiples_descripciones 
+                      ? "Seleccione la descripción específica para esta tarea."
+                      : "Puede editar la descripción de la tarea."
+                    }
+                  </Form.Text>
                 </Form.Group>
 
                 <Row>

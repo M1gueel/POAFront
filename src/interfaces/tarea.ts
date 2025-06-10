@@ -14,9 +14,12 @@ export interface DetalleTarea {
     caracteristicas?: string;
     codigo_item?: string;
     item_presupuestario?: ItemPresupuestario;
-    // Nuevos campos para manejar múltiples items
-    items_presupuestarios?: ItemPresupuestario[]; // Array de todos los items disponibles
-    tiene_multiples_items?: boolean; // Flag para saber si tiene múltiples opciones
+    // Campos existentes para múltiples items
+    items_presupuestarios?: ItemPresupuestario[];
+    tiene_multiples_items?: boolean;
+    // NUEVOS campos para múltiples descripciones
+    descripciones_disponibles?: string[];
+    tiene_multiples_descripciones?: boolean;
 }
 
 export interface Tarea {
@@ -77,8 +80,9 @@ export interface TareaForm {
   itemPresupuestario?: ItemPresupuestario;
   codigo_item?: string;
   numero_tarea?: string;
-  // Nuevo campo para el item seleccionado cuando hay múltiples opciones
   id_item_presupuestario_seleccionado?: string;
+  // NUEVO campo para la descripción seleccionada
+  descripcion_seleccionada?: string;
 }
 
 // Nueva interfaz para la respuesta del backend
