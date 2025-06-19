@@ -39,9 +39,12 @@ export interface TareaCreate {
     id_detalle_tarea: string;
     nombre: string;
     detalle_descripcion?: string;
-    cantidad: string; // Cambiar a string
-    precio_unitario: string; // Cambiar a string
+    cantidad: number; // Cambiar a string
+    precio_unitario: number; // Cambiar a string
+    total: number; // Cambiar a string
+    saldo_disponible?: number; // Cambiar a string
 }
+
 export interface TareaUpdate {
     nombre?: string;
     detalle_descripcion?: string;
@@ -100,15 +103,22 @@ export interface TareaResponse {
 export interface ProgramacionMensualCreate {
   id_tarea: string;
   mes: string; // Formato "MM-YYYY"
-  valor: string; // Backend espera string
+  valor: number; // Backend espera decimal como number
 }
 
-export interface ProgramacionMensualResponse {
-  id_programacion: string;
-  id_tarea: string;
-  mes: string;
-  valor: string;
-}
+// // Tipo para crear programación mensual
+// export interface ProgramacionMensualCreate {
+//     mes: string;        // Formato "MM-AAAA" (ej: "03-2025")
+//     valor: number;      // Decimal se maneja como number en TypeScript
+//     id_tarea: string;   // UUID como string
+// }
+
+// export interface ProgramacionMensualResponse {
+  //   id_programacion: string;
+//   id_tarea: string;
+//   mes: string;
+//   valor: string;
+// }
 // Asegúrate de que TareaForm tenga esta estructura
 export interface TareaFormExtended extends TareaForm {
   tempId: string;
@@ -120,12 +130,6 @@ export interface TareaFormExtended extends TareaForm {
   numero_tarea?: string;
 }
 
-// Tipo para crear programación mensual
-export interface ProgramacionMensualCreate {
-    mes: string;        // Formato "MM-AAAA" (ej: "03-2025")
-    valor: number;      // Decimal se maneja como number en TypeScript
-    id_tarea: string;   // UUID como string
-}
 
 // Tipo para actualizar programación mensual
 export interface ProgramacionMensualUpdate {
@@ -135,7 +139,7 @@ export interface ProgramacionMensualUpdate {
 // Tipo para la respuesta de programación mensual
 export interface ProgramacionMensualOut {
     id_programacion: string;  // UUID como string
+    id_tarea: string;        // UUID como string
     mes: string;             // Formato "MM-AAAA"
     valor: number;           // Decimal como number
-    id_tarea: string;        // UUID como string
 }
