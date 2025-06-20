@@ -8,7 +8,6 @@ import {
   Typography,
   FormControl,
   InputLabel,
-  TextField,
   Snackbar,
   Alert,
   Dialog,
@@ -23,6 +22,7 @@ import { projectAPI } from "../api/projectAPI"; // Importa el API
 import { poaAPI } from "../api/poaAPI"; // Importa el API de POA
 import { TipoProyecto } from "../interfaces/project";
 import { POA } from "../interfaces/poa";
+import {excelAPI} from "../api/excelAPI"; // Importa la función de subir Excel
 
 const SubirExcel: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -336,50 +336,34 @@ const [seleccionManualPoa, setSeleccionManualPoa] = useState(false);
     formData.append("hoja", nombreHoja); // Usar el valor del input para el nombre de la hoja
 
     try {
-      const response = await fetch("http://localhost:8000/transformar_excel/", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await response.json();
+        const data = await excelAPI.subirExcel(formData);
 
-      if (response.ok) {
         if (data.requires_confirmation) {
-          // Si el backend solicita confirmación, abrir el diálogo
-          setPendingRequest(formData);
-          setOpenDialog(true);
+            setPendingRequest(formData);
+            setOpenDialog(true);
         } else {
-          if (data.errores && data.errores.length > 0) {
-            setMessage(
-              `Actividades y tareas creadas con advertencias:\n\n${data.errores.join(
-                "\n"
-              )}`
-            );
-            setSeverity("warning");
-          } else {
-            setMessage("Actividades y tareas creadas exitosamente.");
-            setSeverity("success");
-
-            // Vaciar los campos del formulario
-          setFile(null);
-          setOpcion("");
-          setAnio("");
-          setPoaSeleccionado("");
-          setNombreHoja("");
-          setHojas([]);
-          setFormTouched(false);
-          }
-          setOpenSnackbar(true);
+            if (data.errores && data.errores.length > 0) {
+                setMessage(
+                    `Actividades y tareas creadas con advertencias:\n\n${data.errores.join("\n")}`
+                );
+                setSeverity("warning");
+            } else {
+                setMessage("Actividades y tareas creadas exitosamente.");
+                setSeverity("success");
+                setFile(null);
+                setOpcion("");
+                setAnio("");
+                setPoaSeleccionado("");
+                setNombreHoja("");
+                setHojas([]);
+                setFormTouched(false);
+            }
+            setOpenSnackbar(true);
         }
-      } else {
-        // Mostrar mensaje de error del backend
-        setMessage(data.detail || "Error al procesar el archivo.");
+    } catch (err: any) {
+        setMessage(err.detail || "Error al procesar el archivo.");
         setSeverity("error");
         setOpenSnackbar(true);
-      }
-    } catch (err) {
-      setMessage("Error al subir el archivo.");
-      setSeverity("error");
-      setOpenSnackbar(true);
     }
   };
 
@@ -390,42 +374,29 @@ const [seleccionManualPoa, setSeleccionManualPoa] = useState(false);
     pendingRequest.append("confirmacion", "true");
 
     try {
-      const response = await fetch("http://localhost:8000/transformar_excel/", {
-        method: "POST",
-        body: pendingRequest,
-      });
-      const data = await response.json();
+        const data = await excelAPI.subirExcel(pendingRequest);
 
-      if (response.ok) {
         if (data.errores && data.errores.length > 0) {
-          setMessage(`Advertencias:\n\n${data.errores.join("\n")}`);
-          setSeverity("warning");
+            setMessage(`Advertencias:\n\n${data.errores.join("\n")}`);
+            setSeverity("warning");
         } else {
-          setMessage("Actividades y tareas creadas exitosamente.");
-          setSeverity("success");
-          // Vaciar los campos del formulario
-          setFile(null);
-          setOpcion("");
-          setAnio("");
-          setPoaSeleccionado("");
-          setNombreHoja("");
-          setHojas([]);
-          setFormTouched(false);
+            setMessage("Actividades y tareas creadas exitosamente.");
+            setSeverity("success");
+            setFile(null);
+            setOpcion("");
+            setAnio("");
+            setPoaSeleccionado("");
+            setNombreHoja("");
+            setHojas([]);
+            setFormTouched(false);
         }
-      } else {
-        setMessage(data.detail || "Error al procesar el archivo.");
+    } catch (err: any) {
+        setMessage(err.detail || "Error al procesar el archivo.");
         setSeverity("error");
-      }
-
-      setOpenSnackbar(true);
-    } catch (err) {
-      setMessage("Error al confirmar la eliminación.");
-      setSeverity("error");
-      setOpenSnackbar(true);
-      console.error(err);
     } finally {
-      setOpenDialog(false);
-      setPendingRequest(null);
+        setOpenDialog(false);
+        setPendingRequest(null);
+        setOpenSnackbar(true);
     }
   };
 

@@ -12,12 +12,16 @@ import CrearProyecto from './pages/CrearProyecto';
 import TiposProyecto from './pages/TiposProyecto';
 import AgregarActividad from './pages/AgregarActividad';
 import ReportePOA from './pages/ReportePOA';
+import LogsCargaExcel from './pages/LogsCargaExcel';
+import { ThemeProvider } from "@mui/material/styles";
+import theme from "./theme";
 
 function App() {
   return (
     <Router>
       <AuthProvider>
         <AppLayout>
+          <ThemeProvider theme={theme}>
           <Routes>
             {/* Rutas públicas */}
             <Route path="/login" element={<Login />} />
@@ -64,6 +68,11 @@ function App() {
                 <ReportePOA />
               </ProtectedRoute>
             } />
+            <Route path="/LogsCargaExcel" element={
+              <ProtectedRoute>
+                <LogsCargaExcel />
+              </ProtectedRoute>
+            } />
             
             {/* Ruta por defecto - redirigir al dashboard si está autenticado, sino al login */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -71,6 +80,7 @@ function App() {
             {/* Ruta para URLs no válidas */}
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
+          </ThemeProvider>
         </AppLayout>
       </AuthProvider>
     </Router>
