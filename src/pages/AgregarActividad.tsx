@@ -3,7 +3,7 @@ import { Form, Button, Container, Card, Row, Col, ListGroup, Spinner, Tabs, Tab,
 import { useNavigate } from 'react-router-dom';
 import { Proyecto } from '../interfaces/project';
 import { Periodo } from '../interfaces/periodo';
-import { POA, TipoPOA } from '../interfaces/poa'; // Agregar TipoPOA
+import { POA, TipoPOA } from '../interfaces/poa';
 import { poaAPI } from '../api/poaAPI';
 import { projectAPI } from '../api/projectAPI';
 import { actividadAPI } from '../api/actividadAPI';
@@ -20,9 +20,11 @@ import { ActividadCreate, ActividadConTareas, POAConActividadesYTareas } from '.
 // Interfaces para tareas
 import { DetalleTarea, ItemPresupuestario, TareaCreate, TareaForm, ProgramacionMensualCreate } from '../interfaces/tarea';
 
-// Importamos la lista de actividades
+// Importar la lista de actividades
 import { getActividadesPorTipoPOA, ActividadOpciones } from '../utils/listaActividades';
 
+//Importar la asignación de precio unitario
+import { manejarCambioDescripcionConPrecio, esContratacionServiciosProfesionales, obtenerPrecioPorDescripcion} from '../utils/asignarCantidad';
 // Extender la interfaz POA para incluir los datos del tipo
 interface POAExtendido extends POA {
   tipo_poa?: string;
@@ -40,7 +42,7 @@ const AgregarActividad: React.FC = () => {
   // Estados para POAs y periodos - CORREGIDO: usar POAExtendido
   const [poasProyecto, setPoasProyecto] = useState<POAExtendido[]>([]);
   const [, setPeriodosProyecto] = useState<Periodo[]>([]);
-  
+
   // Estados para la pestaña activa de POA
   const [activePoaTab, setActivePoaTab] = useState('');
 
@@ -48,7 +50,7 @@ const AgregarActividad: React.FC = () => {
   const [poasConActividades, setPoasConActividades] = useState<POAConActividadesYTareas[]>([]);
 
   // Estado para almacenar las actividades disponibles según el tipo de POA
-  const [, setActividadesDisponiblesPorPoa] = useState<{[key: string]: ActividadOpciones[]}>({});
+  const [, setActividadesDisponiblesPorPoa] = useState<{ [key: string]: ActividadOpciones[] }>({});
 
   // Estados para modales de tareas
   const [showTareaModal, setShowTareaModal] = useState(false);
@@ -66,13 +68,13 @@ const AgregarActividad: React.FC = () => {
   const [detallesFiltrados, setDetallesFiltrados] = useState<DetalleTarea[]>([]);
   const [cargandoDetalles, setCargandoDetalles] = useState(false);
 
-  const [, setActividadesSeleccionadasPorPoa] = useState<{[key: string]: string[]}>({});
+  const [, setActividadesSeleccionadasPorPoa] = useState<{ [key: string]: string[] }>({});
 
   // Estados para mensajes y carga
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('Cargando datos...');
   const [error, setError] = useState<string | null>(null);
-  const [taskErrors, setTaskErrors] = useState<{[key: string]: string}>({});
+  const [taskErrors, setTaskErrors] = useState<{ [key: string]: string }>({});
   const [success, setSuccess] = useState<string | null>(null);
 
   // 2. FUNCIÓN PARA LIMPIAR ERRORES ESPECÍFICOS (agregar después de los estados)
@@ -96,7 +98,7 @@ const AgregarActividad: React.FC = () => {
       setIsLoading(true);
       setLoadingMessage('Cargando proyectos...');
       setError(null);
-      
+
       try {
         // Obtener proyectos desde la API
         const proyectosData = await projectAPI.getProyectos();
@@ -107,7 +109,7 @@ const AgregarActividad: React.FC = () => {
         setIsLoading(false);
       }
     };
-    
+
     cargarDatos();
   }, []);
 
@@ -121,7 +123,7 @@ const AgregarActividad: React.FC = () => {
         tipoPOAData: tipoPOAData
       };
     } catch (error) {
-        console.error(`Error al cargar tipo POA para ${poa.id_poa}:`, error);
+      console.error(`Error al cargar tipo POA para ${poa.id_poa}:`, error);
       return {
         ...poa,
         tipo_poa: 'PVIF', // Valor por defecto
@@ -132,17 +134,17 @@ const AgregarActividad: React.FC = () => {
 
   // Inicializar las actividades disponibles por tipo de POA cuando cambian los POAs del proyecto
   useEffect(() => {
-    const nuevasActividadesDisponibles: {[key: string]: ActividadOpciones[]} = {};
-    const nuevasActividadesSeleccionadas: {[key: string]: string[]} = {};
+    const nuevasActividadesDisponibles: { [key: string]: ActividadOpciones[] } = {};
+    const nuevasActividadesSeleccionadas: { [key: string]: string[] } = {};
 
     poasProyecto.forEach(poa => {
       const tipoPOA = poa.tipo_poa || 'PVIF'; // Valor por defecto si no hay tipo      
       const actividadesPorTipo = getActividadesPorTipoPOA(tipoPOA);
-      
+
       nuevasActividadesDisponibles[poa.id_poa] = actividadesPorTipo;
       nuevasActividadesSeleccionadas[poa.id_poa] = [];
     });
-    
+
     setActividadesDisponiblesPorPoa(nuevasActividadesDisponibles);
     setActividadesSeleccionadasPorPoa(nuevasActividadesSeleccionadas);
   }, [poasProyecto]);
@@ -151,24 +153,24 @@ const AgregarActividad: React.FC = () => {
   useEffect(() => {
     const cargarDetallesTarea = async () => {
       if (poasProyecto.length === 0) return;
-      
+
       setIsLoading(true);
       setLoadingMessage('Cargando detalles de tareas...');
-      
+
       try {
         const nuevosPoasConActividades: POAConActividadesYTareas[] = [];
-        
+
         // Para cada POA, cargar sus detalles de tarea
         for (const poa of poasProyecto) {
           const detallesTarea = await tareaAPI.getDetallesTareaPorPOA(poa.id_poa);
-          
+
           // CORRECCIÓN: Usar el tipo correcto del POA para obtener las actividades
           const tipoPOA = poa.tipo_poa || 'PVIF';
           const actividadesPorTipo = getActividadesPorTipoPOA(tipoPOA);
-                    
+
           // Precargamos todas las actividades disponibles para este POA
           const actividadesPreCargadas: ActividadConTareas[] = [];
-          
+
           // Creamos una actividad precargada para cada actividad disponible
           actividadesPorTipo.forEach((act, index) => {
             actividadesPreCargadas.push({
@@ -177,8 +179,8 @@ const AgregarActividad: React.FC = () => {
               tareas: []
             });
           });
-          
-          
+
+
           nuevosPoasConActividades.push({
             id_poa: poa.id_poa,
             codigo_poa: poa.codigo_poa,
@@ -188,14 +190,14 @@ const AgregarActividad: React.FC = () => {
             detallesTarea // Guardamos los detalles de tarea disponibles
           });
         }
-        
+
         setPoasConActividades(nuevosPoasConActividades);
-        
+
         // Si no hay pestaña activa, seleccionar la primera
         if (!activePoaTab && nuevosPoasConActividades.length > 0) {
           setActivePoaTab(nuevosPoasConActividades[0].id_poa);
         }
-        
+
       } catch (err) {
         setError('Error al cargar los detalles de tareas');
       } finally {
@@ -215,28 +217,28 @@ const AgregarActividad: React.FC = () => {
   const seleccionarProyecto = async (proyecto: Proyecto) => {
     setIdProyecto(proyecto.id_proyecto);
     setProyectoSeleccionado(proyecto);
-    
+
     try {
       setIsLoading(true);
       setLoadingMessage('Cargando POAs del proyecto...');
-      
+
       // Cargar los POAs del proyecto seleccionado
       const poasData = await poaAPI.getPOAsByProyecto(proyecto.id_proyecto);
-      
+
       // CORRECCIÓN: Cargar información del tipo de POA para cada POA
       setLoadingMessage('Cargando información de tipos de POA...');
       const poasConTipo: POAExtendido[] = [];
-      
+
       for (const poa of poasData) {
         const poaConTipo = await cargarTipoPOA(poa);
         poasConTipo.push(poaConTipo);
       }
-      
+
       setPoasProyecto(poasConTipo);
-      
+
       // Limpiar cache de items presupuestarios al cambiar de proyecto
       cacheItemsPresupuestarios.clear();
-      
+
       // Extraer los periodos de los POAs
       const periodos: Periodo[] = [];
       for (const poa of poasConTipo) {
@@ -244,15 +246,15 @@ const AgregarActividad: React.FC = () => {
           periodos.push(poa.periodo);
         }
       }
-      
+
       setPeriodosProyecto(periodos);
-      
+
       // Restablecer los POAs con actividades
       setPoasConActividades([]);
-      
+
       // Restablecer la pestaña activa
       setActivePoaTab('');
-      
+
       setIsLoading(false);
     } catch (err) {
       setError('Error al cargar los POAs asociados al proyecto');
@@ -264,26 +266,26 @@ const AgregarActividad: React.FC = () => {
   const agregarActividad = (poaId: string) => {
     const poa = poasConActividades.find(p => p.id_poa === poaId);
     if (!poa) return;
-    
+
     // CORRECCIÓN: Obtener actividades disponibles usando el tipo correcto del POA
     const actividadesDisponibles = getActividadesPorTipoPOA(poa.tipo_poa);
-    
+
     // Obtener códigos de actividades ya seleccionadas
     const actividadesYaSeleccionadas = poa.actividades
       .map(act => act.codigo_actividad)
       .filter(codigo => codigo && codigo !== "");
-        
+
     // Filtrar actividades no utilizadas
     const actividadesNoUtilizadas = actividadesDisponibles.filter(
       act => !actividadesYaSeleccionadas.includes(act.id)
     );
-        
+
     // Si no hay actividades disponibles, mostrar mensaje
     if (actividadesNoUtilizadas.length === 0) {
       setError('No hay más actividades disponibles para agregar');
       return;
     }
-    
+
     // Mostrar modal para seleccionar actividad
     setShowActividadModal(true);
     setCurrentPoa(poaId);
@@ -300,7 +302,7 @@ const AgregarActividad: React.FC = () => {
 
     const poa = poasConActividades.find(p => p.id_poa === poaId);
     if (!poa) return;
-    
+
     // Verificar que la actividad no esté ya agregada
     const actividadYaExiste = poa.actividades.some(act => act.codigo_actividad === actividadSeleccionadaModal);
     if (actividadYaExiste) {
@@ -309,7 +311,7 @@ const AgregarActividad: React.FC = () => {
     }
 
     // CORRECCIÓN: Buscar una actividad vacía (sin código) o crear una nueva
-    let actividadPrecargada = poa.actividades.find(act => 
+    let actividadPrecargada = poa.actividades.find(act =>
       !act.codigo_actividad || act.codigo_actividad === ""
     );
 
@@ -320,7 +322,7 @@ const AgregarActividad: React.FC = () => {
         codigo_actividad: "",
         tareas: []
       };
-      
+
       // Actualizar el POA con la nueva actividad
       const nuevosPoasConActividades = poasConActividades.map(poaActual => {
         if (poaActual.id_poa === poaId) {
@@ -331,29 +333,29 @@ const AgregarActividad: React.FC = () => {
         }
         return poaActual;
       });
-      
+
       setPoasConActividades(nuevosPoasConActividades);
       actividadPrecargada = nuevaActividad;
     }
 
     // Si es el primer POA, replicar la selección a todos los POAs
     const isFirstPoa = poasConActividades.length > 0 && poasConActividades[0].id_poa === poaId;
-    
+
     // Actualizar el estado de POAs con actividades
     const nuevosPoasConActividades = poasConActividades.map(poaActual => {
       if (poaActual.id_poa === poaId || (isFirstPoa && poaActual.id_poa !== poaId)) {
         // CORRECCIÓN: Buscar o crear actividad para actualizar
         let actPrecargadaLocal;
-        
+
         if (poaActual.id_poa === poaId) {
           // Para el POA actual, usar la actividad que encontramos
           actPrecargadaLocal = actividadPrecargada;
         } else {
           // Para otros POAs, buscar una actividad vacía o crear una nueva
-          actPrecargadaLocal = poaActual.actividades.find(act => 
+          actPrecargadaLocal = poaActual.actividades.find(act =>
             !act.codigo_actividad || act.codigo_actividad === ""
           );
-          
+
           if (!actPrecargadaLocal) {
             // Crear nueva actividad para este POA
             actPrecargadaLocal = {
@@ -363,18 +365,18 @@ const AgregarActividad: React.FC = () => {
             };
           }
         }
-        
+
         if (actPrecargadaLocal) {
           // Actualizar o añadir la actividad con el código seleccionado
           let actividadesActualizadas;
-          
-          const actividadExiste = poaActual.actividades.some(act => 
+
+          const actividadExiste = poaActual.actividades.some(act =>
             act.actividad_id === actPrecargadaLocal!.actividad_id
           );
-          
+
           if (actividadExiste) {
             // Actualizar actividad existente
-            actividadesActualizadas = poaActual.actividades.map(act => 
+            actividadesActualizadas = poaActual.actividades.map(act =>
               act.actividad_id === actPrecargadaLocal!.actividad_id
                 ? { ...act, codigo_actividad: actividadSeleccionadaModal }
                 : act
@@ -386,7 +388,7 @@ const AgregarActividad: React.FC = () => {
               { ...actPrecargadaLocal, codigo_actividad: actividadSeleccionadaModal }
             ];
           }
-          
+
           // CORRECCIÓN: Ordenar según el orden de actividades disponibles del tipo correcto
           const actividadesDisponibles = getActividadesPorTipoPOA(poaActual.tipo_poa);
           actividadesActualizadas.sort((a, b) => {
@@ -394,7 +396,7 @@ const AgregarActividad: React.FC = () => {
             const indexB = actividadesDisponibles.findIndex(act => act.id === b.codigo_actividad);
             return indexA - indexB;
           });
-          
+
           return {
             ...poaActual,
             actividades: actividadesActualizadas
@@ -403,13 +405,13 @@ const AgregarActividad: React.FC = () => {
       }
       return poaActual;
     });
-    
+
     setPoasConActividades(nuevosPoasConActividades);
-    
+
     // Cerrar el modal y limpiar la selección
     setShowActividadModal(false);
     setActividadSeleccionadaModal('');
-    
+
     // Hacer scroll a la actividad actualizada
     setTimeout(() => {
       const activityElement = document.getElementById(`actividad-${actividadPrecargada?.actividad_id}`);
@@ -423,21 +425,21 @@ const AgregarActividad: React.FC = () => {
   const eliminarActividad = (poaId: string, actividadId: string) => {
     const poa = poasConActividades.find(p => p.id_poa === poaId);
     if (!poa) return;
-    
+
     const actividad = poa.actividades.find(a => a.actividad_id === actividadId);
     if (!actividad) return;
-    
+
     // Si es el primer POA, eliminar la actividad de todos los POAs
     const isFirstPoa = poasConActividades.length > 0 && poasConActividades[0].id_poa === poaId;
-    
+
     // Actualizar el estado de POAs con actividades
     const nuevosPoasConActividades = poasConActividades.map(poaActual => {
       if (poaActual.id_poa === poaId || (isFirstPoa && poaActual.id_poa !== poaId)) {
         return {
           ...poaActual,
-          actividades: poaActual.actividades.map(act => 
-            act.actividad_id === actividadId || 
-            (isFirstPoa && act.codigo_actividad === actividad.codigo_actividad)
+          actividades: poaActual.actividades.map(act =>
+            act.actividad_id === actividadId ||
+              (isFirstPoa && act.codigo_actividad === actividad.codigo_actividad)
               ? { ...act, codigo_actividad: "", tareas: [] } // Resetear en lugar de eliminar
               : act
           )
@@ -445,21 +447,21 @@ const AgregarActividad: React.FC = () => {
       }
       return poaActual;
     });
-    
+
     setPoasConActividades(nuevosPoasConActividades);
     setSuccess('Actividad eliminada correctamente');
   };
 
 
-    // Función para obtener el número de tarea según el tipo de POA
+  // Función para obtener el número de tarea según el tipo de POA
   const obtenerNumeroTarea = (itemPresupuestario: any, tipoPoa: string): string => {
     if (!itemPresupuestario || !itemPresupuestario.nombre) return '';
-    
+
     // El nombre contiene tres números separados por "; " en el orden: PIM, PTT, PVIF
     const numeros = itemPresupuestario.nombre.split(';');
-    
+
     if (numeros.length !== 3) return '';
-    
+
     let indice = 0;
     switch (tipoPoa) {
       case 'PIM':
@@ -474,22 +476,22 @@ const AgregarActividad: React.FC = () => {
       default:
         indice = 2; // Por defecto PVIF
     }
-    
+
     const numero = numeros[indice];
     return numero === '0' ? '' : numero;
   };
-  
+
   // Mostrar modal para agregar/editar tarea
   const mostrarModalTarea = async (poaId: string, actividadId: string, tarea?: TareaForm) => {
     // Limpiar errores cuando se abre el modal
     setTaskErrors({});
     setCurrentPoa(poaId);
     setCurrentActividad(actividadId);
-    
+
     // Obtener información de la actividad y POA
     const poa = poasConActividades.find(p => p.id_poa === poaId);
     const actividad = poa?.actividades.find(act => act.actividad_id === actividadId);
-    
+
     if (tarea) {
       // Editar tarea existente
       setCurrentTarea(tarea);
@@ -509,7 +511,7 @@ const AgregarActividad: React.FC = () => {
       });
       setIsEditingTarea(false);
     }
-    
+
     // Filtrar detalles de tarea según la actividad seleccionada
     if (poa && actividad && actividad.codigo_actividad) {
       setCargandoDetalles(true);
@@ -520,13 +522,13 @@ const AgregarActividad: React.FC = () => {
           poa.tipo_poa,
           (id: string) => getItemPresupuestarioConCache(id, tareaAPI.getItemPresupuestarioPorId)
         );
-        
+
         // NUEVO: Agrupar detalles duplicados
         const detallesAgrupados = await agruparDetallesDuplicados(
           detallesFiltradosParaActividad,
           (id: string) => getItemPresupuestarioConCache(id, tareaAPI.getItemPresupuestarioPorId)
         );
-        
+
         setDetallesFiltrados(detallesAgrupados);
       } catch (error) {
         setDetallesFiltrados(poa.detallesTarea);
@@ -536,29 +538,29 @@ const AgregarActividad: React.FC = () => {
     } else {
       setDetallesFiltrados(poa?.detallesTarea || []);
     }
-    
+
     setShowTareaModal(true);
   };
 
-    const toggleTareaExpansion = (poaId: string, actividadId: string, tareaId: string) => {
-    setPoasConActividades(prev => 
-      prev.map(poa => 
+  const toggleTareaExpansion = (poaId: string, actividadId: string, tareaId: string) => {
+    setPoasConActividades(prev =>
+      prev.map(poa =>
         poa.id_poa === poaId
           ? {
-              ...poa,
-              actividades: poa.actividades.map(act => 
-                act.actividad_id === actividadId
-                  ? {
-                      ...act,
-                      tareas: act.tareas.map(tarea => 
-                        tarea.tempId === tareaId
-                          ? { ...tarea, expanded: !tarea.expanded }
-                          : tarea
-                      )
-                    }
-                  : act
-              )
-            }
+            ...poa,
+            actividades: poa.actividades.map(act =>
+              act.actividad_id === actividadId
+                ? {
+                  ...act,
+                  tareas: act.tareas.map(tarea =>
+                    tarea.tempId === tareaId
+                      ? { ...tarea, expanded: !tarea.expanded }
+                      : tarea
+                  )
+                }
+                : act
+            )
+          }
           : poa
       )
     );
@@ -567,17 +569,17 @@ const AgregarActividad: React.FC = () => {
 
   const handleDetalleTareaChange = async (idDetalleTarea: string) => {
     if (!currentTarea || !currentPoa) return;
-    
+
     const detalleTarea = detallesFiltrados.find(dt => dt.id_detalle_tarea === idDetalleTarea);
-    
+
     if (detalleTarea) {
       setIsLoading(true);
       setLoadingMessage('Cargando información del ítem presupuestario...');
-      
+
       try {
         const poaActual = poasConActividades.find(p => p.id_poa === currentPoa);
         const tipoPoa = poaActual?.tipo_poa || 'PVIF';
-        
+
         // Preparar la tarea actualizada con la información básica
         let tareaActualizada = {
           ...currentTarea,
@@ -593,7 +595,7 @@ const AgregarActividad: React.FC = () => {
         if (detalleTarea.tiene_multiples_items && detalleTarea.items_presupuestarios && detalleTarea.items_presupuestarios.length > 0) {
           const itemPorDefecto = detalleTarea.items_presupuestarios[0];
           const numeroTarea = obtenerNumeroTarea(itemPorDefecto, tipoPoa);
-          
+
           tareaActualizada = {
             ...tareaActualizada,
             itemPresupuestario: itemPorDefecto,
@@ -605,7 +607,7 @@ const AgregarActividad: React.FC = () => {
         } else if (detalleTarea.item_presupuestario) {
           // Un solo item, usar directamente
           const numeroTarea = obtenerNumeroTarea(detalleTarea.item_presupuestario, tipoPoa);
-          
+
           tareaActualizada = {
             ...tareaActualizada,
             itemPresupuestario: detalleTarea.item_presupuestario,
@@ -614,9 +616,36 @@ const AgregarActividad: React.FC = () => {
             nombre: numeroTarea ? `${numeroTarea} - ${detalleTarea.nombre || ''}` : (detalleTarea.nombre || '')
           };
         }
-        
+
+        // NUEVA LÓGICA: Si tiene múltiples descripciones, establecer la primera y aplicar precio automático
+        if (detalleTarea.tiene_multiples_descripciones && detalleTarea.descripciones_disponibles && detalleTarea.descripciones_disponibles.length > 0) {
+          const primeraDescripcion = detalleTarea.descripciones_disponibles[0];
+          
+          // Establecer la primera descripción
+          tareaActualizada = {
+            ...tareaActualizada,
+            descripcion_seleccionada: primeraDescripcion,
+            detalle_descripcion: primeraDescripcion
+          };
+
+          // Aplicar precio automático si es contratación de servicios profesionales
+          const esServiciosProfesionales = tareaActualizada.detalle?.nombre?.toLowerCase().includes('contratación de servicios profesionales');
+          if (esServiciosProfesionales) {
+            const precio = obtenerPrecioPorDescripcion(primeraDescripcion);
+            if (precio !== null) {
+              const nuevoTotal = (tareaActualizada.cantidad || 0) * precio;
+              tareaActualizada = {
+                ...tareaActualizada,
+                precio_unitario: precio,
+                total: nuevoTotal,
+                saldo_disponible: nuevoTotal
+              };
+            }
+          }
+        }
+
         setCurrentTarea(tareaActualizada);
-        
+
       } catch (err) {
         setError('Error al procesar el detalle de tarea');
       } finally {
@@ -628,16 +657,16 @@ const AgregarActividad: React.FC = () => {
   // Nueva función para manejar el cambio del item presupuestario seleccionado
   const handleItemPresupuestarioChange = async (idItemPresupuestario: string) => {
     if (!currentTarea || !currentTarea.detalle) return;
-    
+
     const item = currentTarea.detalle.items_presupuestarios?.find(
       item => item.id_item_presupuestario === idItemPresupuestario
     );
-    
+
     if (item) {
       const poaActual = poasConActividades.find(p => p.id_poa === currentPoa);
       const tipoPoa = poaActual?.tipo_poa || 'PVIF';
       const numeroTarea = obtenerNumeroTarea(item, tipoPoa);
-      
+
       setCurrentTarea(prev => ({
         ...prev!,
         itemPresupuestario: item,
@@ -652,102 +681,122 @@ const AgregarActividad: React.FC = () => {
   // Nueva función para manejar el cambio de descripción seleccionada
   const handleDescripcionChange = (descripcionSeleccionada: string) => {
     if (!currentTarea) return;
-    
-    setCurrentTarea(prev => ({
-      ...prev!,
-      descripcion_seleccionada: descripcionSeleccionada,
-      detalle_descripcion: descripcionSeleccionada
-    }));
-  };
 
-  // Guardar tarea (nueva o editada)
-    const guardarTarea = () => {
-      if (!currentTarea || !currentPoa || !currentActividad) return;
-      
-      // Limpiar errores previos
-      setTaskErrors({});
-      
-      let hasErrors = false;
-      
-      // Validar datos de la tarea
-      if (!currentTarea.id_detalle_tarea) {
-        setTaskError('detalle_tarea', 'Debe seleccionar un detalle de tarea');
-        hasErrors = true;
-      }
-      
-      if (!currentTarea.nombre) {
-        setTaskError('nombre', 'El nombre de la tarea es obligatorio');
-        hasErrors = true;
-      }
-      
-      if (!currentTarea.cantidad || currentTarea.cantidad <= 0) {
-        setTaskError('cantidad', 'La cantidad debe ser mayor que cero');
-        hasErrors = true;
-      }
-      
-      if (!currentTarea.precio_unitario || currentTarea.precio_unitario <= 0) {
-        setTaskError('precio_unitario', 'El precio unitario debe ser mayor que cero');
-        hasErrors = true;
-      }
-
-      // Nueva validación para items múltiples
-      if (currentTarea.detalle?.tiene_multiples_items && !currentTarea.id_item_presupuestario_seleccionado) {
-        setTaskError('item_presupuestario', 'Debe seleccionar un código de ítem presupuestario');
-        hasErrors = true;
-      }
-
-      // Validar que haya planificación mensual
-      const totalPlanificado = currentTarea.gastos_mensuales?.reduce((sum, val) => sum + (val || 0), 0) || 0;
-      if (totalPlanificado === 0) {
-        setTaskError('gastos_mensuales', 'Debe planificar al menos un mes con valor mayor a cero');
-        hasErrors = true;
-      }
-      if (totalPlanificado > (currentTarea.total || 0)) {
-        setTaskError('gastos_mensuales', 'La planificación mensual supera el total disponible de la tarea');
-        hasErrors = true;
-      }
-
-      // Si hay errores, no continuar
-      if (hasErrors) {
-        return;
-      }
-
-      // Crear objeto de tarea para guardar en el estado local
-      const tareaCompleta = {
-        ...currentTarea,
-        cantidad: Math.floor(currentTarea.cantidad),
-        precio_unitario: parseFloat(currentTarea.precio_unitario.toString()),
-        // Para items múltiples, usar el seleccionado; sino usar el del detalle original
-        id_detalle_tarea: currentTarea.detalle?.tiene_multiples_items 
-          ? currentTarea.id_detalle_tarea // Mantener el ID del detalle agrupado
-          : currentTarea.id_detalle_tarea
-      };
-
-      // Actualizar las tareas en el estado local
-      setPoasConActividades(prev => 
-        prev.map(poa => 
-          poa.id_poa === currentPoa
-            ? {
-                ...poa,
-                actividades: poa.actividades.map(act => 
-                  act.actividad_id === currentActividad
-                    ? {
-                        ...act,
-                        tareas: isEditingTarea
-                          ? act.tareas.map(t => t.tempId === currentTarea.tempId ? tareaCompleta : t)
-                          : [...act.tareas, tareaCompleta]
-                      }
-                    : act
-                )
-              }
-            : poa
-        )
+    try {
+      const tareaActualizada = manejarCambioDescripcionConPrecio(
+        descripcionSeleccionada,
+        currentTarea
       );
 
-      setShowTareaModal(false);
-      setCurrentTarea(null);
-      setSuccess(isEditingTarea ? 'Tarea actualizada correctamente' : 'Tarea agregada correctamente');
+      setCurrentTarea(tareaActualizada);
+
+      // Limpiar errores si es necesario
+      if (descripcionSeleccionada) {
+        clearTaskError('descripcion');
+      }
+
+      // Limpiar error de precio si se actualizó automáticamente
+      if (tareaActualizada.precio_unitario > 0) {
+        clearTaskError('precio_unitario');
+      }
+    } catch (error) {
+      console.error('Error al procesar cambio de descripción:', error);
+      // Fallback: actualizar solo la descripción sin cambios de precio
+      setCurrentTarea(prev => ({
+        ...prev!,
+        descripcion_seleccionada: descripcionSeleccionada,
+        detalle_descripcion: descripcionSeleccionada
+      }));
+    }
+  };
+  // Guardar tarea (nueva o editada)
+  const guardarTarea = () => {
+    if (!currentTarea || !currentPoa || !currentActividad) return;
+
+    // Limpiar errores previos
+    setTaskErrors({});
+
+    let hasErrors = false;
+
+    // Validar datos de la tarea
+    if (!currentTarea.id_detalle_tarea) {
+      setTaskError('detalle_tarea', 'Debe seleccionar un detalle de tarea');
+      hasErrors = true;
+    }
+
+    if (!currentTarea.nombre) {
+      setTaskError('nombre', 'El nombre de la tarea es obligatorio');
+      hasErrors = true;
+    }
+
+    if (!currentTarea.cantidad || currentTarea.cantidad <= 0) {
+      setTaskError('cantidad', 'La cantidad debe ser mayor que cero');
+      hasErrors = true;
+    }
+
+    if (!currentTarea.precio_unitario || currentTarea.precio_unitario <= 0) {
+      setTaskError('precio_unitario', 'El precio unitario debe ser mayor que cero');
+      hasErrors = true;
+    }
+
+    // Nueva validación para items múltiples
+    if (currentTarea.detalle?.tiene_multiples_items && !currentTarea.id_item_presupuestario_seleccionado) {
+      setTaskError('item_presupuestario', 'Debe seleccionar un código de ítem presupuestario');
+      hasErrors = true;
+    }
+
+    // Validar que haya planificación mensual
+    const totalPlanificado = currentTarea.gastos_mensuales?.reduce((sum, val) => sum + (val || 0), 0) || 0;
+    if (totalPlanificado === 0) {
+      setTaskError('gastos_mensuales', 'Debe planificar al menos un mes con valor mayor a cero');
+      hasErrors = true;
+    }
+    if (totalPlanificado > (currentTarea.total || 0)) {
+      setTaskError('gastos_mensuales', 'La planificación mensual supera el total disponible de la tarea');
+      hasErrors = true;
+    }
+
+    // Si hay errores, no continuar
+    if (hasErrors) {
+      return;
+    }
+
+    // Crear objeto de tarea para guardar en el estado local
+    const tareaCompleta = {
+      ...currentTarea,
+      cantidad: Math.floor(currentTarea.cantidad),
+      precio_unitario: parseFloat(currentTarea.precio_unitario.toString()),
+      // Para items múltiples, usar el seleccionado; sino usar el del detalle original
+      id_detalle_tarea: currentTarea.detalle?.tiene_multiples_items
+        ? currentTarea.id_detalle_tarea // Mantener el ID del detalle agrupado
+        : currentTarea.id_detalle_tarea
     };
+
+    // Actualizar las tareas en el estado local
+    setPoasConActividades(prev =>
+      prev.map(poa =>
+        poa.id_poa === currentPoa
+          ? {
+            ...poa,
+            actividades: poa.actividades.map(act =>
+              act.actividad_id === currentActividad
+                ? {
+                  ...act,
+                  tareas: isEditingTarea
+                    ? act.tareas.map(t => t.tempId === currentTarea.tempId ? tareaCompleta : t)
+                    : [...act.tareas, tareaCompleta]
+                }
+                : act
+            )
+          }
+          : poa
+      )
+    );
+
+    setShowTareaModal(false);
+    setCurrentTarea(null);
+    setSuccess(isEditingTarea ? 'Tarea actualizada correctamente' : 'Tarea agregada correctamente');
+  };
 
   // Eliminar tarea
   const eliminarTarea = (poaId: string, actividadId: string, tareaId: string) => {
@@ -766,7 +815,7 @@ const AgregarActividad: React.FC = () => {
       }
       return poa;
     });
-    
+
     setPoasConActividades(nuevosPoasConActividades);
     setSuccess('Tarea eliminada correctamente');
   };
@@ -776,11 +825,11 @@ const AgregarActividad: React.FC = () => {
     // CORRECCIÓN: Obtener el POA para usar su tipo correcto
     const poa = poasConActividades.find(p => p.id_poa === poaId);
     if (!poa) return 'POA no encontrado';
-    
+
     // Usar el tipo del POA para obtener las actividades correctas
     const actividadesDisponibles = getActividadesPorTipoPOA(poa.tipo_poa);
     const actividad = actividadesDisponibles.find(act => act.id === codigoActividad);
-    
+
     return actividad ? actividad.descripcion : 'Seleccione una actividad';
   };
 
@@ -805,12 +854,12 @@ const AgregarActividad: React.FC = () => {
       return false;
     }
 
-    
+
     // Validar que todas las actividades tengan una actividad seleccionada en cada POA
     for (const poa of poasConActividades) {
       // Filtrar solo actividades con código seleccionado
       const actividadesConCodigo = poa.actividades.filter(act => act.codigo_actividad && act.codigo_actividad !== "");
-      
+
       if (actividadesConCodigo.length === 0) {
         setError(`Debe seleccionar al menos una actividad en el POA ${poa.codigo_poa}`);
         setActivePoaTab(poa.id_poa);
@@ -824,16 +873,16 @@ const AgregarActividad: React.FC = () => {
   // Manejar el envío del formulario
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validarFormulario()) {
       return;
     }
-    
+
     setIsLoading(true);
     setLoadingMessage('Guardando actividades y tareas...');
     setError(null);
     setSuccess(null);
-    
+
     try {
       // Paso 1: Crear actividades
       // Paso 1: Crear solo los IDs de actividades por POA
@@ -845,21 +894,21 @@ const AgregarActividad: React.FC = () => {
       for (const poa of poasConActividades) {
         // Filtrar solo las actividades que tienen código seleccionado
         const actividadesConCodigo = poa.actividades.filter(act => act.codigo_actividad && act.codigo_actividad !== "");
-        
+
         const actividadesParaCrear: ActividadCreate[] = actividadesConCodigo.map((actPoa) => {
-        const descripcion = getDescripcionActividad(poa.id_poa, actPoa.codigo_actividad);
-        
-        // Calcular el total real de la actividad sumando todas sus tareas
-        const totalActividad = actPoa.tareas.reduce((sum, tarea) => {
-          return sum + (tarea.total || 0);
-        }, 0);
-        
-        return {
-          descripcion_actividad: descripcion,
-          total_por_actividad: totalActividad,
-          saldo_actividad: totalActividad // Inicialmente el saldo es igual al total
-        };
-      });
+          const descripcion = getDescripcionActividad(poa.id_poa, actPoa.codigo_actividad);
+
+          // Calcular el total real de la actividad sumando todas sus tareas
+          const totalActividad = actPoa.tareas.reduce((sum, tarea) => {
+            return sum + (tarea.total || 0);
+          }, 0);
+
+          return {
+            descripcion_actividad: descripcion,
+            total_por_actividad: totalActividad,
+            saldo_actividad: totalActividad // Inicialmente el saldo es igual al total
+          };
+        });
 
         // Validar planificación mensual antes de crear actividades
         for (const actividad of actividadesConCodigo) {
@@ -872,7 +921,7 @@ const AgregarActividad: React.FC = () => {
             }
           }
         }
-        
+
         // Crear las actividades para este POA
         console.log(`Creando ${actividadesParaCrear.length} actividades para POA ${poa.codigo_poa}`);
 
@@ -883,7 +932,7 @@ const AgregarActividad: React.FC = () => {
 
         // CORRECCIÓN: Acceder correctamente a los IDs de las actividades creadas
         let idsActividades: string[] = [];
-        
+
         if (actividadesCreadasResponse.ids_actividades && Array.isArray(actividadesCreadasResponse.ids_actividades)) {
           idsActividades = actividadesCreadasResponse.ids_actividades;
         } else if (Array.isArray(actividadesCreadasResponse)) {
@@ -901,11 +950,11 @@ const AgregarActividad: React.FC = () => {
         // Mapear correctamente los IDs temporales a los IDs reales
         actividadesConCodigo.forEach((act, index) => {
           const idActividadReal = idsActividades[index];
-          
+
           if (!idActividadReal) {
             throw new Error(`No se pudo obtener el ID de la actividad ${index + 1} para POA ${poa.codigo_poa}`);
           }
-          
+
           // Guardar el mapeo ID temporal -> ID real
           actividadesCreadas[act.actividad_id] = idActividadReal;
           mapeoActividadesTemp[act.actividad_id] = {
@@ -913,7 +962,7 @@ const AgregarActividad: React.FC = () => {
             actividadTemp: act
           };
           totalActividadesCreadas++;
-          
+
           console.log(`Mapeado: ${act.actividad_id} -> ${idActividadReal}`);
         });
       }
@@ -928,9 +977,9 @@ const AgregarActividad: React.FC = () => {
       let totalProgramacionesCreadas = 0;
 
       // Para cada entrada en el mapeo de actividades creadas
-      for (const [actividadTempId, { poaId, actividadTemp }] of Object.entries(mapeoActividadesTemp)) {
+      for (const [actividadTempId, {actividadTemp }] of Object.entries(mapeoActividadesTemp)) {
         const idActividadReal = actividadesCreadas[actividadTempId];
-        
+
         console.log(`Procesando actividad temporal ${actividadTempId} -> real ${idActividadReal}`);
 
         if (!idActividadReal || actividadTemp.tareas.length === 0) {
@@ -939,11 +988,11 @@ const AgregarActividad: React.FC = () => {
         }
 
         console.log(`Creando ${actividadTemp.tareas.length} tareas para actividad ${idActividadReal}`);
-        
+
         // Crear tareas secuencialmente para esta actividad
         for (let i = 0; i < actividadTemp.tareas.length; i++) {
           const tarea = actividadTemp.tareas[i];
-          
+
           try {
             const tareaDatos: TareaCreate = {
               id_detalle_tarea: tarea.id_detalle_tarea,
@@ -983,14 +1032,14 @@ const AgregarActividad: React.FC = () => {
             totalTareasCreadas++;
 
             // Crear la programación mensual para esta tarea usando el ID real de la tarea
-            if (tarea.gastos_mensuales && tarea.gastos_mensuales.length === 12) {                  
+            if (tarea.gastos_mensuales && tarea.gastos_mensuales.length === 12) {
               for (let index = 0; index < tarea.gastos_mensuales.length; index++) {
                 const valor = tarea.gastos_mensuales[index];
                 if (valor > 0) {
                   const mesNumero = index + 1;
                   const añoActual = new Date().getFullYear();
                   const mesFormateado = `${mesNumero.toString().padStart(2, '0')}-${añoActual}`;
-                  
+
                   const programacionDatos: ProgramacionMensualCreate = {
                     id_tarea: tareaCreada.id_tarea, // Usar el ID real de la tarea creada
                     mes: mesFormateado,
@@ -1006,7 +1055,7 @@ const AgregarActividad: React.FC = () => {
                     console.log("Mes:", mesFormateado, "Valor:", valor);
 
                     // Verificar UUID de tarea
-                    console.log("UUID tarea válido:", uuidRegex.test(tareaCreada.id_tarea));  
+                    console.log("UUID tarea válido:", uuidRegex.test(tareaCreada.id_tarea));
 
 
                     await tareaAPI.crearProgramacionMensual(programacionDatos);
@@ -1028,7 +1077,7 @@ const AgregarActividad: React.FC = () => {
             console.error("URL que se intentó:", error.config?.url);
             console.error("Método:", error.config?.method);
             console.error("Datos enviados:", error.config?.data);
-            
+
             if (error.response) {
               console.error("Status:", error.response.status);
               console.error("Headers:", error.response.headers);
@@ -1036,20 +1085,20 @@ const AgregarActividad: React.FC = () => {
             } else if (error.request) {
               console.error("No response received:", error.request);
             }
-            
+
             console.error(`Error al procesar tarea "${tarea.nombre}" de actividad ${idActividadReal}:`, error);
             throw new Error(`Error al crear la tarea "${tarea.nombre}": ${error}`);
           }
         }
       }
-      
+
       setSuccess(`Se han creado exitosamente ${totalActividadesCreadas} actividades, ${totalTareasCreadas} tareas y ${totalProgramacionesCreadas} programaciones mensuales para ${poasProyecto.length} POAs del proyecto`);
 
       // Opcional: redirigir a otra página después de un tiempo
       setTimeout(() => {
         navigate('/Dashboard');
       }, 3000);
-      
+
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al crear las actividades y tareas');
     } finally {
@@ -1057,16 +1106,16 @@ const AgregarActividad: React.FC = () => {
     }
   };
 
-  
+
 
   // Calcular total para una actividad
   const calcularTotalActividad = (poaId: string, actividadId: string) => {
     const poa = poasConActividades.find(p => p.id_poa === poaId);
     if (!poa) return 0;
-    
+
     const actividad = poa.actividades.find(a => a.actividad_id === actividadId);
     if (!actividad) return 0;
-    
+
     return actividad.tareas.reduce((sum, tarea) => sum + (tarea.total || 0), 0);
   };
 
@@ -1079,7 +1128,7 @@ const AgregarActividad: React.FC = () => {
       // Para PIM: "ACT-PIM-1" -> "1"
       const partes = codigoActividad.split('-');
       return partes[partes.length - 1] || '';
-      
+
     } else if (codigoActividad.includes('PTT')) {
       // Para PTT: "ACT-PTT-1" -> "1"
       const partes = codigoActividad.split('-');
@@ -1116,7 +1165,7 @@ const AgregarActividad: React.FC = () => {
         'ACT-5': '5', 'ACT-6': '6', 'ACT-7': '7', 'ACT-8': '8'
       },
       'PIS': {
-       'ACT-1': '1', 'ACT-2': '2', 'ACT-3': '3', 'ACT-4': '4',
+        'ACT-1': '1', 'ACT-2': '2', 'ACT-3': '3', 'ACT-4': '4',
         'ACT-5': '5', 'ACT-6': '6', 'ACT-7': '7', 'ACT-8': '8'
       },
       'PIIF': {
@@ -1131,13 +1180,13 @@ const AgregarActividad: React.FC = () => {
   // Función para filtrar detalles de tarea según la actividad y tipo de POA
   // Ahora hace consultas individuales para obtener los items presupuestarios
   const filtrarDetallesPorActividadConConsultas = async (
-    detallesTarea: DetalleTarea[], 
-    codigoActividad: string, 
+    detallesTarea: DetalleTarea[],
+    codigoActividad: string,
     tipoPoa: string,
     getItemPresupuestarioPorId: (id: string) => Promise<ItemPresupuestario>
   ): Promise<DetalleTarea[]> => {
     const numeroActividad = mapearCodigoActividadANumero(codigoActividad, tipoPoa);
-    
+
     if (!numeroActividad) {
       return detallesTarea; // Retorna todos si no puede filtrar
     }
@@ -1146,27 +1195,27 @@ const AgregarActividad: React.FC = () => {
     if (!/^\d+$/.test(numeroActividad)) {
       return detallesTarea;
     }
-    
+
     // Procesar cada detalle de forma asíncrona
     const detallesConItems = await Promise.allSettled(
       detallesTarea.map(async (detalle) => {
-        
+
         try {
           // Obtener el item presupuestario usando la función proporcionada
           const itemPresupuestario = await getItemPresupuestarioPorId(detalle.id_item_presupuestario);
-          
+
           // Verificar formato del nombre (debe ser "X.Y; A.B; C.D")
           if (!itemPresupuestario.nombre || typeof itemPresupuestario.nombre !== 'string') {
             return { detalle, incluir: false, itemPresupuestario: null };
           }
-          
+
           // Obtener los números del nombre (formato: "X.Y; A.B; C.D")
           const numeros = itemPresupuestario.nombre.split('; ');
-          
+
           if (numeros.length !== 3) {
             return { detalle, incluir: false, itemPresupuestario };
           }
-          
+
           // Determinar qué posición revisar según el tipo de POA
           let indice = 0;
           switch (tipoPoa) {
@@ -1186,37 +1235,37 @@ const AgregarActividad: React.FC = () => {
             default:
               indice = 2;
           }
-          
+
           const numeroTarea = numeros[indice];
-          
+
           // Si es "0", no está disponible para este tipo de POA
           if (numeroTarea === '0') {
             return { detalle, incluir: false, itemPresupuestario };
           }
-          
+
           // Verificar si el número de la tarea comienza con el número de actividad
-          const coincide = numeroTarea.startsWith(numeroActividad + '.');          
+          const coincide = numeroTarea.startsWith(numeroActividad + '.');
           return { detalle, incluir: coincide, itemPresupuestario, numeroTarea };
-          
+
         } catch (error) {
           return { detalle, incluir: false, itemPresupuestario: null, error };
         }
       })
     );
-    
+
     // Filtrar solo los que se resolvieron correctamente y deben incluirse
     const filtrados = detallesConItems
       .filter(result => result.status === 'fulfilled' && result.value.incluir)
       .map(result => (result as PromiseFulfilledResult<any>).value);
-    
+
     // Ordenar los resultados filtrados según el número de tarea
     const filtradosOrdenados = filtrados.sort((a, b) => {
       const valorA = parseFloat(a.numeroTarea);
       const valorB = parseFloat(b.numeroTarea);
-            
+
       return valorA - valorB; // Orden ascendente
     });
-    
+
     // Retornar solo los detalles, no los objetos con metadata
     return filtradosOrdenados.map(item => item.detalle);
   };
@@ -1228,7 +1277,7 @@ const AgregarActividad: React.FC = () => {
   ): Promise<DetalleTarea[]> => {
     // PRIMERA FASE: Agrupar por nombre y descripción (lógica existente para items)
     const gruposPorNombre = new Map<string, DetalleTarea[]>();
-    
+
     detallesFiltrados.forEach(detalle => {
       const clave = `${detalle.nombre}|${detalle.descripcion || ''}`;
       if (!gruposPorNombre.has(clave)) {
@@ -1236,10 +1285,10 @@ const AgregarActividad: React.FC = () => {
       }
       gruposPorNombre.get(clave)!.push(detalle);
     });
-    
+
     // Procesar grupos de items múltiples
     const detallesConItemsProcessados: DetalleTarea[] = [];
-    
+
     for (const [, detallesGrupo] of gruposPorNombre.entries()) {
       if (detallesGrupo.length === 1) {
         // Solo un detalle, procesar normalmente
@@ -1260,7 +1309,7 @@ const AgregarActividad: React.FC = () => {
       } else {
         // Múltiples detalles con mismo nombre, obtener todos los items
         const items: ItemPresupuestario[] = [];
-        
+
         for (const detalle of detallesGrupo) {
           try {
             const item = await getItemPresupuestarioPorId(detalle.id_item_presupuestario);
@@ -1269,7 +1318,7 @@ const AgregarActividad: React.FC = () => {
             throw error;
           }
         }
-        
+
         // Crear un solo detalle con múltiples items
         const detalleBase = detallesGrupo[0];
         detallesConItemsProcessados.push({
@@ -1283,13 +1332,13 @@ const AgregarActividad: React.FC = () => {
 
     // SEGUNDA FASE: Agrupar por nombre e item presupuestario (NUEVA LÓGICA para descripciones)
     const gruposPorNombreEItem = new Map<string, DetalleTarea[]>();
-    
+
     detallesConItemsProcessados.forEach(detalle => {
-      const itemId = detalle.tiene_multiples_items 
+      const itemId = detalle.tiene_multiples_items
         ? detalle.items_presupuestarios?.[0]?.id_item_presupuestario || detalle.id_item_presupuestario
         : detalle.id_item_presupuestario;
       const clave = `${detalle.nombre}|${itemId}`;
-      
+
       if (!gruposPorNombreEItem.has(clave)) {
         gruposPorNombreEItem.set(clave, []);
       }
@@ -1298,7 +1347,7 @@ const AgregarActividad: React.FC = () => {
 
     // Procesar grupos de descripciones múltiples
     const detallesFinales: DetalleTarea[] = [];
-    
+
     for (const [, detallesGrupo] of gruposPorNombreEItem.entries()) {
       if (detallesGrupo.length === 1) {
         // Solo un detalle, mantener como está
@@ -1312,7 +1361,7 @@ const AgregarActividad: React.FC = () => {
           .map(d => d.descripcion || '')
           .filter((desc, index, arr) => arr.indexOf(desc) === index) // Eliminar duplicados
           .filter(desc => desc.trim() !== ''); // Eliminar vacías
-        
+
         if (descripciones.length > 1) {
           // Crear un solo detalle con múltiples descripciones
           const detalleBase = detallesGrupo[0];
@@ -1331,7 +1380,7 @@ const AgregarActividad: React.FC = () => {
         }
       }
     }
-    
+
     return detallesFinales;
   };
 
@@ -1345,7 +1394,7 @@ const AgregarActividad: React.FC = () => {
     if (cacheItemsPresupuestarios.has(id)) {
       return cacheItemsPresupuestarios.get(id)!;
     }
-    
+
     const item = await getItemPresupuestarioPorId(id);
     cacheItemsPresupuestarios.set(id, item);
     return item;
@@ -1363,21 +1412,21 @@ const AgregarActividad: React.FC = () => {
               {error}
             </Alert>
           )}
-          
+
           {success && (
             <Alert variant="success" onClose={() => setSuccess(null)} dismissible>
               {success}
             </Alert>
           )}
-          
+
           <Form onSubmit={handleSubmit}>
             {/* Sección de Búsqueda de Proyecto */}
-            <BusquedaProyecto 
+            <BusquedaProyecto
               proyectos={proyectos}
               isLoading={isLoading}
               seleccionarProyecto={seleccionarProyecto}
             />
-            
+
             {/* Información del Proyecto Seleccionado */}
             {proyectoSeleccionado && (
               <Row className="mb-4">
@@ -1438,7 +1487,7 @@ const AgregarActividad: React.FC = () => {
             {proyectoSeleccionado && poasProyecto.length > 0 && (
               <Row className="mb-4">
                 <Col md={12} className="d-flex justify-content-end">
-                  <ExportarPOA 
+                  <ExportarPOA
                     codigoProyecto={proyectoSeleccionado.codigo_proyecto}
                     poas={poasProyecto.map(poa => ({
                       id_poa: poa.id_poa,
@@ -1452,7 +1501,7 @@ const AgregarActividad: React.FC = () => {
                 </Col>
               </Row>
             )}
-            
+
             {/* Sección de actividades por POA */}
             {proyectoSeleccionado && poasProyecto.length > 0 && (
               <Row className="mb-4">
@@ -1472,16 +1521,16 @@ const AgregarActividad: React.FC = () => {
                         className="mb-4"
                       >
                         {poasConActividades.map((poa) => (
-                          <Tab 
-                            key={poa.id_poa} 
-                            eventKey={poa.id_poa} 
+                          <Tab
+                            key={poa.id_poa}
+                            eventKey={poa.id_poa}
                             title={`${poa.codigo_poa} - ${poa.tipo_poa}`}
                           >
                             <div className="d-flex justify-content-between align-items-center mb-3">
                               <h6>Presupuesto Asignado: ${poa.presupuesto_asignado.toLocaleString('es-CO')}</h6>
-                              <Button 
-                                variant="success" 
-                                size="sm" 
+                              <Button
+                                variant="success"
+                                size="sm"
                                 onClick={() => agregarActividad(poa.id_poa)}
                               >
                                 <i className="bi bi-plus-circle me-1"></i> Agregar Actividad
@@ -1491,8 +1540,8 @@ const AgregarActividad: React.FC = () => {
                             {/* Lista de Actividades con Tareas */}
                             {/* Reemplazar la parte del formulario para seleccionar actividad */}
                             {poa.actividades.map((actividad, indexActividad) => (
-                              <Card 
-                                key={actividad.actividad_id} 
+                              <Card
+                                key={actividad.actividad_id}
                                 className="mb-4 border-primary"
                                 id={`actividad-${actividad.actividad_id}`}
                               >
@@ -1533,7 +1582,7 @@ const AgregarActividad: React.FC = () => {
                                         <table className="table table-sm table-hover table-bordered">
                                           <thead className="table-light">
                                             <tr>
-                                              <th style={{width: '30px'}}></th>
+                                              <th style={{ width: '30px' }}></th>
                                               <th>#</th>
                                               <th>Nombre</th>
                                               <th>Código Ítem</th>
@@ -1614,7 +1663,7 @@ const AgregarActividad: React.FC = () => {
                                                             const totalPlanificado = tarea.gastos_mensuales?.reduce((sum, val) => sum + (val || 0), 0) || 0;
                                                             const totalTarea = tarea.total || 0;
                                                             const excedeLimite = totalPlanificado > totalTarea;
-                                                            
+
                                                             return (
                                                               <div>
                                                                 <p className="mb-1">
@@ -1693,7 +1742,7 @@ const AgregarActividad: React.FC = () => {
                     {error}
                   </Alert>
                 )}
-                
+
                 <Form.Group className="mb-3">
                   <Form.Label>Actividades Disponibles</Form.Label>
                   <Form.Select
@@ -1730,7 +1779,7 @@ const AgregarActividad: React.FC = () => {
                     {error}
                   </Alert>
                 )}
-                
+
                 <Form.Group className="mb-3">
                   <Form.Label>Detalle de Tarea</Form.Label>
                   <Form.Select
@@ -1764,7 +1813,7 @@ const AgregarActividad: React.FC = () => {
                     </Form.Text>
                   )}
                 </Form.Group>
-                
+
                 {/* Campo para mostrar/seleccionar el código del ítem */}
                 <Form.Group className="mb-3">
                   <Form.Label>Código del Ítem</Form.Label>
@@ -1799,20 +1848,20 @@ const AgregarActividad: React.FC = () => {
                     </Form.Control.Feedback>
                   )}
                   <Form.Text className="text-muted">
-                    {currentTarea?.detalle?.tiene_multiples_items 
+                    {currentTarea?.detalle?.tiene_multiples_items
                       ? "Seleccione el código específico para esta tarea."
                       : "Este código se asigna automáticamente según el detalle de tarea."
                     }
                   </Form.Text>
                 </Form.Group>
-                
+
                 <Form.Group className="mb-3">
                   <Form.Label>Nombre de la Tarea *</Form.Label>
                   <Form.Control
                     type="text"
                     value={currentTarea?.nombre || ''}
                     onChange={(e) => {
-                      setCurrentTarea(prev => prev ? {...prev, nombre: e.target.value} : null);
+                      setCurrentTarea(prev => prev ? { ...prev, nombre: e.target.value } : null);
                       if (e.target.value.trim()) {
                         clearTaskError('nombre');
                       }
@@ -1826,7 +1875,7 @@ const AgregarActividad: React.FC = () => {
                     </Form.Control.Feedback>
                   )}
                 </Form.Group>
-                
+
                 <Form.Group className="mb-3">
                   <Form.Label>Descripción</Form.Label>
                   {currentTarea?.detalle?.tiene_multiples_descripciones ? (
@@ -1838,6 +1887,7 @@ const AgregarActividad: React.FC = () => {
                       {currentTarea.detalle.descripciones_disponibles?.map((descripcion, index) => (
                         <option key={index} value={descripcion}>
                           {descripcion}
+                          {/* YA NO MOSTRAR EL PRECIO AQUÍ */}
                         </option>
                       ))}
                     </Form.Select>
@@ -1846,14 +1896,23 @@ const AgregarActividad: React.FC = () => {
                       as="textarea"
                       rows={2}
                       value={currentTarea?.detalle_descripcion || ''}
-                      onChange={(e) => setCurrentTarea(prev => prev ? {...prev, detalle_descripcion: e.target.value} : null)}
+                      onChange={(e) => handleDescripcionChange(e.target.value)}
                     />
                   )}
                   <Form.Text className="text-muted">
-                    {currentTarea?.detalle?.tiene_multiples_descripciones 
+                    {currentTarea?.detalle?.tiene_multiples_descripciones
                       ? "Seleccione la descripción específica para esta tarea."
                       : "Puede editar la descripción de la tarea."
                     }
+                    {/* Mostrar información adicional si es contratación de servicios profesionales */}
+                    {esContratacionServiciosProfesionales(currentTarea) && (
+                      <div className="mt-1">
+                        <small className="text-info">
+                          <i className="fas fa-info-circle me-1"></i>
+                          El precio unitario se actualizará automáticamente según la descripción seleccionada.
+                        </small>
+                      </div>
+                    )}
                   </Form.Text>
                 </Form.Group>
 
@@ -1869,7 +1928,7 @@ const AgregarActividad: React.FC = () => {
                         onChange={(e) => {
                           const rawValue = e.target.value;
                           if (rawValue === '') {
-                            setCurrentTarea(prev => prev ? {...prev, cantidad: 0} : null);
+                            setCurrentTarea(prev => prev ? { ...prev, cantidad: 0 } : null);
                             return;
                           }
                           const value = parseInt(rawValue, 10);
@@ -1907,20 +1966,25 @@ const AgregarActividad: React.FC = () => {
                           type="text"
                           value={currentTarea?.precio_unitario === 0 ? '' : currentTarea?.precio_unitario || ''}
                           onChange={(e) => {
+                            // Solo permitir edición si NO es contratación de servicios profesionales
+                            if (esContratacionServiciosProfesionales(currentTarea)) {
+                              return; // No hacer nada si es servicios profesionales
+                            }
+
                             const rawValue = e.target.value;
-                            
+
                             if (rawValue === '') {
-                              setCurrentTarea(prev => prev ? {...prev, precio_unitario: 0} : null);
+                              setCurrentTarea(prev => prev ? { ...prev, precio_unitario: 0 } : null);
                               return;
                             }
-                            
+
                             const isValidFormat = /^\d*\.?\d{0,2}$/.test(rawValue);
-                            
+
                             if (isValidFormat) {
-                              const numericValue = rawValue.endsWith('.') 
-                                ? parseFloat(rawValue + '0') 
+                              const numericValue = rawValue.endsWith('.')
+                                ? parseFloat(rawValue + '0')
                                 : parseFloat(rawValue) || 0;
-                              
+
                               setCurrentTarea(prev => {
                                 if (!prev) return prev;
                                 const nuevoTotal = (prev.cantidad || 0) * numericValue;
@@ -1932,11 +1996,16 @@ const AgregarActividad: React.FC = () => {
                                   saldo_disponible: nuevoTotal
                                 };
                               });
-                              
+
                               if (numericValue > 0) {
                                 clearTaskError('precio_unitario');
                               }
                             }
+                          }}
+                          readOnly={esContratacionServiciosProfesionales(currentTarea)}
+                          style={{
+                            backgroundColor: esContratacionServiciosProfesionales(currentTarea) ? '#f8f9fa' : 'white',
+                            cursor: esContratacionServiciosProfesionales(currentTarea) ? 'not-allowed' : 'text'
                           }}
                           required
                           isInvalid={!!taskErrors.precio_unitario}
@@ -1946,6 +2015,13 @@ const AgregarActividad: React.FC = () => {
                         <Form.Control.Feedback type="invalid">
                           {taskErrors.precio_unitario}
                         </Form.Control.Feedback>
+                      )}
+                      {/* Mostrar información adicional cuando es readonly */}
+                      {esContratacionServiciosProfesionales(currentTarea) && (
+                        <Form.Text className="text-muted">
+                          <i className="fas fa-lock me-1"></i>
+                          Precio establecido automáticamente según la descripción seleccionada.
+                        </Form.Text>
                       )}
                     </Form.Group>
                   </Col>
@@ -1977,10 +2053,10 @@ const AgregarActividad: React.FC = () => {
                         const rawValue = e.target.value;
                         // Si está vacío, establecer a vacío para permitir borrar
                         if (rawValue === '') {
-                          setCurrentTarea(prev => prev ? {...prev, saldo_disponible: 0} : null);
+                          setCurrentTarea(prev => prev ? { ...prev, saldo_disponible: 0 } : null);
                           return;
                         }
-                        
+
                         // Permitir solo números con hasta 2 decimales
                         if (/^\d*\.?\d{0,2}$/.test(rawValue)) {
                           setCurrentTarea(prev => {
@@ -1999,37 +2075,37 @@ const AgregarActividad: React.FC = () => {
                   </Form.Text>
                   <Form.Group className="mb-3">
                     <hr className="my-3" />
-                      <div className="text-center mb-3">
-                        <Form.Label className="h6 fw-bold">Distribución Mensual de Gastos</Form.Label>
-                      </div>
+                    <div className="text-center mb-3">
+                      <Form.Label className="h6 fw-bold">Distribución Mensual de Gastos</Form.Label>
+                    </div>
                     <div className="row g-2">
-                      {['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
+                      {['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
                         'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'].map((mes, index) => (
-                        <div key={mes} className="col-md-3 col-sm-6 mb-2">
-                          <Form.Label className="small fw-bold">{mes}</Form.Label>
-                          <InputGroup size="sm">
-                            <InputGroup.Text>$</InputGroup.Text>
-                            <Form.Control
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              value={currentTarea?.gastos_mensuales?.[index] || ''}
-                              onChange={(e) => {
-                                const valor = parseFloat(e.target.value) || 0;
-                                setCurrentTarea(prev => {
-                                  if (!prev) return prev;
-                                  const gastosMensuales = [...(prev.gastos_mensuales || new Array(12).fill(0))];
-                                  gastosMensuales[index] = valor;
-                                  return {
-                                    ...prev,
-                                    gastos_mensuales: gastosMensuales
-                                  };
-                                });
-                              }}
-                            />
-                          </InputGroup>
-                        </div>
-                      ))}
+                          <div key={mes} className="col-md-3 col-sm-6 mb-2">
+                            <Form.Label className="small fw-bold">{mes}</Form.Label>
+                            <InputGroup size="sm">
+                              <InputGroup.Text>$</InputGroup.Text>
+                              <Form.Control
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={currentTarea?.gastos_mensuales?.[index] || ''}
+                                onChange={(e) => {
+                                  const valor = parseFloat(e.target.value) || 0;
+                                  setCurrentTarea(prev => {
+                                    if (!prev) return prev;
+                                    const gastosMensuales = [...(prev.gastos_mensuales || new Array(12).fill(0))];
+                                    gastosMensuales[index] = valor;
+                                    return {
+                                      ...prev,
+                                      gastos_mensuales: gastosMensuales
+                                    };
+                                  });
+                                }}
+                              />
+                            </InputGroup>
+                          </div>
+                        ))}
                     </div>
                     <div className="mt-2 text-end">
                       <Form.Text className="text-muted">
@@ -2046,7 +2122,7 @@ const AgregarActividad: React.FC = () => {
                     )}
                   </Form.Group>
                 </Form.Group>
-                
+
               </Modal.Body>
               <Modal.Footer>
                 <Button variant="secondary" onClick={() => setShowTareaModal(false)}>
@@ -2068,9 +2144,9 @@ const AgregarActividad: React.FC = () => {
               </div>
             )}
           </Form>
-                </Card.Body>
-              </Card>
-            </Container>
+        </Card.Body>
+      </Card>
+    </Container>
   );
 }
 
