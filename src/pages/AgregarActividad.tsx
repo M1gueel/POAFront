@@ -72,8 +72,24 @@ const AgregarActividad: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('Cargando datos...');
   const [error, setError] = useState<string | null>(null);
+  const [taskErrors, setTaskErrors] = useState<{[key: string]: string}>({});
   const [success, setSuccess] = useState<string | null>(null);
 
+  // 2. FUNCIÓN PARA LIMPIAR ERRORES ESPECÍFICOS (agregar después de los estados)
+  const clearTaskError = (field: string) => {
+    setTaskErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[field];
+      return newErrors;
+    });
+  };
+
+  const setTaskError = (field: string, message: string) => {
+    setTaskErrors(prev => ({
+      ...prev,
+      [field]: message
+    }));
+  };
   // Cargar datos iniciales
   useEffect(() => {
     const cargarDatos = async () => {
@@ -465,6 +481,8 @@ const AgregarActividad: React.FC = () => {
   
   // Mostrar modal para agregar/editar tarea
   const mostrarModalTarea = async (poaId: string, actividadId: string, tarea?: TareaForm) => {
+    // Limpiar errores cuando se abre el modal
+    setTaskErrors({});
     setCurrentPoa(poaId);
     setCurrentActividad(actividadId);
     
@@ -646,37 +664,51 @@ const AgregarActividad: React.FC = () => {
     const guardarTarea = () => {
       if (!currentTarea || !currentPoa || !currentActividad) return;
       
+      // Limpiar errores previos
+      setTaskErrors({});
+      
+      let hasErrors = false;
+      
       // Validar datos de la tarea
       if (!currentTarea.id_detalle_tarea) {
-        setError('Debe seleccionar un detalle de tarea');
-        return;
+        setTaskError('detalle_tarea', 'Debe seleccionar un detalle de tarea');
+        hasErrors = true;
       }
       
       if (!currentTarea.nombre) {
-        setError('El nombre de la tarea es obligatorio');
-        return;
+        setTaskError('nombre', 'El nombre de la tarea es obligatorio');
+        hasErrors = true;
       }
       
       if (!currentTarea.cantidad || currentTarea.cantidad <= 0) {
-        setError('La cantidad debe ser mayor que cero');
-        return;
+        setTaskError('cantidad', 'La cantidad debe ser mayor que cero');
+        hasErrors = true;
       }
       
       if (!currentTarea.precio_unitario || currentTarea.precio_unitario <= 0) {
-        setError('El precio unitario debe ser mayor que cero');
-        return;
+        setTaskError('precio_unitario', 'El precio unitario debe ser mayor que cero');
+        hasErrors = true;
       }
 
       // Nueva validación para items múltiples
       if (currentTarea.detalle?.tiene_multiples_items && !currentTarea.id_item_presupuestario_seleccionado) {
-        setError('Debe seleccionar un código de ítem presupuestario');
-        return;
+        setTaskError('item_presupuestario', 'Debe seleccionar un código de ítem presupuestario');
+        hasErrors = true;
       }
 
       // Validar que haya planificación mensual
       const totalPlanificado = currentTarea.gastos_mensuales?.reduce((sum, val) => sum + (val || 0), 0) || 0;
       if (totalPlanificado === 0) {
-        setError('Debe planificar al menos un mes con valor mayor a cero');
+        setTaskError('gastos_mensuales', 'Debe planificar al menos un mes con valor mayor a cero');
+        hasErrors = true;
+      }
+      if (totalPlanificado > (currentTarea.total || 0)) {
+        setTaskError('gastos_mensuales', 'La planificación mensual supera el total disponible de la tarea');
+        hasErrors = true;
+      }
+
+      // Si hay errores, no continuar
+      if (hasErrors) {
         return;
       }
 
@@ -990,7 +1022,7 @@ const AgregarActividad: React.FC = () => {
                 }
               }
             }
-          } catch (error) {
+          } catch (error: any) {
             console.error("=== ERROR COMPLETO CREACIÓN TAREA ===");
             console.error("Error completo:", error);
             console.error("URL que se intentó:", error.config?.url);
@@ -1705,22 +1737,27 @@ const AgregarActividad: React.FC = () => {
                     value={currentTarea?.id_detalle_tarea || ''}
                     onChange={async (e) => {
                       await handleDetalleTareaChange(e.target.value);
+                      if (e.target.value) {
+                        clearTaskError('detalle_tarea');
+                      }
                     }}
                     disabled={cargandoDetalles}
+                    isInvalid={!!taskErrors.detalle_tarea}
                   >
                     <option value="">
                       {cargandoDetalles ? 'Cargando detalles...' : 'Seleccione un detalle...'}
                     </option>
-                    {detallesFiltrados.map(dt => {
-                      // Para mostrar el número de tarea en la opción, podrías hacer otra consulta
-                      // o mantenerlo simple por ahora
-                      return (
-                        <option key={dt.id_detalle_tarea} value={dt.id_detalle_tarea}>
-                          {dt.nombre}
-                        </option>
-                      );
-                    })}
+                    {detallesFiltrados.map(dt => (
+                      <option key={dt.id_detalle_tarea} value={dt.id_detalle_tarea}>
+                        {dt.nombre}
+                      </option>
+                    ))}
                   </Form.Select>
+                  {taskErrors.detalle_tarea && (
+                    <Form.Control.Feedback type="invalid">
+                      {taskErrors.detalle_tarea}
+                    </Form.Control.Feedback>
+                  )}
                   {cargandoDetalles && (
                     <Form.Text className="text-muted">
                       Filtrando detalles según la actividad seleccionada...
@@ -1734,7 +1771,13 @@ const AgregarActividad: React.FC = () => {
                   {currentTarea?.detalle?.tiene_multiples_items ? (
                     <Form.Select
                       value={currentTarea?.id_item_presupuestario_seleccionado || ''}
-                      onChange={(e) => handleItemPresupuestarioChange(e.target.value)}
+                      onChange={(e) => {
+                        handleItemPresupuestarioChange(e.target.value);
+                        if (e.target.value) {
+                          clearTaskError('item_presupuestario');
+                        }
+                      }}
+                      isInvalid={!!taskErrors.item_presupuestario}
                     >
                       <option value="">Seleccione un código...</option>
                       {currentTarea.detalle.items_presupuestarios?.map((item) => (
@@ -1750,6 +1793,11 @@ const AgregarActividad: React.FC = () => {
                       disabled
                     />
                   )}
+                  {taskErrors.item_presupuestario && (
+                    <Form.Control.Feedback type="invalid">
+                      {taskErrors.item_presupuestario}
+                    </Form.Control.Feedback>
+                  )}
                   <Form.Text className="text-muted">
                     {currentTarea?.detalle?.tiene_multiples_items 
                       ? "Seleccione el código específico para esta tarea."
@@ -1763,9 +1811,20 @@ const AgregarActividad: React.FC = () => {
                   <Form.Control
                     type="text"
                     value={currentTarea?.nombre || ''}
-                    onChange={(e) => setCurrentTarea(prev => prev ? {...prev, nombre: e.target.value} : null)}
+                    onChange={(e) => {
+                      setCurrentTarea(prev => prev ? {...prev, nombre: e.target.value} : null);
+                      if (e.target.value.trim()) {
+                        clearTaskError('nombre');
+                      }
+                    }}
                     required
+                    isInvalid={!!taskErrors.nombre}
                   />
+                  {taskErrors.nombre && (
+                    <Form.Control.Feedback type="invalid">
+                      {taskErrors.nombre}
+                    </Form.Control.Feedback>
+                  )}
                 </Form.Group>
                 
                 <Form.Group className="mb-3">
@@ -1809,19 +1868,16 @@ const AgregarActividad: React.FC = () => {
                         value={currentTarea?.cantidad === 0 ? '' : currentTarea?.cantidad || ''}
                         onChange={(e) => {
                           const rawValue = e.target.value;
-                          // Si está vacío, establecer a vacío para permitir borrar
                           if (rawValue === '') {
                             setCurrentTarea(prev => prev ? {...prev, cantidad: 0} : null);
                             return;
                           }
-                          // Solo permitir enteros positivos
                           const value = parseInt(rawValue, 10);
-                          if (!isNaN(value)) {
+                          if (!isNaN(value) && value > 0) {
                             setCurrentTarea(prev => {
                               if (!prev) return prev;
                               const nuevaCantidad = value;
                               const nuevoTotal = nuevaCantidad * (prev.precio_unitario || 0);
-                              // También actualizamos el saldo disponible para que sea igual al total
                               return {
                                 ...prev,
                                 cantidad: nuevaCantidad,
@@ -1829,10 +1885,17 @@ const AgregarActividad: React.FC = () => {
                                 saldo_disponible: nuevoTotal
                               };
                             });
+                            clearTaskError('cantidad');
                           }
                         }}
                         required
+                        isInvalid={!!taskErrors.cantidad}
                       />
+                      {taskErrors.cantidad && (
+                        <Form.Control.Feedback type="invalid">
+                          {taskErrors.cantidad}
+                        </Form.Control.Feedback>
+                      )}
                     </Form.Group>
                   </Col>
                   <Col md={6}>
@@ -1846,41 +1909,44 @@ const AgregarActividad: React.FC = () => {
                           onChange={(e) => {
                             const rawValue = e.target.value;
                             
-                            // Si está vacío, establecer a vacío para permitir borrar
                             if (rawValue === '') {
                               setCurrentTarea(prev => prev ? {...prev, precio_unitario: 0} : null);
                               return;
                             }
                             
-                            // Validación mejorada: permite punto decimal y limita a 2 decimales
-                            // Primero verifica si el valor es un formato válido de número con máximo 2 decimales
                             const isValidFormat = /^\d*\.?\d{0,2}$/.test(rawValue);
                             
                             if (isValidFormat) {
-                              // Usamos este valor para almacenar en el estado
-                              //const inputValue = rawValue;
-                              
-                              // Para cálculos, convertimos a número (si termina en punto, consideramos 0 decimales)
                               const numericValue = rawValue.endsWith('.') 
                                 ? parseFloat(rawValue + '0') 
                                 : parseFloat(rawValue) || 0;
                               
-                                setCurrentTarea(prev => {
+                              setCurrentTarea(prev => {
                                 if (!prev) return prev;
                                 const nuevoTotal = (prev.cantidad || 0) * numericValue;
 
                                 return {
                                   ...prev,
-                                  precio_unitario: numericValue, // Guardamos como número (no string)
+                                  precio_unitario: numericValue,
                                   total: nuevoTotal,
                                   saldo_disponible: nuevoTotal
                                 };
-                                });
+                              });
+                              
+                              if (numericValue > 0) {
+                                clearTaskError('precio_unitario');
+                              }
                             }
                           }}
                           required
+                          isInvalid={!!taskErrors.precio_unitario}
                         />
                       </InputGroup>
+                      {taskErrors.precio_unitario && (
+                        <Form.Control.Feedback type="invalid">
+                          {taskErrors.precio_unitario}
+                        </Form.Control.Feedback>
+                      )}
                     </Form.Group>
                   </Col>
                 </Row>
@@ -1970,6 +2036,14 @@ const AgregarActividad: React.FC = () => {
                         <strong>Total planificado: ${currentTarea?.gastos_mensuales?.reduce((sum, val) => sum + (val || 0), 0)?.toFixed(2) || '0.00'}</strong>
                       </Form.Text>
                     </div>
+                    {/* Para la sección de gastos mensuales */}
+                    {taskErrors.gastos_mensuales && (
+                      <div className="mt-2">
+                        <Alert variant="danger" className="py-2">
+                          <small>{taskErrors.gastos_mensuales}</small>
+                        </Alert>
+                      </div>
+                    )}
                   </Form.Group>
                 </Form.Group>
                 
