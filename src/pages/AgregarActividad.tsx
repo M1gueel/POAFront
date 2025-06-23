@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Form, Button, Container, Card, Row, Col, ListGroup, Spinner, Tabs, Tab, Alert, Modal, InputGroup } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
 import { Proyecto } from '../interfaces/project';
 import { Periodo } from '../interfaces/periodo';
 import { POA, TipoPOA } from '../interfaces/poa';
@@ -10,21 +13,17 @@ import { actividadAPI } from '../api/actividadAPI';
 import { tareaAPI } from '../api/tareaAPI';
 
 import BusquedaProyecto from '../components/BusquedaProyecto';
-
-// Componente para exportar POA
 import ExportarPOA from '../components/ExportarPOA';
 
 // Interfaces para actividades
 import { ActividadCreate, ActividadConTareas, POAConActividadesYTareas } from '../interfaces/actividad';
-
 // Interfaces para tareas
 import { DetalleTarea, ItemPresupuestario, TareaCreate, TareaForm, ProgramacionMensualCreate } from '../interfaces/tarea';
-
 // Importar la lista de actividades
 import { getActividadesPorTipoPOA, ActividadOpciones } from '../utils/listaActividades';
-
 //Importar la asignación de precio unitario
 import { manejarCambioDescripcionConPrecio, esContratacionServiciosProfesionales, obtenerPrecioPorDescripcion} from '../utils/asignarCantidad';
+
 // Extender la interfaz POA para incluir los datos del tipo
 interface POAExtendido extends POA {
   tipo_poa?: string;
@@ -73,11 +72,9 @@ const AgregarActividad: React.FC = () => {
   // Estados para mensajes y carga
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('Cargando datos...');
-  const [error, setError] = useState<string | null>(null);
   const [taskErrors, setTaskErrors] = useState<{ [key: string]: string }>({});
-  const [success, setSuccess] = useState<string | null>(null);
 
-  // 2. FUNCIÓN PARA LIMPIAR ERRORES ESPECÍFICOS (agregar después de los estados)
+  // FUNCIÓN PARA LIMPIAR ERRORES ESPECÍFICOS
   const clearTaskError = (field: string) => {
     setTaskErrors(prev => {
       const newErrors = { ...prev };
@@ -92,19 +89,65 @@ const AgregarActividad: React.FC = () => {
       [field]: message
     }));
   };
+
+  // FUNCIONES PARA MOSTRAR MENSAJES CON TOAST
+  const showError = (message: string) => {
+    toast.error(message, {
+      position: "top-right",
+      autoClose: 5000,
+      hideProgressBar: false,
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: true,
+    });
+  };
+
+  const showSuccess = (message: string) => {
+    toast.success(message, {
+      position: "top-right",
+      autoClose: 5000,
+      hideProgressBar: false,
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: true,
+    });
+  };
+
+  const showWarning = (message: string) => {
+    toast.warning(message, {
+      position: "top-right",
+      autoClose: 5000,
+      hideProgressBar: false,
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: true,
+    });
+  };
+
+  const showInfo = (message: string) => {
+    toast.info(message, {
+      position: "top-right",
+      autoClose: 5000,
+      hideProgressBar: false,
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: true,
+    });
+  };
+
   // Cargar datos iniciales
   useEffect(() => {
     const cargarDatos = async () => {
       setIsLoading(true);
       setLoadingMessage('Cargando proyectos...');
-      setError(null);
 
       try {
         // Obtener proyectos desde la API
         const proyectosData = await projectAPI.getProyectos();
         setProyectos(proyectosData);
+        showInfo('Proyectos cargados exitosamente');
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Error desconocido');
+        showError(err instanceof Error ? err.message : 'Error desconocido');
       } finally {
         setIsLoading(false);
       }
@@ -164,7 +207,7 @@ const AgregarActividad: React.FC = () => {
         for (const poa of poasProyecto) {
           const detallesTarea = await tareaAPI.getDetallesTareaPorPOA(poa.id_poa);
 
-          // CORRECCIÓN: Usar el tipo correcto del POA para obtener las actividades
+          // Usar el tipo correcto del POA para obtener las actividades
           const tipoPOA = poa.tipo_poa || 'PVIF';
           const actividadesPorTipo = getActividadesPorTipoPOA(tipoPOA);
 
@@ -199,7 +242,7 @@ const AgregarActividad: React.FC = () => {
         }
 
       } catch (err) {
-        setError('Error al cargar los detalles de tareas');
+        showError('Error al cargar los detalles de tareas');
       } finally {
         setIsLoading(false);
       }
@@ -208,7 +251,7 @@ const AgregarActividad: React.FC = () => {
     try {
       cargarDetallesTarea();
     } catch (err) {
-      setError('Error al cargar los detalles de tareas');
+      showError('Error al cargar los detalles de tareas');
       setIsLoading(false);
     }
   }, [poasProyecto]);
@@ -257,7 +300,7 @@ const AgregarActividad: React.FC = () => {
 
       setIsLoading(false);
     } catch (err) {
-      setError('Error al cargar los POAs asociados al proyecto');
+      showError('Error al cargar los POAs asociados al proyecto');
       setIsLoading(false);
     }
   };
@@ -282,7 +325,7 @@ const AgregarActividad: React.FC = () => {
 
     // Si no hay actividades disponibles, mostrar mensaje
     if (actividadesNoUtilizadas.length === 0) {
-      setError('No hay más actividades disponibles para agregar');
+      showWarning('No hay más actividades disponibles para agregar');
       return;
     }
 
@@ -296,7 +339,7 @@ const AgregarActividad: React.FC = () => {
   const confirmarSeleccionActividad = () => {
     const poaId = currentPoa;
     if (!poaId || !actividadSeleccionadaModal) {
-      setError('Debe seleccionar una actividad');
+      showError('Debe seleccionar una actividad');
       return;
     }
 
@@ -306,7 +349,7 @@ const AgregarActividad: React.FC = () => {
     // Verificar que la actividad no esté ya agregada
     const actividadYaExiste = poa.actividades.some(act => act.codigo_actividad === actividadSeleccionadaModal);
     if (actividadYaExiste) {
-      setError('Esta actividad ya ha sido agregada');
+      showError('Esta actividad ya ha sido agregada');
       return;
     }
 
@@ -449,7 +492,7 @@ const AgregarActividad: React.FC = () => {
     });
 
     setPoasConActividades(nuevosPoasConActividades);
-    setSuccess('Actividad eliminada correctamente');
+    showSuccess('Actividad eliminada correctamente');
   };
 
 
@@ -647,7 +690,7 @@ const AgregarActividad: React.FC = () => {
         setCurrentTarea(tareaActualizada);
 
       } catch (err) {
-        setError('Error al procesar el detalle de tarea');
+        showError('Error al procesar el detalle de tarea');
       } finally {
         setIsLoading(false);
       }
@@ -795,7 +838,7 @@ const AgregarActividad: React.FC = () => {
 
     setShowTareaModal(false);
     setCurrentTarea(null);
-    setSuccess(isEditingTarea ? 'Tarea actualizada correctamente' : 'Tarea agregada correctamente');
+    showSuccess(isEditingTarea ? 'Tarea actualizada correctamente' : 'Tarea agregada correctamente');
   };
 
   // Eliminar tarea
@@ -817,7 +860,7 @@ const AgregarActividad: React.FC = () => {
     });
 
     setPoasConActividades(nuevosPoasConActividades);
-    setSuccess('Tarea eliminada correctamente');
+    showSuccess('Tarea eliminada correctamente');
   };
 
   // Obtener la descripción de una actividad a partir de su código
@@ -837,20 +880,20 @@ const AgregarActividad: React.FC = () => {
   const validarFormulario = (): boolean => {
     // Validar que haya un proyecto seleccionado
     if (!proyectoSeleccionado) {
-      setError('Debe seleccionar un proyecto');
+      showError('Debe seleccionar un proyecto');
       return false;
     }
 
     // Validar que el proyecto tenga POAs
     if (poasProyecto.length === 0) {
-      setError('El proyecto seleccionado no tiene POAs asociados');
+      showError('El proyecto seleccionado no tiene POAs asociados');
       return false;
     }
 
     // Validar que haya al menos una actividad definida
     const hayActividadesDefinidas = poasConActividades.some(poa => poa.actividades.length > 0);
     if (!hayActividadesDefinidas) {
-      setError('Debe definir al menos una actividad');
+      showError('Debe definir al menos una actividad');
       return false;
     }
 
@@ -861,7 +904,7 @@ const AgregarActividad: React.FC = () => {
       const actividadesConCodigo = poa.actividades.filter(act => act.codigo_actividad && act.codigo_actividad !== "");
 
       if (actividadesConCodigo.length === 0) {
-        setError(`Debe seleccionar al menos una actividad en el POA ${poa.codigo_poa}`);
+        showError(`Debe seleccionar al menos una actividad en el POA ${poa.codigo_poa}`);
         setActivePoaTab(poa.id_poa);
         return false;
       }
@@ -880,12 +923,12 @@ const AgregarActividad: React.FC = () => {
 
     setIsLoading(true);
     setLoadingMessage('Guardando actividades y tareas...');
-    setError(null);
-    setSuccess(null);
 
     try {
+      // Mostrar toast de progreso
+      const toastId = toast.loading('Guardando actividades y tareas...');
+      
       // Paso 1: Crear actividades
-      // Paso 1: Crear solo los IDs de actividades por POA
       const actividadesCreadas: { [key: string]: string } = {};
       const mapeoActividadesTemp: { [key: string]: { poaId: string, actividadTemp: ActividadConTareas } } = {};
       let totalActividadesCreadas = 0;
@@ -915,7 +958,12 @@ const AgregarActividad: React.FC = () => {
           for (const tarea of actividad.tareas) {
             const totalPlanificado = tarea.gastos_mensuales?.reduce((sum, val) => sum + (val || 0), 0) || 0;
             if (totalPlanificado === 0) {
-              setError(`La tarea "${tarea.nombre}" debe tener planificación mensual`);
+              toast.update(toastId, {
+                render: `La tarea "${tarea.nombre}" debe tener planificación mensual`,
+                type: "error",
+                isLoading: false,
+                autoClose: 5000
+              });
               setActivePoaTab(poa.id_poa);
               return;
             }
@@ -1045,54 +1093,28 @@ const AgregarActividad: React.FC = () => {
                     mes: mesFormateado,
                     valor: valor // Mantener como number según la interfaz
                   };
-
                   try {
-
-                    // Logs para debugging programación mensual
-                    console.log("=== CREANDO PROGRAMACIÓN MENSUAL ===");
-                    console.log("ID Tarea para programación:", tareaCreada.id_tarea);
-                    console.log("Datos programación:", programacionDatos);
-                    console.log("Mes:", mesFormateado, "Valor:", valor);
-
-                    // Verificar UUID de tarea
-                    console.log("UUID tarea válido:", uuidRegex.test(tareaCreada.id_tarea));
-
-
                     await tareaAPI.crearProgramacionMensual(programacionDatos);
                     totalProgramacionesCreadas++;
                   } catch (progError) {
-                    console.error("=== ERROR PROGRAMACIÓN MENSUAL ===");
-                    console.error("Error completo programación:", progError);
-                    console.error("ID tarea que falló:", tareaCreada.id_tarea);
-                    console.error("Datos que se intentaron enviar:", programacionDatos);
-                    console.error(`Error en programación mensual para tarea ${tareaCreada.id_tarea}, mes ${mesFormateado}:`, progError);
                     throw progError;
                   }
                 }
               }
             }
           } catch (error: any) {
-            console.error("=== ERROR COMPLETO CREACIÓN TAREA ===");
-            console.error("Error completo:", error);
-            console.error("URL que se intentó:", error.config?.url);
-            console.error("Método:", error.config?.method);
-            console.error("Datos enviados:", error.config?.data);
-
-            if (error.response) {
-              console.error("Status:", error.response.status);
-              console.error("Headers:", error.response.headers);
-              console.error("Data:", error.response.data);
-            } else if (error.request) {
-              console.error("No response received:", error.request);
-            }
-
             console.error(`Error al procesar tarea "${tarea.nombre}" de actividad ${idActividadReal}:`, error);
             throw new Error(`Error al crear la tarea "${tarea.nombre}": ${error}`);
           }
         }
       }
 
-      setSuccess(`Se han creado exitosamente ${totalActividadesCreadas} actividades, ${totalTareasCreadas} tareas y ${totalProgramacionesCreadas} programaciones mensuales para ${poasProyecto.length} POAs del proyecto`);
+      toast.update(toastId, {
+        render: `Se han creado exitosamente ${totalActividadesCreadas} actividades para ${poasProyecto.length} POAs del proyecto`,
+        type: "success",
+        isLoading: false,
+        autoClose: 5000
+      });
 
       // Opcional: redirigir a otra página después de un tiempo
       setTimeout(() => {
@@ -1100,7 +1122,7 @@ const AgregarActividad: React.FC = () => {
       }, 3000);
 
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al crear las actividades y tareas');
+      showError(err instanceof Error ? err.message : 'Error al crear las actividades y tareas');
     } finally {
       setIsLoading(false);
     }
@@ -1407,18 +1429,6 @@ const AgregarActividad: React.FC = () => {
           <h2 className="mb-0 fw-bold text-center">Crear Actividades y Tareas para Proyecto</h2>
         </Card.Header>
         <Card.Body className="p-4">
-          {error && (
-            <Alert variant="danger" onClose={() => setError(null)} dismissible>
-              {error}
-            </Alert>
-          )}
-
-          {success && (
-            <Alert variant="success" onClose={() => setSuccess(null)} dismissible>
-              {success}
-            </Alert>
-          )}
-
           <Form onSubmit={handleSubmit}>
             {/* Sección de Búsqueda de Proyecto */}
             <BusquedaProyecto
@@ -1496,7 +1506,7 @@ const AgregarActividad: React.FC = () => {
                       //tipo_poa: poa.tipo_poa || 'No especificado',
                       presupuesto_asignado: poa.presupuesto_asignado
                     }))}
-                    onExport={() => setSuccess("POA exportado correctamente")}
+                    onExport={() => showSuccess("POA exportado correctamente")}
                   />
                 </Col>
               </Row>
@@ -1737,12 +1747,6 @@ const AgregarActividad: React.FC = () => {
                 <Modal.Title>Seleccionar Actividad</Modal.Title>
               </Modal.Header>
               <Modal.Body>
-                {error && (
-                  <Alert variant="danger" onClose={() => setError(null)} dismissible>
-                    {error}
-                  </Alert>
-                )}
-
                 <Form.Group className="mb-3">
                   <Form.Label>Actividades Disponibles</Form.Label>
                   <Form.Select
@@ -1774,12 +1778,6 @@ const AgregarActividad: React.FC = () => {
                 <Modal.Title>{isEditingTarea ? 'Editar Tarea' : 'Agregar Nueva Tarea'}</Modal.Title>
               </Modal.Header>
               <Modal.Body>
-                {error && (
-                  <Alert variant="danger" onClose={() => setError(null)} dismissible>
-                    {error}
-                  </Alert>
-                )}
-
                 <Form.Group className="mb-3">
                   <Form.Label>Detalle de Tarea</Form.Label>
                   <Form.Select
@@ -2146,6 +2144,19 @@ const AgregarActividad: React.FC = () => {
           </Form>
         </Card.Body>
       </Card>
+      {/* ToastContainer - IMPORTANTE: Incluir al final del componente */}
+      <ToastContainer
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
     </Container>
   );
 }
