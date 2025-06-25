@@ -134,7 +134,7 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
                 onClick={() => handleNavigate("/subir-excel")}
               >
                 <FileChartLine size={iconSize} className="me-2" />
-                Transformar Excel
+                Subir POA desde Excel
               </Nav.Link>
               <Nav.Link
                 className={`text-white ${isActive("/reporte-poa")}`}
@@ -144,7 +144,17 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
                 Reporte Anual
               </Nav.Link>
             </Nav.Item>
+            <Nav.Item>
+              <Nav.Link
+                className={`text-white ${isActive("/LogsCargaExcel")}`}
+                onClick={() => handleNavigate("/LogsCargaExcel")}
+              >
+                <FileChartLine size={iconSize} className="me-2" />
+                Control de cambios - Subir POA
+              </Nav.Link>
+            </Nav.Item>
 
+            
             {/* Información del usuario en la parte inferior del sidebar */}
             <div className="mt-auto p-3 border-top">
               <div className="d-flex align-items-center">
@@ -223,7 +233,7 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
             <Nav.Link
               className={`text-white ${isActive("/subir-excel")}`}
               onClick={() => handleNavigate("/subir-excel")}
-              title="Transformar Excel"
+              title="Subir POA desde Excel  "
             >
               <FileChartLine size={iconSize} />
             </Nav.Link>
@@ -237,6 +247,16 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
               <FileChartLine size={iconSize} />
             </Nav.Link>
           </Nav.Item>
+<Nav.Item>
+            <Nav.Link
+              className={`text-white ${isActive("/LogsCargaExcel")}`}
+              onClick={() => handleNavigate("/LogsCargaExcel")}
+              title="Control de cambios - Subir POA"
+            >
+              <FileChartLine size={iconSize} />
+            </Nav.Link>
+          </Nav.Item>
+
           <div className="mt-auto mb-3">
             <Nav.Item>
               <Nav.Link 
