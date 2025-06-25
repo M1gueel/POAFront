@@ -36,7 +36,7 @@ export interface POAConActividades {
     }[];
   }
 
-  export interface ActividadConTareas {
+export interface ActividadConTareas {
   actividad_id: string;
   codigo_actividad: string;
   id_actividad_real?: string; // ID real generado por el backend

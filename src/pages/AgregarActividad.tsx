@@ -74,6 +74,10 @@ const AgregarActividad: React.FC = () => {
   const [loadingMessage, setLoadingMessage] = useState('Cargando datos...');
   const [taskErrors, setTaskErrors] = useState<{ [key: string]: string }>({});
 
+  // Estados para controlar el botón de exportar
+  const [datosGuardados, setDatosGuardados] = useState(false);
+  const [actividadesYTareasCreadas, setActividadesYTareasCreadas] = useState<any[]>([]);
+
   // FUNCIÓN PARA LIMPIAR ERRORES ESPECÍFICOS
   const clearTaskError = (field: string) => {
     setTaskErrors(prev => {
@@ -1116,10 +1120,46 @@ const AgregarActividad: React.FC = () => {
         autoClose: 5000
       });
 
-      // Opcional: redirigir a otra página después de un tiempo
-      setTimeout(() => {
-        navigate('/Dashboard');
-      }, 3000);
+      // Preparar los datos para enviar al componente ExportarPOA
+      const datosParaExportar = poasConActividades.map((poa) => {
+        const actividadesConCodigo = poa.actividades.filter(act => act.codigo_actividad && act.codigo_actividad !== "");
+        
+        return {
+          id_poa: poa.id_poa,
+          codigo_poa: poa.codigo_poa,
+          tipo_poa: poa.tipo_poa,
+          presupuesto_asignado: poa.presupuesto_asignado,
+          actividades: actividadesConCodigo.map((actividad) => ({
+            codigo_actividad: actividad.codigo_actividad,
+            descripcion_actividad: getDescripcionActividad(poa.id_poa, actividad.codigo_actividad),
+            total_por_actividad: actividad.tareas.reduce((sum, tarea) => sum + (tarea.total || 0), 0),
+            tareas: actividad.tareas.map((tarea) => ({
+              nombre: tarea.nombre,
+              detalle_descripcion: tarea.detalle_descripcion,
+              cantidad: tarea.cantidad,
+              precio_unitario: tarea.precio_unitario,
+              total: tarea.total || (tarea.cantidad * tarea.precio_unitario),
+              codigo_item: tarea.codigo_item || tarea.itemPresupuestario,
+              gastos_mensuales: tarea.gastos_mensuales || []
+            }))
+          }))
+        };
+      });
+
+      // Actualizar los estados
+      setActividadesYTareasCreadas(datosParaExportar);
+      setDatosGuardados(true);
+
+      // Mostrar mensaje de éxito y actualizar toast
+      toast.update(toastId, {
+        render: `✅ Se crearon ${totalActividadesCreadas} actividades con ${totalTareasCreadas} tareas y ${totalProgramacionesCreadas} programaciones mensuales`,
+        type: "success",
+        isLoading: false,
+        autoClose: 5000
+      });
+
+      showSuccess(`Datos guardados exitosamente. ${totalActividadesCreadas} actividades, ${totalTareasCreadas} tareas y ${totalProgramacionesCreadas} programaciones mensuales creadas.`);
+
 
     } catch (err) {
       showError(err instanceof Error ? err.message : 'Error al crear las actividades y tareas');
@@ -1494,24 +1534,6 @@ const AgregarActividad: React.FC = () => {
               </Row>
             )}
 
-            {proyectoSeleccionado && poasProyecto.length > 0 && (
-              <Row className="mb-4">
-                <Col md={12} className="d-flex justify-content-end">
-                  <ExportarPOA
-                    codigoProyecto={proyectoSeleccionado.codigo_proyecto}
-                    poas={poasProyecto.map(poa => ({
-                      id_poa: poa.id_poa,
-                      codigo_poa: poa.codigo_poa,
-                      anio_ejecucion: poa.anio_ejecucion,
-                      //tipo_poa: poa.tipo_poa || 'No especificado',
-                      presupuesto_asignado: poa.presupuesto_asignado
-                    }))}
-                    onExport={() => showSuccess("POA exportado correctamente")}
-                  />
-                </Col>
-              </Row>
-            )}
-
             {/* Sección de actividades por POA */}
             {proyectoSeleccionado && poasProyecto.length > 0 && (
               <Row className="mb-4">
@@ -1727,6 +1749,34 @@ const AgregarActividad: React.FC = () => {
                   <Button variant="secondary" className="me-2" onClick={() => navigate('/Dashboard')}>
                     Cancelar
                   </Button>
+
+                  {/* Botón de Exportar POAs - Solo habilitado después de guardar */}
+                  {datosGuardados && (
+                    <div className="me-2">
+                      <ExportarPOA
+                        codigoProyecto={proyectoSeleccionado.codigo_proyecto}
+                        poas={poasProyecto.map(poa => ({
+                          id_poa: poa.id_poa,
+                          codigo_poa: poa.codigo_poa,
+                          anio_ejecucion: poa.anio_ejecucion,
+                          presupuesto_asignado: poa.presupuesto_asignado
+                        }))}
+                        actividadesYTareas={actividadesYTareasCreadas} // NUEVO PROP
+                        onExport={() => showSuccess("POA exportado correctamente")}
+                      />
+                    </div>
+                  )}
+                  {!datosGuardados && (
+                    <div className="me-2">
+                      <div title="Debe guardar las actividades y tareas primero">
+                        <Button variant="success" disabled className="d-flex align-items-center">
+                          <i className="fas fa-file-excel me-2"></i>
+                          Exportar POAs
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
                   <Button variant="primary" type="submit" disabled={isLoading}>
                     {isLoading ? (
                       <>
@@ -2144,7 +2194,7 @@ const AgregarActividad: React.FC = () => {
           </Form>
         </Card.Body>
       </Card>
-      {/* ToastContainer - IMPORTANTE: Incluir al final del componente */}
+      {/* ToastContainer */}
       <ToastContainer
         position="top-right"
         autoClose={5000}

@@ -9,7 +9,7 @@ export interface POA {
   anio_ejecucion: string;
   presupuesto_asignado: number;
   periodo?: Periodo;  // Propiedad opcional
-  }
+}
   
 export interface EstadoPOA {
   id_estado_poa: string;

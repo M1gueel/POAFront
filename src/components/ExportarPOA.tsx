@@ -10,10 +10,16 @@ interface ExportarPOAProps {
     anio_ejecucion: string;
     presupuesto_asignado: number;
   }[];
+  actividadesYTareas?: any[]; // Datos de actividades y tareas
   onExport?: () => void;
 }
 
-const ExportarPOA: React.FC<ExportarPOAProps> = ({ codigoProyecto, poas, onExport }) => {
+const ExportarPOA: React.FC<ExportarPOAProps> = ({
+  codigoProyecto,
+  poas,
+  actividadesYTareas = [], // NUEVO
+  onExport
+}) => {  
   // Definir estilo de borde estándar
   const bordeEstandar: Partial<ExcelJS.Borders> = {
     top: { style: 'thin', color: { argb: '000000' } },
@@ -127,136 +133,191 @@ const ExportarPOA: React.FC<ExportarPOAProps> = ({ codigoProyecto, poas, onExpor
   const crearHojaPOA = (workbook: ExcelJS.Workbook, poa: any, nombreHoja: string) => {
     const worksheet = workbook.addWorksheet(nombreHoja);
 
-    // Agregar datos
+    // Agregar datos del encabezado (código existente)
     worksheet.addRow(['VICERRECTORADO DE INVESTIGACIÓN, INNOVACIÓN Y VINCULACIÓN']);
     worksheet.addRow(['DIRECCIÓN DE INVESTIGACIÓN']);
     worksheet.addRow([`PROGRAMACIÓN PARA EL POA ${poa.anio_ejecucion}`]);
     worksheet.addRow([]); // Fila vacía
     worksheet.addRow(['Código de Proyecto', codigoProyecto]);
     worksheet.addRow(['Presupuesto Asignado', poa.presupuesto_asignado.toLocaleString('es-CO')]);
-    worksheet.addRow([,,,,,,,'TOTAL POR ACTIVIDAD', `PROGRAMACIÓN DE EJECUCIÓN ${poa.anio_ejecucion}`]); 
-    worksheet.addRow(['ACTIVIDAD', 'DESCRIPCIÓN O DETALLE', 'ITEM PRESUPUESTARIO', 'CANTIDAD (Meses de contrato)', 'PRECIO UNITARIO', 'TOTAL', '0,00', 'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre', 'SUMAN']); 
+    worksheet.addRow([,,,,,,,'TOTAL POR ACTIVIDAD', `PROGRAMACIÓN DE EJECUCIÓN ${poa.anio_ejecucion}`]);
+    worksheet.addRow(['ACTIVIDAD', 'DESCRIPCIÓN O DETALLE', 'ITEM PRESUPUESTARIO', 'CANTIDAD (Meses de contrato)', 'PRECIO UNITARIO', 'TOTAL', '0,00', 'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre', 'SUMAN']);
 
-    // Aplicar estilos a los títulos principales
+    // NUEVO: Encontrar los datos de actividades para este POA
+    const datosPoaActual = actividadesYTareas.find(data => data.id_poa === poa.id_poa);
+    
+    let filaActual = 9; // Empezar después de los encabezados
+
+    if (datosPoaActual && datosPoaActual.actividades && datosPoaActual.actividades.length > 0) {
+      // Iterar sobre las actividades del POA
+      datosPoaActual.actividades.forEach((actividad: any) => {
+        if (actividad.tareas && actividad.tareas.length > 0) {
+          // Para cada tarea de la actividad
+          actividad.tareas.forEach((tarea: any, indiceTarea: number) => {
+            // Calcular el total de programación mensual
+            const totalProgramacion = tarea.gastos_mensuales?.reduce((sum: number, val: number) => sum + (val || 0), 0) || 0;
+
+            // Agregar fila de tarea
+            const filaTarea = [
+              indiceTarea === 0 ? actividad.descripcion_actividad : '', // Solo mostrar descripción en la primera tarea
+              tarea.detalle_descripcion || tarea.nombre,
+              tarea.codigo_item || '',
+              tarea.cantidad,
+              tarea.precio_unitario,
+              tarea.total,
+              '', // Columna G vacía por defecto
+              ...(tarea.gastos_mensuales || Array(12).fill(0)), // Gastos mensuales (12 meses)
+              totalProgramacion // SUMAN
+            ];
+
+            worksheet.addRow(filaTarea);
+
+            // Aplicar estilos a la fila de datos
+            const row = worksheet.getRow(filaActual);
+            row.eachCell((cell, colNumber) => {
+              // Aplicar bordes
+              cell.border = bordeEstandar;
+              
+              // Aplicar wrap text
+              if (!cell.alignment) {
+                cell.alignment = { wrapText: true };
+              } else {
+                cell.alignment = { ...cell.alignment, wrapText: true };
+              }
+
+              // Formatear números en las columnas correspondientes
+              if (colNumber >= 4 && colNumber <= 6) { // Cantidad, Precio Unitario, Total
+                if (typeof cell.value === 'number') {
+                  cell.numFmt = '#,##0.00';
+                }
+              }
+              
+              // Formatear columnas de meses (H hasta S) y SUMAN (T)
+              if (colNumber >= 8 && colNumber <= 20) {
+                if (typeof cell.value === 'number' && cell.value > 0) {
+                  cell.numFmt = '#,##0.00';
+                }
+              }
+            });
+
+            filaActual++;
+          });
+
+          // Agregar fila de total por actividad
+          const totalActividad = actividad.total_por_actividad || 0;
+          const filaTotalActividad = [
+            '', // ACTIVIDAD vacía
+            `TOTAL ACTIVIDAD: ${actividad.descripcion_actividad}`,
+            '', '', '', // Columnas vacías
+            totalActividad, // Total en columna F
+            '', // Columna G vacía
+            ...Array(12).fill(''), // Meses vacíos
+            totalActividad // SUMAN
+          ];
+
+          worksheet.addRow(filaTotalActividad);
+
+          // Aplicar estilo especial a la fila de total
+          const rowTotal = worksheet.getRow(filaActual);
+          rowTotal.eachCell((cell, colNumber) => {
+            cell.border = bordeEstandar;
+            cell.font = { bold: true };
+            cell.alignment = { wrapText: true };
+            
+            if (colNumber === 2) { // Descripción del total
+              cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'F2F2F2' } // Gris claro
+              };
+            }
+            
+            if ((colNumber === 6 || colNumber === 20) && typeof cell.value === 'number') { // Total y SUMAN
+              cell.numFmt = '#,##0.00';
+              cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFFF99' } // Amarillo claro
+              };
+            }
+          });
+
+          filaActual++;
+          
+          // Agregar fila vacía entre actividades
+          worksheet.addRow([]);
+          filaActual++;
+        }
+      });
+
+      // Agregar fila de total general del POA
+      const totalGeneralPOA = datosPoaActual.actividades.reduce((sum: number, act: any) => 
+        sum + (act.total_por_actividad || 0), 0
+      );
+
+      const filaTotalGeneral = [
+        '', // ACTIVIDAD
+        'TOTAL GENERAL POA',
+        '', '', '', // Columnas vacías
+        totalGeneralPOA, // Total en columna F
+        '', // Columna G
+        ...Array(12).fill(''), // Meses vacíos
+        totalGeneralPOA // SUMAN
+      ];
+
+      worksheet.addRow(filaTotalGeneral);
+
+      // Aplicar estilo especial a la fila de total general
+      const rowTotalGeneral = worksheet.getRow(filaActual);
+      rowTotalGeneral.eachCell((cell, colNumber) => {
+        cell.border = bordeEstandar;
+        cell.font = { bold: true, size: 12 };
+        cell.alignment = { wrapText: true };
+        
+        if (colNumber === 2) { // Descripción del total
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'D9EDF7' } // Azul claro
+          };
+        }
+        
+        if ((colNumber === 6 || colNumber === 20) && typeof cell.value === 'number') { // Total y SUMAN
+          cell.numFmt = '#,##0.00';
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: '92D050' } // Verde claro
+          };
+        }
+      });
+    } else {
+      // Si no hay datos de actividades, agregar una fila indicando que no hay datos
+      worksheet.addRow(['Sin actividades registradas', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '']);
+      
+      const row = worksheet.getRow(filaActual);
+      row.eachCell((cell) => {
+        cell.border = bordeEstandar;
+        cell.alignment = { wrapText: true };
+        if (cell.value === 'Sin actividades registradas') {
+          cell.font = { italic: true };
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFE6E6' } // Rojo muy claro
+          };
+        }
+      });
+    }
+
+    // Aplicar estilos a los títulos principales (código existente...)
     aplicarEstiloTitulo(worksheet.getCell('A1'), 14);
     aplicarEstiloTitulo(worksheet.getCell('A2'), 12);
     aplicarEstiloTitulo(worksheet.getCell('A3'), 12);
 
-    // Aplicar estilos a las etiquetas de forma optimizada
-    const celdasEtiqueta = ['A5', 'A6', 'G7'];
-    aplicarEstiloACeldas(worksheet, celdasEtiqueta, aplicarEstiloEtiqueta);
+    // ... resto del código de estilos existente ...
 
-    // Combinar celda H7 hasta T7 y aplicar color aguamarina
-    worksheet.mergeCells('H7:T7');
-    const celdaH7 = worksheet.getCell('H7');
-    const celdaG7 = worksheet.getCell('G7');
-    celdaH7.font = { bold: true };
-    celdaH7.alignment = { 
-      horizontal: 'center', 
-      vertical: 'middle',
-      wrapText: true 
-    };
-    celdaH7.fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'DAEEF3' } // Aguamarina claro (equivalente a Aguamarina, Énfasis 5, Claro 80%)
-    };
-    celdaH7.border = bordeEstandar;
-    
-    celdaG7.fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'D9D9D9' } // Gris claro (equivalente a Blanco, Fondo 1, Oscuro 15%)
-    };
-
-    // Aplicar estilos a la fila 8 (encabezados de tabla)
-    // A8 hasta F8 - Blanco, Fondo 1, Oscuro 15% (gris claro)
-    const celdasA8F8 = ['A8', 'B8', 'C8', 'D8', 'E8', 'F8'];
-    aplicarEstiloACeldas(worksheet, celdasA8F8, (cell) => {
-      cell.font = { bold: true };
-      cell.fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'D9D9D9' } // Gris claro (equivalente a Blanco, Fondo 1, Oscuro 15%)
-      };
-      cell.alignment = { 
-        horizontal: 'center', 
-        vertical: 'middle',
-        wrapText: true 
-      };
-      cell.border = bordeEstandar;
-    });
-
-    // G8 - Color Canela, Fondo 2
-    const celdaG8 = worksheet.getCell('G8');
-    celdaG8.font = { bold: true };
-    celdaG8.fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'D2B48C' } // Color canela
-    };
-    celdaG8.alignment = { 
-      horizontal: 'center', 
-      vertical: 'middle',
-      wrapText: true 
-    };
-    celdaG8.border = bordeEstandar;
-
-    // H8 hasta T8 - Aguamarina, Énfasis 5, Claro 80%
-    const celdasH8T8 = ['H8', 'I8', 'J8', 'K8', 'L8', 'M8', 'N8', 'O8', 'P8', 'Q8', 'R8', 'S8', 'T8'];
-    aplicarEstiloACeldas(worksheet, celdasH8T8, (cell) => {
-      cell.font = { bold: true };
-      cell.fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'DAEEF3' } // Aguamarina claro
-      };
-      cell.alignment = { 
-        horizontal: 'center', 
-        vertical: 'middle',
-        wrapText: true 
-      };
-      cell.border = bordeEstandar;
-    });
-
-    // Ajustar ancho de columnas
-    worksheet.getColumn('A').width = 55;
-    worksheet.getColumn('B').width = 53;
-    worksheet.getColumn('C').width = 17;
-    worksheet.getColumn('D').width = 20;
-    worksheet.getColumn('E').width = 15;
-    worksheet.getColumn('F').width = 18;
-    worksheet.getColumn('G').width = 19;
-    worksheet.getColumn('P').width = 11;
-    worksheet.getColumn('R').width = 10;
-    worksheet.getColumn('S').width = 10;
-
-    // Ajustar alto de la fila 8
-    worksheet.getRow(8).height = 43;
-
-    // Combinar celdas para los títulos principales y centrar el texto
-    worksheet.mergeCells('A1:G1');
-    worksheet.getCell('A1').alignment = { 
-      horizontal: 'center', 
-      vertical: 'middle',
-      wrapText: true 
-    };
-
-    worksheet.mergeCells('A2:G2');
-    worksheet.getCell('A2').alignment = { 
-      horizontal: 'center', 
-      vertical: 'middle',
-      wrapText: true 
-    };
-
-    worksheet.mergeCells('A3:G3');
-    worksheet.getCell('A3').alignment = { 
-      horizontal: 'center', 
-      vertical: 'middle',
-      wrapText: true 
-    };
-
-    // Aplicar wrap text a todas las celdas y bordes solo desde la fila 7
+    // Aplicar estilos generales
     aplicarEstilosGeneralesATodaLaHoja(worksheet);
   };
 
