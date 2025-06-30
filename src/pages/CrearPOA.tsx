@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Form, Button, Container, Card, Row, Col, ListGroup, Badge, Collapse } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
@@ -621,15 +620,14 @@ const handleSubmit = async (e: React.FormEvent) => {
             // Construir el código de periodo que usaremos
             const anio = periodo.anio || new Date().getFullYear().toString();
             // Obtener el título del proyecto normalizándolo para el código
-            const tituloProyectoNormalizado = proyectoSeleccionado?.titulo
-              ? proyectoSeleccionado.titulo
-                  .replace(/\s+/g, '-') // Convertir espacios en guiones
+            const codigoProyectoNormalizado = proyectoSeleccionado?.codigo_proyecto
+              ? proyectoSeleccionado.codigo_proyecto
+                  .replace(/\s+/g, '-') // Convertir espacios en guiones (si los hay)
                   .replace(/[^a-zA-Z0-9-]/g, '') // Eliminar caracteres especiales
-                  .toLowerCase() // Convertir a minúsculas
-                  .substring(0, 20) // Limitar longitud para evitar códigos muy largos
+                  .toUpperCase() // Convertir a mayúsculas para consistencia
               : '';
-            
-            const nuevoCodigo = `PER-${anio}-${tituloProyectoNormalizado}`;
+
+            const nuevoCodigo = `PER-${anio}-${codigoProyectoNormalizado}`;
             
             // Como no tenemos un método para buscar por código, verificaremos si existe consultando todos los periodos
             // Obtener todos los periodos disponibles y filtrar en el frontend
@@ -651,16 +649,15 @@ const handleSubmit = async (e: React.FormEvent) => {
           // Asegúrate de que cada periodo tenga un código único incluyendo el nombre del proyecto
           const anio = periodo.anio || new Date().getFullYear().toString();
           // Obtener el título del proyecto normalizándolo para el código
-          const tituloProyectoNormalizado = proyectoSeleccionado?.titulo
-            ? proyectoSeleccionado.titulo
-                .replace(/\s+/g, '-') // Convertir espacios en guiones
+          const codigoProyectoNormalizado = proyectoSeleccionado?.codigo_proyecto
+            ? proyectoSeleccionado.codigo_proyecto
+                .replace(/\s+/g, '-') // Convertir espacios en guiones (si los hay)
                 .replace(/[^a-zA-Z0-9-]/g, '') // Eliminar caracteres especiales
-                .toLowerCase() // Convertir a minúsculas
-                .substring(0, 20) // Limitar longitud para evitar códigos muy largos
+                .toUpperCase() // Convertir a mayúsculas para consistencia
             : '';
-          
+
           const periodoData: PeriodoCreate = {
-            codigo_periodo: `PER-${anio}-${tituloProyectoNormalizado}`, // Formato: PER-AÑO-NOMBREPROYECTO
+            codigo_periodo: `PER-${anio}-${codigoProyectoNormalizado}`,
             nombre_periodo: periodo.nombre_periodo,
             fecha_inicio: periodo.fecha_inicio,
             fecha_fin: periodo.fecha_fin,

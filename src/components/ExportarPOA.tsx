@@ -44,56 +44,6 @@ const ExportarPOA: React.FC<ExportarPOAProps> = ({
     // No aplicar bordes a los títulos principales
   };
 
-  const aplicarEstiloEtiqueta = (cell: ExcelJS.Cell) => {
-    cell.font = { bold: true };
-    cell.alignment = { wrapText: true };
-    // Solo aplicar bordes a etiquetas que estén en fila 7 o posterior
-    // (se aplicarán en la función general)
-  };
-
-  // Funciones auxiliares para conversión de columnas
-  const columnNameToNumber = (name: string): number => {
-    let result = 0;
-    for (let i = 0; i < name.length; i++) {
-      result = result * 26 + (name.charCodeAt(i) - 64);
-    }
-    return result;
-  };
-
-  const columnNumberToName = (num: number): string => {
-    let result = '';
-    while (num > 0) {
-      num--;
-      result = String.fromCharCode(65 + (num % 26)) + result;
-      num = Math.floor(num / 26);
-    }
-    return result;
-  };
-
-  // Función optimizada para aplicar estilos a múltiples celdas
-  const aplicarEstiloACeldas = (worksheet: ExcelJS.Worksheet, rangos: string[], estiloFunc: (cell: ExcelJS.Cell) => void) => {
-    rangos.forEach(rango => {
-      if (rango.includes(':')) {
-        // Es un rango de celdas
-        const startCol = rango.split(':')[0].replace(/\d+/, '');
-        const endCol = rango.split(':')[1].replace(/\d+/, '');
-        const row = parseInt(rango.split(':')[0].replace(/[A-Z]/g, ''));
-        
-        // Obtener códigos de columna
-        const startColNum = columnNameToNumber(startCol);
-        const endColNum = columnNameToNumber(endCol);
-        
-        for (let col = startColNum; col <= endColNum; col++) {
-          const colName = columnNumberToName(col);
-          estiloFunc(worksheet.getCell(`${colName}${row}`));
-        }
-      } else {
-        // Es una celda individual
-        estiloFunc(worksheet.getCell(rango));
-      }
-    });
-  };
-
   // Función para aplicar wrap text a todas las celdas y bordes solo a partir de la fila 7
   const aplicarEstilosGeneralesATodaLaHoja = (worksheet: ExcelJS.Worksheet) => {
     worksheet.eachRow((row, rowNumber) => {
@@ -113,54 +63,146 @@ const ExportarPOA: React.FC<ExportarPOAProps> = ({
     });
   };
 
-  // Función para aplicar bordes a un rango específico de celdas
-  const aplicarBordesARango = (worksheet: ExcelJS.Worksheet, rangoInicio: string, rangoFin: string) => {
-    const startCol = columnNameToNumber(rangoInicio.replace(/\d+/, ''));
-    const endCol = columnNameToNumber(rangoFin.replace(/\d+/, ''));
-    const startRow = parseInt(rangoInicio.replace(/[A-Z]/g, ''));
-    const endRow = parseInt(rangoFin.replace(/[A-Z]/g, ''));
+  // Función para aplicar estilos a la fila de encabezado de actividad
+  const aplicarEstiloEncabezadoActividad = (worksheet: ExcelJS.Worksheet, fila: number, totalActividad: number) => {
+    const row = worksheet.getRow(fila);
+    row.eachCell((cell, colNumber) => {
+      cell.font = { bold: true, size: 11 };
+      cell.alignment = { 
+        horizontal: 'center', 
+        vertical: 'middle',
+        wrapText: true 
+      };
+      cell.border = bordeEstandar;
 
-    for (let row = startRow; row <= endRow; row++) {
-      for (let col = startCol; col <= endCol; col++) {
-        const colName = columnNumberToName(col);
-        const cell = worksheet.getCell(`${colName}${row}`);
-        cell.border = bordeEstandar;
+      // Aplicar colores según la columna
+      if (colNumber >= 1 && colNumber <= 6) { // Columnas A-F (descripción hasta TOTAL)
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'D9D9D9' } // Color gris #D9D9D9
+        };
+      } else if (colNumber === 7) { // Columna G ("TOTAL POR ACTIVIDAD")
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'D9D9D9' } // Cambiado a #D9D9D9
+        };
+        // Formatear el valor como número
+        if (typeof cell.value === 'number') {
+          cell.numFmt = '#,##0.00';
+        }
+      } else { // Columnas H en adelante (meses)
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'DAEEF3' } // Color azul claro #DAEEF3
+        };
       }
-    }
+    });
   };
 
   // Función para crear una hoja con información del POA
   const crearHojaPOA = (workbook: ExcelJS.Workbook, poa: any, nombreHoja: string) => {
     const worksheet = workbook.addWorksheet(nombreHoja);
 
-    // Agregar datos del encabezado (código existente)
+    // Configurar anchos de columnas
+    worksheet.columns = [
+      { width: 474 / 7 }, // Columna A - 474 píxeles convertido a unidades Excel (aproximadamente)
+      { width: 491 / 7 }, // Columna B - 491 píxeles
+      { width: 165 / 7 }, // Columna C - 185 píxeles
+      { width: 165 / 7 }, // Columna D - 185 píxeles
+      { width: 165 / 7 }, // Columna E - 185 píxeles
+      { width: 165 / 7 }, // Columna F - 185 píxeles
+      { width: 89 / 7 }, // Columna G - 109 píxeles (estándar)
+      { width: 89 / 7 }, // Columna H - 109 píxeles (estándar)
+      { width: 89 / 7 }, // Columna I - 109 píxeles (estándar)
+      { width: 89 / 7 }, // Columna J - 109 píxeles (estándar)
+      { width: 89 / 7 }, // Columna K - 109 píxeles (estándar)
+      { width: 89 / 7 }, // Columna L - 109 píxeles (estándar)
+      { width: 89 / 7 }, // Columna M - 109 píxeles (estándar)
+      { width: 89 / 7 }, // Columna N - 109 píxeles (estándar)
+      { width: 89 / 7 }, // Columna O - 109 píxeles (estándar)
+      { width: 89 / 7 }, // Columna P - 109 píxeles (estándar)
+      { width: 89 / 7 }, // Columna Q - 109 píxeles (estándar)
+      { width: 89 / 7 }, // Columna R - 109 píxeles (estándar)
+      { width: 89 / 7 }, // Columna S - 109 píxeles (estándar)
+      { width: 89 / 7 }  // Columna T - 109 píxeles (estándar)
+    ];
+
+    // Agregar datos del encabezado
     worksheet.addRow(['VICERRECTORADO DE INVESTIGACIÓN, INNOVACIÓN Y VINCULACIÓN']);
     worksheet.addRow(['DIRECCIÓN DE INVESTIGACIÓN']);
     worksheet.addRow([`PROGRAMACIÓN PARA EL POA ${poa.anio_ejecucion}`]);
     worksheet.addRow([]); // Fila vacía
-    worksheet.addRow(['Código de Proyecto', codigoProyecto]);
-    worksheet.addRow(['Presupuesto Asignado', poa.presupuesto_asignado.toLocaleString('es-CO')]);
+    worksheet.addRow(['', 'Código de Proyecto', codigoProyecto]); // Empezar desde columna B
+    worksheet.addRow(['', 'Presupuesto Asignado', poa.presupuesto_asignado.toLocaleString('es-CO')]); // Empezar desde columna B
     worksheet.addRow([,,,,,,,'TOTAL POR ACTIVIDAD', `PROGRAMACIÓN DE EJECUCIÓN ${poa.anio_ejecucion}`]);
-    worksheet.addRow(['ACTIVIDAD', 'DESCRIPCIÓN O DETALLE', 'ITEM PRESUPUESTARIO', 'CANTIDAD (Meses de contrato)', 'PRECIO UNITARIO', 'TOTAL', '0,00', 'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre', 'SUMAN']);
+
+    // Fusionar celdas en las primeras 4 filas (A:G)
+    worksheet.mergeCells('A1:G1');
+    worksheet.mergeCells('A2:G2');
+    worksheet.mergeCells('A3:G3');
+    worksheet.mergeCells('A4:G4');
+
+    // Fusionar celda H7 hasta T7 y aplicar color #DAEEF3
+    worksheet.mergeCells('H7:T7');
+    const cellH7 = worksheet.getCell('H7');
+    cellH7.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'DAEEF3' }
+    };
+    const cellG7 = worksheet.getCell('G7');
+    cellG7.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'D9D9D9' }
+    };
 
     // NUEVO: Encontrar los datos de actividades para este POA
     const datosPoaActual = actividadesYTareas.find(data => data.id_poa === poa.id_poa);
     
-    let filaActual = 9; // Empezar después de los encabezados
+    let filaActual = 8; // Empezar después de los encabezados principales
 
     if (datosPoaActual && datosPoaActual.actividades && datosPoaActual.actividades.length > 0) {
-      // Iterar sobre las actividades del POA
-      datosPoaActual.actividades.forEach((actividad: any) => {
+      // Iterar sobre las actividades del POA con numeración
+      datosPoaActual.actividades.forEach((actividad: any, indiceActividad: number) => {
         if (actividad.tareas && actividad.tareas.length > 0) {
+          // Calcular el total de todas las tareas de esta actividad
+          const totalActividad = actividad.tareas.reduce((sum: number, tarea: any) => sum + (tarea.total || 0), 0);
+
+          // MODIFICACIÓN: Agregar numeración a la actividad
+          const numeroActividad = indiceActividad + 1;
+          const nombreActividadConNumero = `(${numeroActividad}) ${actividad.descripcion_actividad}`;
+
+          // Agregar fila de encabezado para esta actividad
+          worksheet.addRow([
+            nombreActividadConNumero, // Reemplazar por el nombre con numeración
+            'DESCRIPCIÓN O DETALLE', 
+            'ITEM PRESUPUESTARIO', 
+            'CANTIDAD', 
+            'PRECIO UNITARIO', 
+            'TOTAL', 
+            totalActividad, // Reemplazar '0,00' por el total calculado
+            'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 
+            'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre', 
+            'SUMAN'
+          ]);
+
+          // Aplicar estilo especial al encabezado de la actividad
+          aplicarEstiloEncabezadoActividad(worksheet, filaActual, totalActividad);
+          filaActual++;
+
           // Para cada tarea de la actividad
-          actividad.tareas.forEach((tarea: any, indiceTarea: number) => {
+          actividad.tareas.forEach((tarea: any) => {
             // Calcular el total de programación mensual
             const totalProgramacion = tarea.gastos_mensuales?.reduce((sum: number, val: number) => sum + (val || 0), 0) || 0;
 
-            // Agregar fila de tarea
+            // Agregar fila de tarea con nueva estructura
             const filaTarea = [
-              indiceTarea === 0 ? actividad.descripcion_actividad : '', // Solo mostrar descripción en la primera tarea
-              tarea.detalle_descripcion || tarea.nombre,
+              tarea.nombre, // Usar tarea.nombre en lugar de actividad.descripcion_actividad
+              tarea.detalle_descripcion, // Usar tarea.detalle_descripcion
               tarea.codigo_item || '',
               tarea.cantidad,
               tarea.precio_unitario,
@@ -185,6 +227,21 @@ const ExportarPOA: React.FC<ExportarPOAProps> = ({
                 cell.alignment = { ...cell.alignment, wrapText: true };
               }
 
+              // Aplicar color de fondo según la columna
+              if (colNumber === 7) { // Columna G (después de tarea.total)
+                cell.fill = {
+                  type: 'pattern',
+                  pattern: 'solid',
+                  fgColor: { argb: 'D9D9D9' } // Color #D9D9D9
+                };
+              } else if (colNumber >= 8) { // Columnas H en adelante
+                cell.fill = {
+                  type: 'pattern',
+                  pattern: 'solid',
+                  fgColor: { argb: 'DAEEF3' }
+                };
+              }
+
               // Formatear números en las columnas correspondientes
               if (colNumber >= 4 && colNumber <= 6) { // Cantidad, Precio Unitario, Total
                 if (typeof cell.value === 'number') {
@@ -203,50 +260,8 @@ const ExportarPOA: React.FC<ExportarPOAProps> = ({
             filaActual++;
           });
 
-          // Agregar fila de total por actividad
-          const totalActividad = actividad.total_por_actividad || 0;
-          const filaTotalActividad = [
-            '', // ACTIVIDAD vacía
-            `TOTAL ACTIVIDAD: ${actividad.descripcion_actividad}`,
-            '', '', '', // Columnas vacías
-            totalActividad, // Total en columna F
-            '', // Columna G vacía
-            ...Array(12).fill(''), // Meses vacíos
-            totalActividad // SUMAN
-          ];
-
-          worksheet.addRow(filaTotalActividad);
-
-          // Aplicar estilo especial a la fila de total
-          const rowTotal = worksheet.getRow(filaActual);
-          rowTotal.eachCell((cell, colNumber) => {
-            cell.border = bordeEstandar;
-            cell.font = { bold: true };
-            cell.alignment = { wrapText: true };
-            
-            if (colNumber === 2) { // Descripción del total
-              cell.fill = {
-                type: 'pattern',
-                pattern: 'solid',
-                fgColor: { argb: 'F2F2F2' } // Gris claro
-              };
-            }
-            
-            if ((colNumber === 6 || colNumber === 20) && typeof cell.value === 'number') { // Total y SUMAN
-              cell.numFmt = '#,##0.00';
-              cell.fill = {
-                type: 'pattern',
-                pattern: 'solid',
-                fgColor: { argb: 'FFFF99' } // Amarillo claro
-              };
-            }
-          });
-
-          filaActual++;
-          
-          // Agregar fila vacía entre actividades
-          worksheet.addRow([]);
-          filaActual++;
+          // NO AGREGAR fila de total por actividad (eliminado)
+          // NO AGREGAR fila vacía entre actividades (eliminado)
         }
       });
 
@@ -256,8 +271,8 @@ const ExportarPOA: React.FC<ExportarPOAProps> = ({
       );
 
       const filaTotalGeneral = [
-        '', // ACTIVIDAD
-        'TOTAL GENERAL POA',
+        'TOTAL GENERAL POA', // En la primera columna
+        '', // Descripción vacía
         '', '', '', // Columnas vacías
         totalGeneralPOA, // Total en columna F
         '', // Columna G
@@ -267,18 +282,39 @@ const ExportarPOA: React.FC<ExportarPOAProps> = ({
 
       worksheet.addRow(filaTotalGeneral);
 
+      // Fusionar celdas de TOTAL GENERAL POA desde A hasta E y aplicar color #FCD5B4
+      worksheet.mergeCells(`A${filaActual}:E${filaActual}`);
+      const cellTotalGeneral = worksheet.getCell(`A${filaActual}`);
+      cellTotalGeneral.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FCD5B4' } // Color #FCD5B4
+      };
+
       // Aplicar estilo especial a la fila de total general
       const rowTotalGeneral = worksheet.getRow(filaActual);
       rowTotalGeneral.eachCell((cell, colNumber) => {
         cell.border = bordeEstandar;
         cell.font = { bold: true, size: 12 };
-        cell.alignment = { wrapText: true };
+        // MODIFICACIÓN: Centrar texto horizontalmente en toda la fila
+        cell.alignment = { 
+          horizontal: 'center', 
+          vertical: 'middle',
+          wrapText: true 
+        };
         
-        if (colNumber === 2) { // Descripción del total
+        // Aplicar color específico según la columna
+        if (colNumber === 7) { // Columna G (después de totalGeneralPOA)
           cell.fill = {
             type: 'pattern',
             pattern: 'solid',
-            fgColor: { argb: 'D9EDF7' } // Azul claro
+            fgColor: { argb: 'D9D9D9' } // Color #D9D9D9
+          };
+        } else if (colNumber >= 8) { // Columnas H en adelante
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'DAEEF3' }
           };
         }
         
@@ -296,9 +332,19 @@ const ExportarPOA: React.FC<ExportarPOAProps> = ({
       worksheet.addRow(['Sin actividades registradas', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '']);
       
       const row = worksheet.getRow(filaActual);
-      row.eachCell((cell) => {
+      row.eachCell((cell, colNumber) => {
         cell.border = bordeEstandar;
         cell.alignment = { wrapText: true };
+        
+        // Aplicar color #DAEEF3 a partir de la columna H
+        if (colNumber >= 8) {
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'DAEEF3' }
+          };
+        }
+        
         if (cell.value === 'Sin actividades registradas') {
           cell.font = { italic: true };
           cell.fill = {
@@ -310,12 +356,10 @@ const ExportarPOA: React.FC<ExportarPOAProps> = ({
       });
     }
 
-    // Aplicar estilos a los títulos principales (código existente...)
+    // Aplicar estilos a los títulos principales
     aplicarEstiloTitulo(worksheet.getCell('A1'), 14);
     aplicarEstiloTitulo(worksheet.getCell('A2'), 12);
     aplicarEstiloTitulo(worksheet.getCell('A3'), 12);
-
-    // ... resto del código de estilos existente ...
 
     // Aplicar estilos generales
     aplicarEstilosGeneralesATodaLaHoja(worksheet);
