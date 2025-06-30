@@ -550,6 +550,7 @@ const AgregarActividad: React.FC = () => {
         id_detalle_tarea: '',
         nombre: '',
         detalle_descripcion: '',
+        lineaPaiViiv: undefined,
         cantidad: 1,
         precio_unitario: 0,
         codigo_item: 'N/A',
@@ -756,6 +757,7 @@ const AgregarActividad: React.FC = () => {
       }));
     }
   };
+
   // Guardar tarea (nueva o editada)
   const guardarTarea = () => {
     if (!currentTarea || !currentPoa || !currentActividad) return;
@@ -902,7 +904,7 @@ const AgregarActividad: React.FC = () => {
     }
 
 
-    // Validar que todas las actividades tengan una actividad seleccionada en cada POA
+    // Validar que todas las actividades tengan una tarea seleccionada en cada POA
     for (const poa of poasConActividades) {
       // Filtrar solo actividades con código seleccionado
       const actividadesConCodigo = poa.actividades.filter(act => act.codigo_actividad && act.codigo_actividad !== "");
@@ -1053,7 +1055,8 @@ const AgregarActividad: React.FC = () => {
               cantidad: tarea.cantidad,
               precio_unitario: tarea.precio_unitario,
               total: tarea.total || (tarea.cantidad * tarea.precio_unitario),
-              saldo_disponible: tarea.total || (tarea.cantidad * tarea.precio_unitario)
+              saldo_disponible: tarea.total || (tarea.cantidad * tarea.precio_unitario),
+              lineaPaiViiv: tarea.lineaPaiViiv || undefined
             };
 
             // Logs para debugging - datos que se envían
@@ -1619,9 +1622,10 @@ const AgregarActividad: React.FC = () => {
                                               <th>Nombre</th>
                                               <th>Código Ítem</th>
                                               <th>Descripción</th>
-                                              <th className="text-end">Cantidad</th>
-                                              <th className="text-end">Precio Unit.</th>
-                                              <th className="text-end">Total</th>
+                                              <th className="text-">Línea PAI VIIV</th>
+                                              <th className="text-center">Cantidad</th>
+                                              <th className="text-center">Precio Unit.</th>
+                                              <th className="text-center">Total</th>
                                               <th className="text-center">Acciones</th>
                                             </tr>
                                           </thead>
@@ -1644,9 +1648,10 @@ const AgregarActividad: React.FC = () => {
                                                   <td>{tarea.nombre}</td>
                                                   <td>{tarea.codigo_item || 'N/A'}</td>
                                                   <td>{tarea.detalle_descripcion}</td>
-                                                  <td className="text-end">{tarea.cantidad}</td>
-                                                  <td className="text-end">${tarea.precio_unitario.toFixed(2)}</td>
-                                                  <td className="text-end">${tarea.total?.toFixed(2)}</td>
+                                                  <td className="text-center">{tarea.lineaPaiViiv}</td>
+                                                  <td className="text-center">{tarea.cantidad}</td>
+                                                  <td className="text-center">${tarea.precio_unitario.toFixed(2)}</td>
+                                                  <td className="text-center">${tarea.total?.toFixed(2)}</td>
                                                   <td className="text-center">
                                                     <Button
                                                       variant="outline-secondary"
@@ -1935,7 +1940,6 @@ const AgregarActividad: React.FC = () => {
                       {currentTarea.detalle.descripciones_disponibles?.map((descripcion, index) => (
                         <option key={index} value={descripcion}>
                           {descripcion}
-                          {/* YA NO MOSTRAR EL PRECIO AQUÍ */}
                         </option>
                       ))}
                     </Form.Select>
@@ -1961,6 +1965,32 @@ const AgregarActividad: React.FC = () => {
                         </small>
                       </div>
                     )}
+                  </Form.Text>
+                </Form.Group>
+
+                {/* NUEVO CAMPO: Línea PAI VIIV */}
+                <Form.Group className="mb-3">
+                  <Form.Label>Línea PAI VIIV</Form.Label>
+                  <Form.Control
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={currentTarea?.lineaPaiViiv === 0 ? '' : currentTarea?.lineaPaiViiv || ''}
+                    onChange={(e) => {
+                      const rawValue = e.target.value;
+                      if (rawValue === '') {
+                        setCurrentTarea(prev => prev ? { ...prev, lineaPaiViiv: undefined } : null);
+                        return;
+                      }
+                      const value = parseInt(rawValue, 10);
+                      if (!isNaN(value) && value > 0) {
+                        setCurrentTarea(prev => prev ? { ...prev, lineaPaiViiv: value } : null);
+                      }
+                    }}
+                    placeholder="Ingrese el número de línea PAI VIIV"
+                  />
+                  <Form.Text className="text-muted">
+                    Número de línea correspondiente al Plan de Acción Institucional VIIV (opcional).
                   </Form.Text>
                 </Form.Group>
 

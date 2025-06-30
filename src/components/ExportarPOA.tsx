@@ -64,7 +64,7 @@ const ExportarPOA: React.FC<ExportarPOAProps> = ({
   };
 
   // Función para aplicar estilos a la fila de encabezado de actividad
-  const aplicarEstiloEncabezadoActividad = (worksheet: ExcelJS.Worksheet, fila: number, totalActividad: number) => {
+  const aplicarEstiloEncabezadoActividad = (worksheet: ExcelJS.Worksheet, fila: number) => {
     const row = worksheet.getRow(fila);
     row.eachCell((cell, colNumber) => {
       cell.font = { bold: true, size: 11 };
@@ -139,6 +139,12 @@ const ExportarPOA: React.FC<ExportarPOAProps> = ({
     worksheet.addRow(['', 'Presupuesto Asignado', poa.presupuesto_asignado.toLocaleString('es-CO')]); // Empezar desde columna B
     worksheet.addRow([,,,,,,,'TOTAL POR ACTIVIDAD', `PROGRAMACIÓN DE EJECUCIÓN ${poa.anio_ejecucion}`]);
 
+    let filaProgramacionyTotal = 7;
+
+    // Aplicar estilo especial al encabezado de la actividad
+          aplicarEstiloEncabezadoActividad(worksheet, filaProgramacionyTotal);
+          filaProgramacionyTotal++;
+
     // Fusionar celdas en las primeras 4 filas (A:G)
     worksheet.mergeCells('A1:G1');
     worksheet.mergeCells('A2:G2');
@@ -191,7 +197,7 @@ const ExportarPOA: React.FC<ExportarPOAProps> = ({
           ]);
 
           // Aplicar estilo especial al encabezado de la actividad
-          aplicarEstiloEncabezadoActividad(worksheet, filaActual, totalActividad);
+          aplicarEstiloEncabezadoActividad(worksheet, filaActual);
           filaActual++;
 
           // Para cada tarea de la actividad
@@ -273,17 +279,17 @@ const ExportarPOA: React.FC<ExportarPOAProps> = ({
       const filaTotalGeneral = [
         'TOTAL GENERAL POA', // En la primera columna
         '', // Descripción vacía
-        '', '', '', // Columnas vacías
-        totalGeneralPOA, // Total en columna F
+        '', '', '', '',// Columnas vacías
+        totalGeneralPOA, // Total en columna G
         '', // Columna G
-        ...Array(12).fill(''), // Meses vacíos
+        ...Array(11).fill(''), // Meses vacíos
         totalGeneralPOA // SUMAN
       ];
 
       worksheet.addRow(filaTotalGeneral);
 
       // Fusionar celdas de TOTAL GENERAL POA desde A hasta E y aplicar color #FCD5B4
-      worksheet.mergeCells(`A${filaActual}:E${filaActual}`);
+      worksheet.mergeCells(`A${filaActual}:F${filaActual}`);
       const cellTotalGeneral = worksheet.getCell(`A${filaActual}`);
       cellTotalGeneral.fill = {
         type: 'pattern',

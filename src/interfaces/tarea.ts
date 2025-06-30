@@ -33,6 +33,7 @@ export interface Tarea {
     total: number;
     saldo_disponible: number;
     detalle_tarea?: DetalleTarea;
+    lineaPaiViiv?: number;
 }
 
 export interface TareaCreate {
@@ -43,6 +44,7 @@ export interface TareaCreate {
     precio_unitario: number; // Cambiar a string
     total: number; // Cambiar a string
     saldo_disponible?: number; // Cambiar a string
+    lineaPaiViiv?: number;
 }
 
 export interface TareaUpdate {
@@ -52,6 +54,7 @@ export interface TareaUpdate {
     precio_unitario?: number;
     total?: number;
     saldo_disponible?: number;
+    lineaPaiViiv?: number;
 }
 
 export interface TipoPoaDetalleTarea {
@@ -67,7 +70,6 @@ export interface LimiteActividadesTipoPoa {
     descripcion?: string;
 }
 
-// Agrega este campo a la interfaz TareaForm en el archivo interfaces/tarea.ts
 export interface TareaForm {
   tempId: string;
   id_detalle_tarea: string;
@@ -86,6 +88,7 @@ export interface TareaForm {
   id_item_presupuestario_seleccionado?: string;
   // NUEVO campo para la descripción seleccionada
   descripcion_seleccionada?: string;
+  lineaPaiViiv?: number;
 }
 
 // Nueva interfaz para la respuesta del backend
@@ -97,6 +100,7 @@ export interface TareaResponse {
   precio_unitario: string; // Backend devuelve como string
   total: string; // Backend devuelve como string
   saldo_disponible: string; // Backend devuelve como string
+  lineaPaiViiv?: number;
 }
 
 // Interface para programación mensual
@@ -106,20 +110,6 @@ export interface ProgramacionMensualCreate {
   valor: number; // Backend espera decimal como number
 }
 
-// // Tipo para crear programación mensual
-// export interface ProgramacionMensualCreate {
-//     mes: string;        // Formato "MM-AAAA" (ej: "03-2025")
-//     valor: number;      // Decimal se maneja como number en TypeScript
-//     id_tarea: string;   // UUID como string
-// }
-
-// export interface ProgramacionMensualResponse {
-  //   id_programacion: string;
-//   id_tarea: string;
-//   mes: string;
-//   valor: string;
-// }
-// Asegúrate de que TareaForm tenga esta estructura
 export interface TareaFormExtended extends TareaForm {
   tempId: string;
   gastos_mensuales: number[]; // Array de 12 elementos para los meses
