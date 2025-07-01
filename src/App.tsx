@@ -13,6 +13,7 @@ import TiposProyecto from './pages/TiposProyecto';
 import AgregarActividad from './pages/AgregarActividad';
 import ReportePOA from './pages/ReportePOA';
 import LogsCargaExcel from './pages/LogsCargaExcel';
+import VerProyectos from './pages/VerProyectos';
 import { ThemeProvider } from "@mui/material/styles";
 import theme from "./theme";
 
@@ -71,6 +72,12 @@ function App() {
             <Route path="/LogsCargaExcel" element={
               <ProtectedRoute>
                 <LogsCargaExcel />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/ver-proyectos" element={
+              <ProtectedRoute>
+                <VerProyectos />
               </ProtectedRoute>
             } />
             

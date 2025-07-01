@@ -265,9 +265,6 @@ const ExportarPOA: React.FC<ExportarPOAProps> = ({
 
             filaActual++;
           });
-
-          // NO AGREGAR fila de total por actividad (eliminado)
-          // NO AGREGAR fila vacía entre actividades (eliminado)
         }
       });
 

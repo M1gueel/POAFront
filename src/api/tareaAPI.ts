@@ -100,5 +100,27 @@ export const tareaAPI = {
         }
     },
 
+    // Obtener programación mensual por tarea
+    getProgramacionMensualPorTarea: async (idTarea: string): Promise<ProgramacionMensualOut[]> => {
+        try {
+            console.log(`Consultando programación mensual para tarea ID: ${idTarea}`);
+            const response = await API.get(`/tareas/${idTarea}/programacion-mensual`);
+            console.log("Programación mensual obtenida:", response.data);
+            return response.data as ProgramacionMensualOut[];
+        } catch (error) {
+            console.error("Error al obtener programación mensual:", error);
+            if (error && typeof error === 'object' && 'response' in error) {
+                const axiosError = error as any;
+                console.error("Respuesta del servidor:", axiosError.response.data);
+                console.error("Status:", axiosError.response.status);
+                
+                // Manejar error específico de tarea no encontrada
+                if (axiosError.response.status === 404) {
+                    throw new Error("Tarea no encontrada");
+                }
+            }
+            throw error;
+        }
+    },
 
 }

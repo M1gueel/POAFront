@@ -6,11 +6,11 @@ import { SidebarContentProps } from '../interfaces/bar';
 import { TableProperties, FolderKanban, FileChartLine, CircleUserRound, UserPlus, LogOut, Icon } from 'lucide-react';
 import { owl } from '@lucide/lab';
 
-const SidebarContent: React.FC<SidebarContentProps> = ({ 
-  usuario, 
-  onItemClick, 
-  isSidebarCollapsed, 
-  toggleSidebar 
+const SidebarContent: React.FC<SidebarContentProps> = ({
+  usuario,
+  onItemClick,
+  isSidebarCollapsed,
+  toggleSidebar
 }) => {
   const { logout } = useAuth();
   const location = useLocation();
@@ -34,7 +34,7 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
     <React.Fragment>
       {/* Encabezado - Ajustado para mostrar/ocultar "SGP" basado en el estado colapsado */}
       <div className="d-flex align-items-center justify-content-between p-3 border-bottom">
-        <div 
+        <div
           className="fs-4 fw-semibold text-decoration-none text-white d-flex align-items-center"
           onClick={() => handleNavigate("/dashboard")}
           style={{ cursor: 'pointer' }}
@@ -43,12 +43,12 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
           {!isSidebarCollapsed && "SGP"}
         </div>
       </div>
-      
+
       {/* Botón de toggle separado en su propia fila */}
       <div className="d-flex justify-content-center p-2 border-bottom">
-        <Button 
-          variant="outline-light" 
-          size="sm" 
+        <Button
+          variant="outline-light"
+          size="sm"
           onClick={toggleSidebar}
           className="d-none d-lg-block"
           style={{ width: isSidebarCollapsed ? '40px' : 'auto' }}
@@ -57,17 +57,31 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
           {!isSidebarCollapsed && <span className="ms-2">Contraer</span>}
         </Button>
       </div>
-      
+
       {/* Solo mostrar estos elementos si el sidebar no está colapsado */}
       {!isSidebarCollapsed && (
         <>
           {/* Links de navegación */}
           <Nav className="flex-column mt-3">
-            <div className="px-3 mb-2 text-secondary text-uppercase small">Proyectos</div>
-            
+
+            <div className="px-3 mb-2 text-secondary text-uppercase small">Inicio</div>
+
+            {/* Ver Proyectos */}
+            <Nav.Item>
+              <Nav.Link
+                className={`text-white ${isActive("/ver-proyectos")}`}
+                onClick={() => handleNavigate("/ver-proyectos")}
+              >
+                <FolderKanban size={iconSize} className="me-2" />
+                Ver Proyectos
+              </Nav.Link>
+            </Nav.Item>
+
+            <div className="px-3 mt-4 mb-2 text-secondary text-uppercase small">Proyectos</div>
+
             {/* Nuevo Proyecto */}
             <Nav.Item>
-              <Nav.Link 
+              <Nav.Link
                 className={`text-white ${isActive("/tipos-proyecto")}`}
                 onClick={() => handleNavigate("/tipos-proyecto")}
               >
@@ -75,12 +89,12 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
                 Nuevo Proyecto
               </Nav.Link>
             </Nav.Item>
-            
+
             {/* Sección POAs */}
             <div className="px-3 mt-4 mb-2 text-secondary text-uppercase small">POAs</div>
-            
+
             <Nav.Item>
-              <Nav.Link 
+              <Nav.Link
                 className={`text-white ${isActive("/crearPOA")}`}
                 onClick={() => handleNavigate("/crearPOA")}
               >
@@ -90,9 +104,9 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
             </Nav.Item>
 
             <div className="px-3 mt-4 mb-2 text-secondary text-uppercase small">ACTIVIDADES</div>
-            
+
             <Nav.Item>
-              <Nav.Link 
+              <Nav.Link
                 className={`text-white ${isActive("/agregar-actividad")}`}
                 onClick={() => handleNavigate("/agregar-actividad")}
               >
@@ -100,11 +114,11 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
                 Agregar Actividad
               </Nav.Link>
             </Nav.Item>
-            
+
             {/* Preferencias de usuario */}
             <div className="px-3 mt-4 mb-2 text-secondary text-uppercase small">Usuario</div>
             <Nav.Item>
-              <Nav.Link 
+              <Nav.Link
                 className={`text-white ${isActive("/perfil")}`}
                 onClick={() => handleNavigate("/perfil")}
               >
@@ -112,18 +126,18 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
                 Perfil
               </Nav.Link>
             </Nav.Item>
-            
+
             {/* Registro de usuarios */}
             <Nav.Item>
               <Nav.Link
                 className={`text-white ${isActive("/register")}`}
                 onClick={() => handleNavigate("/register")}
-              > 
+              >
                 <UserPlus size={iconSize} className="me-2" />
                 Registrar usuario
               </Nav.Link>
             </Nav.Item>
-            
+
             {/* Sección Excel */}
             <div className="px-3 mt-4 mb-2 text-secondary text-uppercase small">
               Excel
@@ -154,7 +168,7 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
               </Nav.Link>
             </Nav.Item>
 
-            
+
             {/* Información del usuario en la parte inferior del sidebar */}
             <div className="mt-auto p-3 border-top">
               <div className="d-flex align-items-center">
@@ -163,9 +177,9 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
                   <small className="text-muted">{usuario.rol}</small>
                 </div>
               </div>
-              <Button 
-                variant="outline-light" 
-                size="sm" 
+              <Button
+                variant="outline-light"
+                size="sm"
                 className="w-100 mt-2"
                 onClick={() => {
                   if (onItemClick) onItemClick();
@@ -179,12 +193,12 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
           </Nav>
         </>
       )}
-      
+
       {/* Cuando el sidebar está colapsado, mostrar solo íconos */}
       {isSidebarCollapsed && (
         <Nav className="flex-column align-items-center mt-3">
           <Nav.Item>
-            <Nav.Link 
+            <Nav.Link
               className={`text-white ${isActive("/tipos-proyecto")}`}
               onClick={() => handleNavigate("/tipos-proyecto")}
               style={{ cursor: 'pointer' }}
@@ -194,7 +208,7 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
             </Nav.Link>
           </Nav.Item>
           <Nav.Item>
-            <Nav.Link 
+            <Nav.Link
               className={`text-white ${isActive("/crearPOA")}`}
               onClick={() => handleNavigate("/crearPOA")}
               title="Nuevo POA"
@@ -203,7 +217,7 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
             </Nav.Link>
           </Nav.Item>
           <Nav.Item>
-            <Nav.Link 
+            <Nav.Link
               className={`text-white ${isActive("/agregar-actividad")}`}
               onClick={() => handleNavigate("/agregar-actividad")}
               title="Agregar Actividad"
@@ -212,7 +226,7 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
             </Nav.Link>
           </Nav.Item>
           <Nav.Item>
-            <Nav.Link 
+            <Nav.Link
               className={`text-white ${isActive("/perfil")}`}
               onClick={() => handleNavigate("/perfil")}
               title="Perfil"
@@ -221,7 +235,7 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
             </Nav.Link>
           </Nav.Item>
           <Nav.Item>
-            <Nav.Link 
+            <Nav.Link
               className={`text-white ${isActive("/register")}`}
               onClick={() => handleNavigate("/register")}
               title="Registrar usuario"
@@ -247,7 +261,7 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
               <FileChartLine size={iconSize} />
             </Nav.Link>
           </Nav.Item>
-<Nav.Item>
+          <Nav.Item>
             <Nav.Link
               className={`text-white ${isActive("/LogsCargaExcel")}`}
               onClick={() => handleNavigate("/LogsCargaExcel")}
@@ -259,7 +273,7 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
 
           <div className="mt-auto mb-3">
             <Nav.Item>
-              <Nav.Link 
+              <Nav.Link
                 className="text-white"
                 onClick={() => logout()}
                 title="Cerrar Sesión"
