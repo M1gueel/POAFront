@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Form, Button, Container, Card, Row, Col, ListGroup, Spinner, Tabs, Tab, Alert, Modal, InputGroup } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-import { toast, ToastContainer } from 'react-toastify';
+import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 import { Proyecto } from '../interfaces/project';
@@ -23,6 +23,9 @@ import { DetalleTarea, ItemPresupuestario, TareaCreate, TareaForm, ProgramacionM
 import { getActividadesPorTipoPOA, ActividadOpciones } from '../utils/listaActividades';
 //Importar la asignación de precio unitario
 import { manejarCambioDescripcionConPrecio, esContratacionServiciosProfesionales, obtenerPrecioPorDescripcion} from '../utils/asignarCantidad';
+
+// ¡IMPORTAR LAS FUNCIONES DE TOAST!
+import { showError, showSuccess, showWarning, showInfo } from '../utils/toast';
 
 // Extender la interfaz POA para incluir los datos del tipo
 interface POAExtendido extends POA {
@@ -78,7 +81,7 @@ const AgregarActividad: React.FC = () => {
   const [datosGuardados, setDatosGuardados] = useState(false);
   const [actividadesYTareasCreadas, setActividadesYTareasCreadas] = useState<any[]>([]);
 
-  // FUNCIÓN PARA LIMPIAR ERRORES ESPECÍFICOS
+    // FUNCIÓN PARA LIMPIAR ERRORES ESPECÍFICOS
   const clearTaskError = (field: string) => {
     setTaskErrors(prev => {
       const newErrors = { ...prev };
@@ -92,51 +95,6 @@ const AgregarActividad: React.FC = () => {
       ...prev,
       [field]: message
     }));
-  };
-
-  // FUNCIONES PARA MOSTRAR MENSAJES CON TOAST
-  const showError = (message: string) => {
-    toast.error(message, {
-      position: "top-right",
-      autoClose: 5000,
-      hideProgressBar: false,
-      closeOnClick: true,
-      pauseOnHover: true,
-      draggable: true,
-    });
-  };
-
-  const showSuccess = (message: string) => {
-    toast.success(message, {
-      position: "top-right",
-      autoClose: 5000,
-      hideProgressBar: false,
-      closeOnClick: true,
-      pauseOnHover: true,
-      draggable: true,
-    });
-  };
-
-  const showWarning = (message: string) => {
-    toast.warning(message, {
-      position: "top-right",
-      autoClose: 5000,
-      hideProgressBar: false,
-      closeOnClick: true,
-      pauseOnHover: true,
-      draggable: true,
-    });
-  };
-
-  const showInfo = (message: string) => {
-    toast.info(message, {
-      position: "top-right",
-      autoClose: 5000,
-      hideProgressBar: false,
-      closeOnClick: true,
-      pauseOnHover: true,
-      draggable: true,
-    });
   };
 
   // Cargar datos iniciales
@@ -1155,7 +1113,7 @@ const AgregarActividad: React.FC = () => {
 
       // Mostrar mensaje de éxito y actualizar toast
       toast.update(toastId, {
-        render: `✅ Se crearon ${totalActividadesCreadas} actividades con ${totalTareasCreadas} tareas y ${totalProgramacionesCreadas} programaciones mensuales`,
+        render: `Se crearon ${totalActividadesCreadas} actividades con ${totalTareasCreadas} tareas y ${totalProgramacionesCreadas} programaciones mensuales`,
         type: "success",
         isLoading: false,
         autoClose: 5000
@@ -2224,19 +2182,6 @@ const AgregarActividad: React.FC = () => {
           </Form>
         </Card.Body>
       </Card>
-      {/* ToastContainer */}
-      <ToastContainer
-        position="top-right"
-        autoClose={5000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="light"
-      />
     </Container>
   );
 }

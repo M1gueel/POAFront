@@ -4,6 +4,14 @@ import { projectAPI } from '../api/projectAPI';
 import { poaAPI } from '../api/poaAPI';
 import { Proyecto, EstadoProyecto } from '../interfaces/project';
 import { POA } from '../interfaces/poa';
+import VerPOA from '../components/VerPOA';
+import 'react-toastify/dist/ReactToastify.css';
+
+// ¡IMPORTAR LAS FUNCIONES DE TOAST!
+import { showError, showInfo } from '../utils/toast';
+
+// Importar el archivo CSS para el modal de pantalla completa
+import '../styles/FullscreenModal.css';
 
 // Interfaces para este componente
 interface ProyectoConPOAs extends Proyecto {
@@ -20,44 +28,6 @@ interface FilterState {
   maxBudget: string;
   yearFilter: string;
 }
-
-// Componente VerPOA (básico por ahora)
-const VerPOA: React.FC<{ poa: POA; onClose: () => void }> = ({ poa, onClose }) => {
-  return (
-    <div>
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h5>Detalles del POA: {poa.codigo_poa}</h5>
-        <Button variant="outline-secondary" size="sm" onClick={onClose}>
-          <i className="bi bi-x"></i>
-        </Button>
-      </div>
-      
-      <div className="row g-3">
-        <div className="col-md-6">
-          <strong>Código POA:</strong>
-          <p>{poa.codigo_poa}</p>
-        </div>
-        <div className="col-md-6">
-          <strong>Año de Ejecución:</strong>
-          <p>{poa.anio_ejecucion}</p>
-        </div>
-        <div className="col-md-6">
-          <strong>Presupuesto Asignado:</strong>
-          <p className="text-success">${poa.presupuesto_asignado?.toLocaleString() || 'N/A'}</p>
-        </div>
-        <div className="col-md-6">
-          <strong>Fecha de Creación:</strong>
-          <p>{new Date(poa.fecha_creacion).toLocaleDateString()}</p>
-        </div>
-      </div>
-      
-      <Alert variant="info" className="mt-3">
-        <i className="bi bi-info-circle me-2"></i>
-        Aquí se mostrará la tabla detallada del POA con actividades y tareas.
-      </Alert>
-    </div>
-  );
-};
 
 const VerProyectos: React.FC = () => {
   const [proyectos, setProyectos] = useState<ProyectoConPOAs[]>([]);
@@ -113,8 +83,10 @@ const VerProyectos: React.FC = () => {
               poas: poas,
               estadoProyecto: estadoProyecto
             });
+            showInfo('POAs del Poryecto obtenidos exitosamente');
           } catch (projectError) {
             console.warn(`No se pudieron obtener POAs para proyecto ${proyecto.codigo_proyecto}:`, projectError);
+            showError('No se pudieron obtener POAs para proyecto');
             const estadoProyecto = estadosConDescripcion.find(e => e.id_estado_proyecto === proyecto.id_estado_proyecto);
             proyectosConPOAs.push({
               ...proyecto,
@@ -128,6 +100,7 @@ const VerProyectos: React.FC = () => {
       } catch (err) {
         console.error('Error al cargar datos:', err);
         setError('Error al cargar los datos de proyectos');
+        showError(err instanceof Error ? err.message : 'Error al cargar los datos de proyectos');
       } finally {
         setLoading(false);
       }
@@ -245,6 +218,7 @@ const VerProyectos: React.FC = () => {
   const openPOAModal = (poa: POA) => {
     setSelectedPOA(poa);
     setShowModal(true);
+    showInfo('Abriendo detalles del POA');
   };
 
   // Función para cerrar modal
@@ -472,8 +446,13 @@ const VerProyectos: React.FC = () => {
         </div>
       </div>
 
-      {/* Modal para mostrar detalles del POA */}
-      <Modal show={showModal} onHide={closeModal} size="lg">
+      {/* Modal para mostrar detalles del POA - ACTUALIZADO */}
+      <Modal 
+        show={showModal} 
+        onHide={closeModal} 
+        dialogClassName="modal-90w"
+        centered
+      >
         <Modal.Header closeButton>
           <Modal.Title>Detalles del POA</Modal.Title>
         </Modal.Header>

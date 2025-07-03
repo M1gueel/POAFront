@@ -15,7 +15,12 @@ import ReportePOA from './pages/ReportePOA';
 import LogsCargaExcel from './pages/LogsCargaExcel';
 import VerProyectos from './pages/VerProyectos';
 import { ThemeProvider } from "@mui/material/styles";
+
 import theme from "./theme";
+
+// Importar ToastContainer y estilos
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 function App() {
   return (
@@ -23,70 +28,84 @@ function App() {
       <AuthProvider>
         <AppLayout>
           <ThemeProvider theme={theme}>
-          <Routes>
-            {/* Rutas públicas */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            
-            {/* Rutas protegidas */}
-            <Route path="/dashboard" element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/tipos-proyecto" element={
-              <ProtectedRoute>
-                <TiposProyecto />
-              </ProtectedRoute>
-            } />
-            <Route path="/crear-proyecto" element={
-              <ProtectedRoute>
-                <CrearProyecto />
-              </ProtectedRoute>
-            } />
-            <Route path="/crearPOA" element={
-              <ProtectedRoute>
-                <CrearPOA />
-              </ProtectedRoute>
-            } />
-            <Route path="/agregar-actividad" element={
-              <ProtectedRoute>
-                <AgregarActividad />
-              </ProtectedRoute>
-            } />
-            <Route path="/perfil" element={
-              <ProtectedRoute>
-                <Perfil />
-              </ProtectedRoute>
-            } />
-            <Route path="/subir-excel" element={
-              <ProtectedRoute>
-                <SubirExcel />
-              </ProtectedRoute>
-            } />
-            <Route path="/reporte-poa" element={
-              <ProtectedRoute>
-                <ReportePOA />
-              </ProtectedRoute>
-            } />
-            <Route path="/LogsCargaExcel" element={
-              <ProtectedRoute>
-                <LogsCargaExcel />
-              </ProtectedRoute>
-            } />
+            <Routes>
+              {/* Rutas públicas */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              
+              {/* Rutas protegidas */}
+              <Route path="/dashboard" element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/tipos-proyecto" element={
+                <ProtectedRoute>
+                  <TiposProyecto />
+                </ProtectedRoute>
+              } />
+              <Route path="/crear-proyecto" element={
+                <ProtectedRoute>
+                  <CrearProyecto />
+                </ProtectedRoute>
+              } />
+              <Route path="/crearPOA" element={
+                <ProtectedRoute>
+                  <CrearPOA />
+                </ProtectedRoute>
+              } />
+              <Route path="/agregar-actividad" element={
+                <ProtectedRoute>
+                  <AgregarActividad />
+                </ProtectedRoute>
+              } />
+              <Route path="/perfil" element={
+                <ProtectedRoute>
+                  <Perfil />
+                </ProtectedRoute>
+              } />
+              <Route path="/subir-excel" element={
+                <ProtectedRoute>
+                  <SubirExcel />
+                </ProtectedRoute>
+              } />
+              <Route path="/reporte-poa" element={
+                <ProtectedRoute>
+                  <ReportePOA />
+                </ProtectedRoute>
+              } />
+              <Route path="/LogsCargaExcel" element={
+                <ProtectedRoute>
+                  <LogsCargaExcel />
+                </ProtectedRoute>
+              } />
 
-            <Route path="/ver-proyectos" element={
-              <ProtectedRoute>
-                <VerProyectos />
-              </ProtectedRoute>
-            } />
+              <Route path="/ver-proyectos" element={
+                <ProtectedRoute>
+                  <VerProyectos />
+                </ProtectedRoute>
+              } />
+              
+              {/* Ruta por defecto - redirigir al dashboard si está autenticado, sino al login */}
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              
+              {/* Ruta para URLs no válidas */}
+              <Route path="*" element={<Navigate to="/login" replace />} />
+            </Routes>
             
-            {/* Ruta por defecto - redirigir al dashboard si está autenticado, sino al login */}
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            
-            {/* Ruta para URLs no válidas */}
-            <Route path="*" element={<Navigate to="/login" replace />} />
-          </Routes>
+            {/* ToastContainer global - solo una vez en toda la aplicación */}
+            <ToastContainer
+              position="top-right"
+              autoClose={5000}
+              hideProgressBar={false}
+              newestOnTop={false}
+              closeOnClick
+              rtl={false}
+              pauseOnFocusLoss
+              draggable
+              pauseOnHover
+              theme="light"
+            />
           </ThemeProvider>
         </AppLayout>
       </AuthProvider>

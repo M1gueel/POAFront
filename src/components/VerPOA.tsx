@@ -1,18 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Alert, Table, Spinner, Badge } from 'react-bootstrap';
+import { Alert, Table, Spinner } from 'react-bootstrap';
 import { POA } from '../interfaces/poa';
 import { Actividad } from '../interfaces/actividad';
 import { Tarea, ProgramacionMensualOut } from '../interfaces/tarea';
 import { actividadAPI } from '../api/actividadAPI';
 import { tareaAPI } from '../api/tareaAPI';
+import { showWarning } from '../utils/toast';
 
 interface VerPOAProps {
   poa: POA;
   onClose: () => void;
-}
-
-interface ActividadConTareas extends Actividad {
-  tareas: Tarea[];
 }
 
 interface TareaConProgramacion extends Tarea {
@@ -23,7 +20,7 @@ interface ActividadConTareasYProgramacion extends Actividad {
   tareas: TareaConProgramacion[];
 }
 
-const VerPOA: React.FC<VerPOAProps> = ({ poa, onClose }) => {
+const VerPOA: React.FC<VerPOAProps> = ({ poa }) => {
   const [actividades, setActividades] = useState<ActividadConTareasYProgramacion[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +30,32 @@ const VerPOA: React.FC<VerPOAProps> = ({ poa, onClose }) => {
     'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
     'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
   ];
+
+  // Función para formatear números correctamente
+  const formatearNumero = (numero: any): number => {
+    if (numero === null || numero === undefined || numero === '') return 0;
+    
+    // Convertir a string y limpiar
+    let numeroString = String(numero).trim();
+    
+    // Si el número viene como string con formato extraño, intentar parsearlo
+    if (typeof numero === 'string') {
+      // Remover ceros iniciales innecesarios pero conservar el formato decimal
+      numeroString = numeroString.replace(/^0+/, '') || '0';
+    }
+    
+    const numeroFormateado = parseFloat(numeroString);
+    return isNaN(numeroFormateado) ? 0 : numeroFormateado;
+  };
+
+  // Función para mostrar números con formato de moneda
+  const formatearMoneda = (numero: any): string => {
+    const num = formatearNumero(numero);
+    return num.toLocaleString('es-ES', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  };
 
   useEffect(() => {
     const cargarDatosPOA = async () => {
@@ -62,12 +85,12 @@ const VerPOA: React.FC<VerPOAProps> = ({ poa, onClose }) => {
                 // Crear array de 12 meses inicializado en 0
                 const gastosMensuales = Array(12).fill(0);
                 
-                // Llenar el array con los datos de programación
+                // Llenar el array con los datos de programación, formateando correctamente
                 programacionData.forEach((programacion: ProgramacionMensualOut) => {
                   // El mes viene en formato "MM-YYYY", extraemos el mes
                   const mesNum = parseInt(programacion.mes.split('-')[0]) - 1; // -1 porque el array es 0-indexed
                   if (mesNum >= 0 && mesNum < 12) {
-                    gastosMensuales[mesNum] = programacion.valor;
+                    gastosMensuales[mesNum] = formatearNumero(programacion.valor);
                   }
                 });
                 
@@ -78,6 +101,7 @@ const VerPOA: React.FC<VerPOAProps> = ({ poa, onClose }) => {
                 
               } catch (tareaError) {
                 console.warn(`No se pudo obtener programación para tarea ${tarea.id_tarea}:`, tareaError);
+                showWarning(`No se pudieron obtener programación para tarea ${tarea.id_tarea}:`);
                 // Si no hay programación, usar array de ceros
                 tareasConProgramacion.push({
                   ...tarea,
@@ -93,6 +117,7 @@ const VerPOA: React.FC<VerPOAProps> = ({ poa, onClose }) => {
             
           } catch (actividadError) {
             console.warn(`No se pudieron obtener tareas para actividad ${actividad.id_actividad}:`, actividadError);
+            showWarning(`No se pudieron obtener tareas para actividad ${actividad.id_actividad}:`);
             // Si no hay tareas, crear actividad con array vacío
             actividadesConTareas.push({
               ...actividad,
@@ -117,15 +142,15 @@ const VerPOA: React.FC<VerPOAProps> = ({ poa, onClose }) => {
   // Calcular totales
   const calcularTotalGeneral = () => {
     return actividades.reduce((total, actividad) => {
-      const totalActividad = actividad.tareas.reduce((sum, tarea) => sum + (tarea.total || 0), 0);
-      return total + totalActividad;
+      // Usar total_por_actividad directamente de la base de datos, formateado correctamente
+      return total + formatearNumero(actividad.total_por_actividad || 0);
     }, 0);
   };
 
   const calcularTotalMes = (mesIndex: number) => {
     return actividades.reduce((total, actividad) => {
       const totalMesActividad = actividad.tareas.reduce((sum, tarea) => {
-        return sum + (tarea.gastos_mensuales[mesIndex] || 0);
+        return sum + formatearNumero(tarea.gastos_mensuales[mesIndex] || 0);
       }, 0);
       return total + totalMesActividad;
     }, 0);
@@ -135,9 +160,19 @@ const VerPOA: React.FC<VerPOAProps> = ({ poa, onClose }) => {
     return meses.reduce((total, _, index) => total + calcularTotalMes(index), 0);
   };
 
-  // Calcular total por actividad
-  const calcularTotalActividad = (actividad: ActividadConTareasYProgramacion) => {
-    return actividad.tareas.reduce((sum, tarea) => sum + (tarea.total || 0), 0);
+  // Función para obtener el código del item presupuestario
+  const obtenerCodigoItemPresupuestario = (tarea: Tarea): string => {
+    // Primero intentar obtener el código del detalle_tarea
+    if (tarea.detalle_tarea?.codigo_item) {
+      return tarea.detalle_tarea.codigo_item;
+    }
+    
+    // Si no está ahí, intentar obtenerlo del item_presupuestario
+    if (tarea.detalle_tarea?.item_presupuestario?.codigo) {
+      return tarea.detalle_tarea.item_presupuestario.codigo;
+    }
+    
+    return 'N/A';
   };
 
   if (loading) {
@@ -156,9 +191,6 @@ const VerPOA: React.FC<VerPOAProps> = ({ poa, onClose }) => {
       <div>
         <div className="d-flex justify-content-between align-items-center mb-3">
           <h5>Detalles del POA: {poa.codigo_poa}</h5>
-          <Button variant="outline-secondary" size="sm" onClick={onClose}>
-            <i className="bi bi-x"></i>
-          </Button>
         </div>
         <Alert variant="danger">
           <Alert.Heading>Error</Alert.Heading>
@@ -172,9 +204,6 @@ const VerPOA: React.FC<VerPOAProps> = ({ poa, onClose }) => {
     <div>
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h5>Detalles del POA: {poa.codigo_poa}</h5>
-        <Button variant="outline-secondary" size="sm" onClick={onClose}>
-          <i className="bi bi-x"></i>
-        </Button>
       </div>
       
       {/* Información general del POA */}
@@ -189,7 +218,7 @@ const VerPOA: React.FC<VerPOAProps> = ({ poa, onClose }) => {
         </div>
         <div className="col-md-3">
           <strong>Presupuesto Asignado:</strong>
-          <p className="text-success">${poa.presupuesto_asignado?.toLocaleString() || 'N/A'}</p>
+          <p className="text-success">${formatearMoneda(poa.presupuesto_asignado)}</p>
         </div>
         <div className="col-md-3">
           <strong>Fecha de Creación:</strong>
@@ -221,7 +250,7 @@ const VerPOA: React.FC<VerPOAProps> = ({ poa, onClose }) => {
           <div className="card bg-light">
             <div className="card-body text-center">
               <h6 className="card-title">Presupuesto Total</h6>
-              <h4 className="text-success">${calcularTotalGeneral().toLocaleString()}</h4>
+              <h4 className="text-success">${formatearMoneda(calcularTotalGeneral())}</h4>
             </div>
           </div>
         </div>
@@ -231,66 +260,51 @@ const VerPOA: React.FC<VerPOAProps> = ({ poa, onClose }) => {
       {actividades.length > 0 ? (
         <div className="table-responsive">
           <Table bordered hover size="sm" style={{ fontSize: '0.8rem' }}>
-            <thead className="table-dark">
+            <thead className="table-light">
               <tr>
-                <th rowSpan={2} style={{ verticalAlign: 'middle', minWidth: '200px' }}>
-                  Actividades donde se involucre personal para el desarrollo del proyecto
+                <th rowSpan={2} style={{ backgroundColor: 'transparent', border: 'none', minWidth: '300px', width: '300px' }}>
                 </th>
-                <th rowSpan={2} style={{ verticalAlign: 'middle', minWidth: '200px' }}>
-                  DESCRIPCIÓN DETALLE
+                <th rowSpan={2} style={{ backgroundColor: 'transparent', border: 'none', minWidth: '200px' }}>
                 </th>
-                <th rowSpan={2} style={{ verticalAlign: 'middle', minWidth: '100px' }}>
-                  ÍTEM PRESUPUESTARIO
+                <th rowSpan={2} style={{ backgroundColor: 'transparent', border: 'none', minWidth: '100px' }}>
                 </th>
-                <th rowSpan={2} style={{ verticalAlign: 'middle', minWidth: '80px' }}>
-                  CANTIDAD
+                <th rowSpan={2} style={{ backgroundColor: 'transparent', border: 'none', minWidth: '80px' }}>
                 </th>
-                <th rowSpan={2} style={{ verticalAlign: 'middle', minWidth: '100px' }}>
-                  PRECIO UNITARIO
+                <th rowSpan={2} style={{ backgroundColor: 'transparent', border: 'none', minWidth: '100px' }}>
                 </th>
-                <th rowSpan={2} style={{ verticalAlign: 'middle', minWidth: '100px' }}>
-                  TOTAL
+                <th rowSpan={2} style={{ backgroundColor: 'transparent', border: 'none', minWidth: '100px' }}>
                 </th>
                 <th rowSpan={2} style={{ verticalAlign: 'middle', minWidth: '100px', backgroundColor: '#D9D9D9' }}>
                   TOTAL POR ACTIVIDAD
                 </th>
-                <th colSpan={12} className="text-center" style={{ backgroundColor: '#DAEEF3' }}>
+                <th colSpan={13} className="text-center" style={{ backgroundColor: '#DAEEF3' }}>
                   PROGRAMACIÓN DE EJECUCIÓN {poa.anio_ejecucion}
                 </th>
-                <th rowSpan={2} style={{ verticalAlign: 'middle', minWidth: '100px', backgroundColor: '#DAEEF3' }}>
-                  SUMAN
-                </th>
-              </tr>
-              <tr>
-                {meses.map((mes) => (
-                  <th key={mes} className="text-center" style={{ minWidth: '80px', backgroundColor: '#DAEEF3' }}>
-                    {mes}
-                  </th>
-                ))}
               </tr>
             </thead>
             <tbody>
               {actividades.map((actividad, actIndex) => (
                 <React.Fragment key={actividad.id_actividad}>
                   {/* Fila de encabezado de actividad */}
-                  <tr className="table-secondary">
+                  <tr style={{ backgroundColor: '#D9D9D9' }}>
                     <td className="fw-bold">
                       ({actIndex + 1}) {actividad.descripcion_actividad}
                     </td>
-                    <td className="fw-bold">DESCRIPCIÓN O DETALLE</td>
-                    <td className="fw-bold">ITEM PRESUPUESTARIO</td>
-                    <td className="fw-bold">CANTIDAD</td>
-                    <td className="fw-bold">PRECIO UNITARIO</td>
-                    <td className="fw-bold">TOTAL</td>
-                    <td className="fw-bold text-end" style={{ backgroundColor: '#D9D9D9' }}>
-                      ${calcularTotalActividad(actividad).toLocaleString()}
+                    <td className="fw-bold text-center">DESCRIPCIÓN O DETALLE</td>
+                    <td className="fw-bold text-center">ITEM PRESUPUESTARIO</td>
+                    <td className="fw-bold text-center">CANTIDAD</td>
+                    <td className="fw-bold text-center">PRECIO UNITARIO</td>
+                    <td className="fw-bold text-center">TOTAL</td>
+                    <td className="fw-bold text-center" style={{ backgroundColor: '#D9D9D9' }}>
+                      {/* Usar total_por_actividad directamente de la base de datos, formateado */}
+                      ${formatearMoneda(actividad.total_por_actividad || 0)}
                     </td>
                     {meses.map((mes) => (
                       <td key={mes} className="fw-bold text-center" style={{ backgroundColor: '#DAEEF3' }}>
                         {mes}
                       </td>
                     ))}
-                    <td className="fw-bold text-center" style={{ backgroundColor: '#DAEEF3' }}>
+                    <td className="fw-bold text-center" style={{ backgroundColor: '#DAEEF3', width: '100px', maxWidth: '100px' }}>
                       SUMAN
                     </td>
                   </tr>
@@ -298,30 +312,30 @@ const VerPOA: React.FC<VerPOAProps> = ({ poa, onClose }) => {
                   {/* Filas de tareas */}
                   {actividad.tareas.length > 0 ? (
                     actividad.tareas.map((tarea) => {
-                      const totalProgramacion = tarea.gastos_mensuales.reduce((sum, val) => sum + (val || 0), 0);
+                      const totalProgramacion = tarea.gastos_mensuales.reduce((sum, val) => sum + formatearNumero(val || 0), 0);
                       
                       return (
                         <tr key={tarea.id_tarea}>
                           <td>{tarea.nombre}</td>
-                          <td>{tarea.detalle_descripcion || tarea.nombre}</td>
+                          <td>{tarea.detalle_descripcion}</td>
                           <td>
                             <code className="bg-light px-1 rounded">
-                              {tarea.detalle_tarea?.codigo_item || tarea.detalle_tarea?.item_presupuestario?.codigo || 'N/A'}
+                              {obtenerCodigoItemPresupuestario(tarea)}
                             </code>
                           </td>
-                          <td className="text-end">{tarea.cantidad}</td>
-                          <td className="text-end">${tarea.precio_unitario?.toLocaleString() || '0'}</td>
+                          <td className="text-end">{formatearNumero(tarea.cantidad)}</td>
+                          <td className="text-end">${formatearMoneda(tarea.precio_unitario)}</td>
                           <td className="text-end text-success">
-                            <strong>${tarea.total?.toLocaleString() || '0'}</strong>
+                            <strong>${formatearMoneda(tarea.total)}</strong>
                           </td>
-                          <td style={{ backgroundColor: '#f8f9fa' }}></td>
+                          <td style={{ backgroundColor: '#D9D9D9' }}></td>
                           {tarea.gastos_mensuales.map((gasto, mesIndex) => (
-                            <td key={mesIndex} className="text-end" style={{ backgroundColor: '#f0f8ff' }}>
-                              {gasto > 0 ? `$${gasto.toLocaleString()}` : '0'}
+                            <td key={mesIndex} className="text-end" style={{ backgroundColor: '#DAEEF3' }}>
+                              {formatearNumero(gasto) > 0 ? `$${formatearMoneda(gasto)}` : '0'}
                             </td>
                           ))}
-                          <td className="text-end fw-bold" style={{ backgroundColor: '#f0f8ff' }}>
-                            ${totalProgramacion.toLocaleString()}
+                          <td className="text-end fw-bold" style={{ backgroundColor: '#DAEEF3', width: '100px', maxWidth: '100px' }}>
+                            ${formatearMoneda(totalProgramacion)}
                           </td>
                         </tr>
                       );
@@ -336,22 +350,19 @@ const VerPOA: React.FC<VerPOAProps> = ({ poa, onClose }) => {
                 </React.Fragment>
               ))}
               
-              {/* Fila de totales */}
-              <tr className="table-warning">
-                <td colSpan={5} className="text-center fw-bold" style={{ backgroundColor: '#FCD5B4' }}>
+              {/* Fila de totales generales */}
+              <tr style={{ backgroundColor: '#FCD5B4' }}>
+                <td colSpan={6} className="text-center fw-bold">
                   TOTAL GENERAL POA
-                </td>
-                <td className="text-end fw-bold" style={{ backgroundColor: '#92D050' }}>
-                  ${calcularTotalGeneral().toLocaleString()}
                 </td>
                 <td style={{ backgroundColor: '#D9D9D9' }}></td>
                 {meses.map((_, mesIndex) => (
                   <td key={mesIndex} className="text-end fw-bold" style={{ backgroundColor: '#DAEEF3' }}>
-                    ${calcularTotalMes(mesIndex).toLocaleString()}
+                    ${formatearMoneda(calcularTotalMes(mesIndex))}
                   </td>
                 ))}
-                <td className="text-end fw-bold" style={{ backgroundColor: '#92D050' }}>
-                  ${calcularTotalProgramacion().toLocaleString()}
+                <td className="text-end fw-bold" style={{ backgroundColor: '#92D050', width: '100px', maxWidth: '100px' }}>
+                  ${formatearMoneda(calcularTotalProgramacion())}
                 </td>
               </tr>
             </tbody>
