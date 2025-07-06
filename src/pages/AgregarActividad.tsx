@@ -459,11 +459,12 @@ const AgregarActividad: React.FC = () => {
 
 
   // Función para obtener el número de tarea según el tipo de POA
-  const obtenerNumeroTarea = (itemPresupuestario: any, tipoPoa: string): string => {
-    if (!itemPresupuestario || !itemPresupuestario.nombre) return '';
+  // ACTUALIZADA: Ahora usa el campo 'caracteristicas' de DetalleTarea
+  const obtenerNumeroTarea = (detalleTarea: DetalleTarea, tipoPoa: string): string => {
+    if (!detalleTarea || !detalleTarea.caracteristicas) return '';
 
-    // El nombre contiene tres números separados por "; " en el orden: PIM, PTT, PVIF
-    const numeros = itemPresupuestario.nombre.split(';');
+    // El campo caracteristicas contiene tres números separados por "; " en el orden: PIM, PTT, PVIF
+    const numeros = detalleTarea.caracteristicas.split('; ');
 
     if (numeros.length !== 3) return '';
 
@@ -476,6 +477,10 @@ const AgregarActividad: React.FC = () => {
         indice = 1;
         break;
       case 'PVIF':
+      case 'PVIS':
+      case 'PIGR':
+      case 'PIS':
+      case 'PIIF':
         indice = 2;
         break;
       default:
@@ -600,7 +605,7 @@ const AgregarActividad: React.FC = () => {
         // Si tiene múltiples items, usar el primero por defecto
         if (detalleTarea.tiene_multiples_items && detalleTarea.items_presupuestarios && detalleTarea.items_presupuestarios.length > 0) {
           const itemPorDefecto = detalleTarea.items_presupuestarios[0];
-          const numeroTarea = obtenerNumeroTarea(itemPorDefecto, tipoPoa);
+          const numeroTarea = obtenerNumeroTarea(detalleTarea, tipoPoa);
 
           tareaActualizada = {
             ...tareaActualizada,
@@ -612,7 +617,7 @@ const AgregarActividad: React.FC = () => {
           };
         } else if (detalleTarea.item_presupuestario) {
           // Un solo item, usar directamente
-          const numeroTarea = obtenerNumeroTarea(detalleTarea.item_presupuestario, tipoPoa);
+          const numeroTarea = obtenerNumeroTarea(detalleTarea, tipoPoa);
 
           tareaActualizada = {
             ...tareaActualizada,
@@ -671,7 +676,7 @@ const AgregarActividad: React.FC = () => {
     if (item) {
       const poaActual = poasConActividades.find(p => p.id_poa === currentPoa);
       const tipoPoa = poaActual?.tipo_poa || 'PVIF';
-      const numeroTarea = obtenerNumeroTarea(item, tipoPoa);
+      const numeroTarea = obtenerNumeroTarea(currentTarea.detalle, tipoPoa);
 
       setCurrentTarea(prev => ({
         ...prev!,
@@ -1200,7 +1205,7 @@ const AgregarActividad: React.FC = () => {
   };
 
   // Función para filtrar detalles de tarea según la actividad y tipo de POA
-  // Ahora hace consultas individuales para obtener los items presupuestarios
+  // ACTUALIZADA: Ahora usa el campo 'caracteristicas' de DetalleTarea
   const filtrarDetallesPorActividadConConsultas = async (
     detallesTarea: DetalleTarea[],
     codigoActividad: string,
@@ -1218,23 +1223,32 @@ const AgregarActividad: React.FC = () => {
       return detallesTarea;
     }
 
+    console.log(`=== FILTRANDO DETALLES PARA ACTIVIDAD ${numeroActividad} (USANDO CARACTERISTICAS) ===`);
+    console.log(`Tipo POA: ${tipoPoa}, Total detalles: ${detallesTarea.length}`);
+
     // Procesar cada detalle de forma asíncrona
     const detallesConItems = await Promise.allSettled(
-      detallesTarea.map(async (detalle) => {
-
+      detallesTarea.map(async (detalle, index) => {
         try {
           // Obtener el item presupuestario usando la función proporcionada
           const itemPresupuestario = await getItemPresupuestarioPorId(detalle.id_item_presupuestario);
 
-          // Verificar formato del nombre (debe ser "X.Y; A.B; C.D")
-          if (!itemPresupuestario.nombre || typeof itemPresupuestario.nombre !== 'string') {
+          console.log(`\n--- Procesando detalle ${index + 1} ---`);
+          console.log(`Detalle: ${detalle.nombre}`);
+          console.log(`Descripción: ${detalle.descripcion || 'N/A'}`);
+          console.log(`Características: ${detalle.caracteristicas || 'N/A'}`);
+
+          // NUEVA LÓGICA: Usar el campo 'caracteristicas' directamente
+          if (!detalle.caracteristicas || typeof detalle.caracteristicas !== 'string') {
+            console.log('❌ No hay características válidas');
             return { detalle, incluir: false, itemPresupuestario: null };
           }
 
-          // Obtener los números del nombre (formato: "X.Y; A.B; C.D")
-          const numeros = itemPresupuestario.nombre.split('; ');
+          // Obtener los números del campo caracteristicas (formato: "X.Y; A.B; C.D")
+          const numeros = detalle.caracteristicas.split('; ');
 
           if (numeros.length !== 3) {
+            console.log('❌ Formato de características inválido');
             return { detalle, incluir: false, itemPresupuestario };
           }
 
@@ -1259,17 +1273,32 @@ const AgregarActividad: React.FC = () => {
           }
 
           const numeroTarea = numeros[indice];
+          console.log(`Número de tarea desde características: ${numeroTarea}`);
 
           // Si es "0", no está disponible para este tipo de POA
           if (numeroTarea === '0') {
+            console.log('❌ No disponible para este tipo de POA (valor = 0)');
             return { detalle, incluir: false, itemPresupuestario };
           }
 
           // Verificar si el número de la tarea comienza con el número de actividad
           const coincide = numeroTarea.startsWith(numeroActividad + '.');
-          return { detalle, incluir: coincide, itemPresupuestario, numeroTarea };
+          console.log(`¿Coincide con actividad ${numeroActividad}? ${coincide ? '✅' : '❌'}`);
+          
+          if (coincide) {
+            const detalleEspecifico = {
+              ...detalle,
+              item_presupuestario: itemPresupuestario,
+              numero_tarea_especifica: numeroTarea
+            };
+            
+            return { detalle: detalleEspecifico, incluir: true, itemPresupuestario, numeroTarea };
+          }
+
+          return { detalle, incluir: false, itemPresupuestario, numeroTarea };
 
         } catch (error) {
+          console.error('Error al procesar detalle:', error);
           return { detalle, incluir: false, itemPresupuestario: null, error };
         }
       })
@@ -1279,6 +1308,12 @@ const AgregarActividad: React.FC = () => {
     const filtrados = detallesConItems
       .filter(result => result.status === 'fulfilled' && result.value.incluir)
       .map(result => (result as PromiseFulfilledResult<any>).value);
+
+    console.log(`\n=== RESULTADO FILTRADO ===`);
+    console.log(`Total detalles filtrados: ${filtrados.length}`);
+    filtrados.forEach((item, index) => {
+      console.log(`${index + 1}. ${item.detalle.nombre} - ${item.detalle.descripcion || 'Sin descripción'} - Tarea: ${item.numeroTarea}`);
+    });
 
     // Ordenar los resultados filtrados según el número de tarea
     const filtradosOrdenados = filtrados.sort((a, b) => {
@@ -1960,7 +1995,7 @@ const AgregarActividad: React.FC = () => {
                         type="number"
                         min="1"
                         step="1"
-                        value={currentTarea?.cantidad === 0 ? '' : currentTarea?.cantidad || ''}
+                        value={currentTarea?.cantidad === 0 ? '0' : currentTarea?.cantidad || ''}
                         onChange={(e) => {
                           const rawValue = e.target.value;
                           if (rawValue === '') {
