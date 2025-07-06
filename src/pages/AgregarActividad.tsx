@@ -910,15 +910,10 @@ const AgregarActividad: React.FC = () => {
         const actividadesParaCrear: ActividadCreate[] = actividadesConCodigo.map((actPoa) => {
           const descripcion = getDescripcionActividad(poa.id_poa, actPoa.codigo_actividad);
 
-          // Calcular el total real de la actividad sumando todas sus tareas
-          const totalActividad = actPoa.tareas.reduce((sum, tarea) => {
-            return sum + (tarea.total || 0);
-          }, 0);
-
+          // NOTA: No enviamos total_por_actividad ni saldo_actividad porque
+          // el backend los calcula automáticamente al crear las tareas
           return {
-            descripcion_actividad: descripcion,
-            total_por_actividad: totalActividad,
-            saldo_actividad: totalActividad // Inicialmente el saldo es igual al total
+            descripcion_actividad: descripcion
           };
         });
 
@@ -1087,6 +1082,7 @@ const AgregarActividad: React.FC = () => {
       });
 
       // Preparar los datos para enviar al componente ExportarPOA
+      // NOTA: Los totales calculados aquí son solo para visualización
       const datosParaExportar = poasConActividades.map((poa) => {
         const actividadesConCodigo = poa.actividades.filter(act => act.codigo_actividad && act.codigo_actividad !== "");
         
@@ -1098,7 +1094,7 @@ const AgregarActividad: React.FC = () => {
           actividades: actividadesConCodigo.map((actividad) => ({
             codigo_actividad: actividad.codigo_actividad,
             descripcion_actividad: getDescripcionActividad(poa.id_poa, actividad.codigo_actividad),
-            total_por_actividad: actividad.tareas.reduce((sum, tarea) => sum + (tarea.total || 0), 0),
+            total_por_actividad: actividad.tareas.reduce((sum, tarea) => sum + (tarea.total || 0), 0), // Solo para visualización
             tareas: actividad.tareas.map((tarea) => ({
               nombre: tarea.nombre,
               detalle_descripcion: tarea.detalle_descripcion,
@@ -1136,7 +1132,9 @@ const AgregarActividad: React.FC = () => {
 
 
 
-  // Calcular total para una actividad
+  // Calcular total para una actividad (solo para mostrar en el frontend)
+  // NOTA: Este cálculo es únicamente para la visualización en el frontend.
+  // El backend calcula automáticamente el total real cuando se crean las tareas.
   const calcularTotalActividad = (poaId: string, actividadId: string) => {
     const poa = poasConActividades.find(p => p.id_poa === poaId);
     if (!poa) return 0;

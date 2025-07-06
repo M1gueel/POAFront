@@ -16,8 +16,8 @@ export interface ActividadForm {
 
 export interface ActividadCreate {
     descripcion_actividad: string;
-    total_por_actividad: number; // Este valor siempre será 0 inicialmente
-    saldo_actividad: number; // Este valor siempre será 0 inicialmente
+    total_por_actividad?: number; // Opcional: el backend lo calcula automáticamente
+    saldo_actividad?: number; // Opcional: el backend lo calcula automáticamente
 }
 
 export interface ActividadForm {
