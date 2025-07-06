@@ -509,7 +509,7 @@ const AgregarActividad: React.FC = () => {
         nombre: '',
         detalle_descripcion: '',
         lineaPaiViiv: undefined,
-        cantidad: 1,
+        cantidad: 0,
         precio_unitario: 0,
         codigo_item: 'N/A',
         total: 0,
@@ -921,7 +921,7 @@ const AgregarActividad: React.FC = () => {
         for (const actividad of actividadesConCodigo) {
           for (const tarea of actividad.tareas) {
             const totalPlanificado = tarea.gastos_mensuales?.reduce((sum, val) => sum + (val || 0), 0) || 0;
-            if (totalPlanificado === 0) {
+            if (totalPlanificado === 0 && tarea.cantidad > 0) {
               toast.update(toastId, {
                 render: `La tarea "${tarea.nombre}" debe tener planificación mensual`,
                 type: "error",
@@ -1144,7 +1144,6 @@ const AgregarActividad: React.FC = () => {
 
 
   // Función para obtener el número de actividad del código de actividad
-  // Función para obtener el número de actividad del código de actividad
   const obtenerNumeroActividad = (codigoActividad: string): string => {
     // Manejar diferentes formatos de códigos de actividad
     if (codigoActividad.includes('PIM')) {
@@ -1292,7 +1291,7 @@ const AgregarActividad: React.FC = () => {
     // Retornar solo los detalles, no los objetos con metadata
     return filtradosOrdenados.map(item => item.detalle);
   };
-
+  
   // Función para agrupar detalles de tarea con el mismo nombre y item presupuestario
   const agruparDetallesDuplicados = async (
     detallesFiltrados: DetalleTarea[],
@@ -1406,6 +1405,7 @@ const AgregarActividad: React.FC = () => {
 
     return detallesFinales;
   };
+
 
   // Cache simple para evitar consultas repetidas
   const cacheItemsPresupuestarios = new Map<string, ItemPresupuestario>();
@@ -1607,9 +1607,9 @@ const AgregarActividad: React.FC = () => {
                                                   <td>{tarea.codigo_item || 'N/A'}</td>
                                                   <td>{tarea.detalle_descripcion}</td>
                                                   <td className="text-center">{tarea.lineaPaiViiv}</td>
-                                                  <td className="text-center">{tarea.cantidad}</td>
-                                                  <td className="text-center">${tarea.precio_unitario.toFixed(2)}</td>
-                                                  <td className="text-center">${tarea.total?.toFixed(2)}</td>
+                                                  <td className="text-center">{tarea.cantidad === 0 ? '' : tarea.cantidad}</td>
+                                                  <td className="text-center">{tarea.precio_unitario === 0 ? '' : `$${tarea.precio_unitario.toFixed(2)}`}</td>
+                                                  <td className="text-center">{tarea.total === 0 ? '' : `$${tarea.total?.toFixed(2)}`}</td>
                                                   <td className="text-center">
                                                     <Button
                                                       variant="outline-secondary"

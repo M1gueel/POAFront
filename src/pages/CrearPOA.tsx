@@ -622,12 +622,12 @@ const handleSubmit = async (e: React.FormEvent) => {
             // Obtener el título del proyecto normalizándolo para el código
             const codigoProyectoNormalizado = proyectoSeleccionado?.codigo_proyecto
               ? proyectoSeleccionado.codigo_proyecto
-                  .replace(/\s+/g, '-') // Convertir espacios en guiones (si los hay)
-                  .replace(/[^a-zA-Z0-9-]/g, '') // Eliminar caracteres especiales
-                  .toUpperCase() // Convertir a mayúsculas para consistencia
+                  .replace(/\s+/g, '') // Convertir espacios en guiones (si los hay)
+                  .replace(/[^a-zA-Z]/g, '') // Eliminar caracteres especiales y numeros
+                  .toUpperCase() + Math.floor(10000 + Math.random() * 90000) // Convertir a mayúsculas para consistencia
               : '';
 
-            const nuevoCodigo = `PER-${anio}-${codigoProyectoNormalizado}`;
+            const nuevoCodigo = `P-${anio}-${codigoProyectoNormalizado}`;
             
             // Como no tenemos un método para buscar por código, verificaremos si existe consultando todos los periodos
             // Obtener todos los periodos disponibles y filtrar en el frontend
@@ -646,18 +646,17 @@ const handleSubmit = async (e: React.FormEvent) => {
           }
           
           // Si llegamos aquí, necesitamos crear un nuevo periodo
-          // Asegúrate de que cada periodo tenga un código único incluyendo el nombre del proyecto
           const anio = periodo.anio || new Date().getFullYear().toString();
           // Obtener el título del proyecto normalizándolo para el código
           const codigoProyectoNormalizado = proyectoSeleccionado?.codigo_proyecto
             ? proyectoSeleccionado.codigo_proyecto
-                .replace(/\s+/g, '-') // Convertir espacios en guiones (si los hay)
-                .replace(/[^a-zA-Z0-9-]/g, '') // Eliminar caracteres especiales
-                .toUpperCase() // Convertir a mayúsculas para consistencia
+                .replace(/\s+/g, '') // Convertir espacios en guiones (si los hay)
+                .replace(/[^a-zA-Z]/g, '') // Eliminar caracteres especiales
+                .toUpperCase() + Math.floor(10000 + Math.random() * 90000) // Convertir a mayúsculas para consistencia
             : '';
 
           const periodoData: PeriodoCreate = {
-            codigo_periodo: `PER-${anio}-${codigoProyectoNormalizado}`,
+            codigo_periodo: `P-${anio}-${codigoProyectoNormalizado}`,
             nombre_periodo: periodo.nombre_periodo,
             fecha_inicio: periodo.fecha_inicio,
             fecha_fin: periodo.fecha_fin,
