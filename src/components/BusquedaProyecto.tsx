@@ -1,5 +1,6 @@
 import React from 'react';
 import { Row, Col, Form, Table, Badge } from 'react-bootstrap';
+import { XCircle } from 'lucide-react';
 import { Proyecto } from '../interfaces/project';
 
 interface BusquedaProyectoProps {
@@ -95,6 +96,11 @@ const BusquedaProyecto: React.FC<BusquedaProyectoProps> = ({
     setMostrarBusqueda(false);
   };
 
+  const limpiarBusqueda = () => {
+    setBusquedaProyecto('');
+    setMostrarBusqueda(false);
+  };
+
   const obtenerEstiloFila = (proyecto: Proyecto) => {
     if (!mostrarValidacion || !validaciones[proyecto.id_proyecto]) {
       return { cursor: 'pointer' };
@@ -136,7 +142,30 @@ const BusquedaProyecto: React.FC<BusquedaProyectoProps> = ({
               onChange={manejarCambioBusqueda}
               onFocus={() => setMostrarBusqueda(true)}
               className="form-control-lg"
+              style={{ paddingRight: busquedaProyecto ? '2.5rem' : '0.75rem' }}
             />
+            
+            {/* Botón de limpiar */}
+            {busquedaProyecto && (
+              <button
+                type="button"
+                onClick={limpiarBusqueda}
+                className="btn btn-link position-absolute"
+                style={{
+                  right: '0.5rem',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  padding: '0.25rem',
+                  border: 'none',
+                  background: 'none',
+                  color: '#6c757d',
+                  zIndex: 10
+                }}
+                title="Limpiar búsqueda"
+              >
+                <XCircle  size={18} />
+              </button>
+            )}
            
             {/* Resultados de búsqueda */}
             {mostrarBusqueda && (

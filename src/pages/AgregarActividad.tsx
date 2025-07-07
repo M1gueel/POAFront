@@ -241,23 +241,47 @@ const AgregarActividad: React.FC = () => {
       // Cargar los POAs del proyecto seleccionado
       const poasData = await poaAPI.getPOAsByProyecto(proyecto.id_proyecto);
 
-      // CORRECCIÓN: Cargar información del tipo de POA para cada POA
-      setLoadingMessage('Cargando información de tipos de POA...');
-      const poasConTipo: POAExtendido[] = [];
+      setLoadingMessage('Verificando disponibilidad de POAs...');
+
+      // Filtrar solo los POAs que NO tienen actividades
+      const poasDisponibles: any[] = [];
 
       for (const poa of poasData) {
-        const poaConTipo = await cargarTipoPOA(poa);
-        poasConTipo.push(poaConTipo);
+        try {
+          const actividades = await actividadAPI.getActividadesPorPOA(poa.id_poa);
+          // Solo incluir POAs que NO tienen actividades
+          if (actividades.length === 0) {
+            const poaConTipo = await cargarTipoPOA(poa);
+            poasDisponibles.push(poaConTipo);
+          }
+        } catch (error) {
+          console.error(`Error verificando actividades para POA ${poa.id_poa}:`, error);
+          // En caso de error, incluir el POA (asumir que está disponible)
+          const poaConTipo = await cargarTipoPOA(poa);
+          poasDisponibles.push(poaConTipo);
+        }
       }
 
-      setPoasProyecto(poasConTipo);
+      if (poasDisponibles.length === 0) {
+        showWarning('Este proyecto no tiene POAs disponibles. Todos los POAs ya tienen actividades asignadas.');
+        setPoasProyecto([]);
+        setPeriodosProyecto([]);
+        setPoasConActividades([]);
+        setActivePoaTab('');
+        setIsLoading(false);
+        return;
+      }
+
+      setPoasProyecto(poasDisponibles);
+
+      showSuccess(`Proyecto seleccionado. ${poasDisponibles.length} POAs disponibles de ${poasData.length} totales.`);
 
       // Limpiar cache de items presupuestarios al cambiar de proyecto
       cacheItemsPresupuestarios.clear();
 
-      // Extraer los periodos de los POAs
+      // Extraer los periodos de los POAs disponibles
       const periodos: Periodo[] = [];
-      for (const poa of poasConTipo) {
+      for (const poa of poasDisponibles) {
         if (poa.periodo) {
           periodos.push(poa.periodo);
         }
@@ -1606,6 +1630,59 @@ const AgregarActividad: React.FC = () => {
     }
   };
 
+  // Función para validar si un proyecto tiene POAs disponibles (sin actividades)
+  const validarProyecto = async (proyecto: Proyecto): Promise<{ esValido: boolean; razon?: string }> => {
+    try {
+      // Obtener los POAs del proyecto
+      const poasData = await poaAPI.getPOAsByProyecto(proyecto.id_proyecto);
+
+      if (poasData.length === 0) {
+        return {
+          esValido: false,
+          razon: 'Este proyecto no tiene POAs asociados'
+        };
+      }
+
+      // Verificar cuántos POAs tienen actividades
+      let poasConActividades = 0;
+      const verificaciones = await Promise.all(
+        poasData.map(async (poa) => {
+          try {
+            const actividades = await actividadAPI.getActividadesPorPOA(poa.id_poa);
+            return actividades.length > 0;
+          } catch (error) {
+            console.error(`Error verificando actividades para POA ${poa.id_poa}:`, error);
+            return false; // En caso de error, asumir que no tiene actividades
+          }
+        })
+      );
+
+      poasConActividades = verificaciones.filter(Boolean).length;
+
+      // Si todos los POAs tienen actividades, el proyecto no está disponible
+      if (poasConActividades === poasData.length) {
+        return {
+          esValido: false,
+          razon: `Todos los POAs (${poasData.length}) de este proyecto ya tienen actividades asignadas`
+        };
+      }
+
+      // Si hay POAs disponibles, el proyecto está disponible
+      const poasDisponibles = poasData.length - poasConActividades;
+      return {
+        esValido: true,
+        razon: `${poasDisponibles} de ${poasData.length} POAs disponibles`
+      };
+
+    } catch (error) {
+      console.error('Error validando proyecto:', error);
+      return {
+        esValido: true,
+        razon: 'Error al validar disponibilidad'
+      };
+    }
+  };
+
   return (
     <Container className="py-4 main-content-with-sidebar">
       <Card className="shadow-lg">
@@ -1619,6 +1696,8 @@ const AgregarActividad: React.FC = () => {
               proyectos={proyectos}
               isLoading={isLoading}
               seleccionarProyecto={seleccionarProyecto}
+              validarProyecto={validarProyecto}
+              mostrarValidacion={true}
             />
 
             {/* Información del Proyecto Seleccionado */}

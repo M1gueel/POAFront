@@ -8,7 +8,7 @@ import VerPOA from '../components/VerPOA';
 import 'react-toastify/dist/ReactToastify.css';
 
 // ¡IMPORTAR LAS FUNCIONES DE TOAST!
-import { showError, showInfo } from '../utils/toast';
+import { showError, showInfo, showSuccess } from '../utils/toast';
 
 // Importar el archivo CSS para el modal de pantalla completa
 import '../styles/FullscreenModal.css';
@@ -72,7 +72,9 @@ const VerProyectos: React.FC = () => {
 
         // Obtener POAs para cada proyecto
         const proyectosConPOAs: ProyectoConPOAs[] = [];
-        
+        let maxtoastinfo = 1;
+        let maxtoasterror = 1;
+
         for (const proyecto of proyectosResponse) {
           try {
             const poas = await poaAPI.getPOAsByProyecto(proyecto.id_proyecto);
@@ -83,10 +85,16 @@ const VerProyectos: React.FC = () => {
               poas: poas,
               estadoProyecto: estadoProyecto
             });
-            showInfo('POAs del Poryecto obtenidos exitosamente');
+            if (maxtoastinfo < 2) {
+            showInfo('POAs del Proyecto obtenidos exitosamente');
+            maxtoastinfo++;
+            }
           } catch (projectError) {
             console.warn(`No se pudieron obtener POAs para proyecto ${proyecto.codigo_proyecto}:`, projectError);
+            if (maxtoasterror < 2) {
             showError('No se pudieron obtener POAs para proyecto');
+            maxtoasterror++;
+            }
             const estadoProyecto = estadosConDescripcion.find(e => e.id_estado_proyecto === proyecto.id_estado_proyecto);
             proyectosConPOAs.push({
               ...proyecto,
@@ -218,7 +226,7 @@ const VerProyectos: React.FC = () => {
   const openPOAModal = (poa: POA) => {
     setSelectedPOA(poa);
     setShowModal(true);
-    showInfo('Abriendo detalles del POA');
+    showSuccess('Actividades y tareas del POA');
   };
 
   // Función para cerrar modal
