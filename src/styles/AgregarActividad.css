@@ -1,0 +1,72 @@
+/* Estilos optimizados para el sidebar de presupuesto */
+.budget-sidebar {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 260px; /* Reducido de 300px */
+  z-index: 1000;
+  max-height: 70vh; /* Reducido de 80vh */
+  overflow-y: auto;
+  background: white;
+  border-radius: 10px; /* Reducido de 12px */
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1); /* Ligeramente reducido */
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* Ajuste del contenido principal para evitar superposición */
+@media (min-width: 1400px) {
+  .main-content-with-sidebar {
+    margin-right: 280px; /* Ajustado: ancho del sidebar + margen */
+  }
+}
+
+/* En pantallas más pequeñas, ocultar el sidebar */
+@media (max-width: 1399px) {
+  .budget-sidebar {
+    display: none;
+  }
+}
+
+/* Animación suave para el scroll */
+.budget-sidebar {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e0 #f7fafc;
+}
+
+.budget-sidebar::-webkit-scrollbar {
+  width: 4px; /* Reducido de 6px */
+}
+
+.budget-sidebar::-webkit-scrollbar-track {
+  background: #f7fafc;
+  border-radius: 2px;
+}
+
+.budget-sidebar::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 2px;
+}
+
+.budget-sidebar::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
+}
+
+/* Clases de utilidad adicionales para tamaños de fuente compactos */
+.fs-7 {
+  font-size: 0.85rem !important;
+}
+
+/* Animación suave para el desplegable */
+.budget-sidebar .btn {
+  transition: all 0.2s ease;
+}
+
+.budget-sidebar .btn:hover {
+  transform: translateY(-1px);
+}
+
+/* Mejorar el estilo de las alertas compactas */
+.budget-sidebar .alert {
+  border-radius: 6px;
+  border: none;
+}

@@ -15,6 +15,8 @@ import { tareaAPI } from '../api/tareaAPI';
 import BusquedaProyecto from '../components/BusquedaProyecto';
 import ExportarPOA from '../components/ExportarPOA';
 
+import '../styles/AgregarActividad.css'
+
 // Interfaces para actividades
 import { ActividadCreate, ActividadConTareas, POAConActividadesYTareas } from '../interfaces/actividad';
 // Interfaces para tareas
@@ -22,7 +24,7 @@ import { DetalleTarea, ItemPresupuestario, TareaCreate, TareaForm, ProgramacionM
 // Importar la lista de actividades
 import { getActividadesPorTipoPOA, ActividadOpciones } from '../utils/listaActividades';
 //Importar la asignación de precio unitario
-import { manejarCambioDescripcionConPrecio, esContratacionServiciosProfesionales, obtenerPrecioPorDescripcion} from '../utils/asignarCantidad';
+import { manejarCambioDescripcionConPrecio, esContratacionServiciosProfesionales, obtenerPrecioPorDescripcion } from '../utils/asignarCantidad';
 
 // ¡IMPORTAR LAS FUNCIONES DE TOAST!
 import { showError, showSuccess, showWarning, showInfo } from '../utils/toast';
@@ -81,7 +83,10 @@ const AgregarActividad: React.FC = () => {
   const [datosGuardados, setDatosGuardados] = useState(false);
   const [actividadesYTareasCreadas, setActividadesYTareasCreadas] = useState<any[]>([]);
 
-    // FUNCIÓN PARA LIMPIAR ERRORES ESPECÍFICOS
+  // Estado para total del POA real vs gastado
+  const [showActividades, setShowActividades] = useState(false);
+
+  // FUNCIÓN PARA LIMPIAR ERRORES ESPECÍFICOS
   const clearTaskError = (field: string) => {
     setTaskErrors(prev => {
       const newErrors = { ...prev };
@@ -631,7 +636,7 @@ const AgregarActividad: React.FC = () => {
         // NUEVA LÓGICA: Si tiene múltiples descripciones, establecer la primera y aplicar precio automático
         if (detalleTarea.tiene_multiples_descripciones && detalleTarea.descripciones_disponibles && detalleTarea.descripciones_disponibles.length > 0) {
           const primeraDescripcion = detalleTarea.descripciones_disponibles[0];
-          
+
           // Establecer la primera descripción
           tareaActualizada = {
             ...tareaActualizada,
@@ -896,7 +901,7 @@ const AgregarActividad: React.FC = () => {
     try {
       // Mostrar toast de progreso
       const toastId = toast.loading('Guardando actividades y tareas...');
-      
+
       // Paso 1: Crear actividades
       const actividadesCreadas: { [key: string]: string } = {};
       const mapeoActividadesTemp: { [key: string]: { poaId: string, actividadTemp: ActividadConTareas } } = {};
@@ -989,7 +994,7 @@ const AgregarActividad: React.FC = () => {
       let totalProgramacionesCreadas = 0;
 
       // Para cada entrada en el mapeo de actividades creadas
-      for (const [actividadTempId, {actividadTemp }] of Object.entries(mapeoActividadesTemp)) {
+      for (const [actividadTempId, { actividadTemp }] of Object.entries(mapeoActividadesTemp)) {
         const idActividadReal = actividadesCreadas[actividadTempId];
 
         console.log(`Procesando actividad temporal ${actividadTempId} -> real ${idActividadReal}`);
@@ -1085,7 +1090,7 @@ const AgregarActividad: React.FC = () => {
       // NOTA: Los totales calculados aquí son solo para visualización
       const datosParaExportar = poasConActividades.map((poa) => {
         const actividadesConCodigo = poa.actividades.filter(act => act.codigo_actividad && act.codigo_actividad !== "");
-        
+
         return {
           id_poa: poa.id_poa,
           codigo_poa: poa.codigo_poa,
@@ -1282,14 +1287,14 @@ const AgregarActividad: React.FC = () => {
           // Verificar si el número de la tarea comienza con el número de actividad
           const coincide = numeroTarea.startsWith(numeroActividad + '.');
           console.log(`¿Coincide con actividad ${numeroActividad}? ${coincide ? '✅' : '❌'}`);
-          
+
           if (coincide) {
             const detalleEspecifico = {
               ...detalle,
               item_presupuestario: itemPresupuestario,
               numero_tarea_especifica: numeroTarea
             };
-            
+
             return { detalle: detalleEspecifico, incluir: true, itemPresupuestario, numeroTarea };
           }
 
@@ -1324,7 +1329,7 @@ const AgregarActividad: React.FC = () => {
     // Retornar solo los detalles, no los objetos con metadata
     return filtradosOrdenados.map(item => item.detalle);
   };
-  
+
   // Función para agrupar detalles de tarea con el mismo nombre y item presupuestario
   const agruparDetallesDuplicados = async (
     detallesFiltrados: DetalleTarea[],
@@ -1457,7 +1462,7 @@ const AgregarActividad: React.FC = () => {
   };
 
   return (
-    <Container className="py-4">
+    <Container className="py-4 main-content-with-sidebar">
       <Card className="shadow-lg">
         <Card.Header className="bg-primary bg-gradient text-white p-3">
           <h2 className="mb-0 fw-bold text-center">Crear Actividades y Tareas para Proyecto</h2>
@@ -2215,6 +2220,158 @@ const AgregarActividad: React.FC = () => {
           </Form>
         </Card.Body>
       </Card>
+      {/* Sidebar fijo del presupuesto */}
+      {proyectoSeleccionado && poasConActividades.length > 0 && (
+        <div className="budget-sidebar p-2">
+          {/* Información del POA activo */}
+          {(() => {
+            const poaActivo = poasConActividades.find(poa => poa.id_poa === activePoaTab);
+
+            if (!poaActivo) return null;
+
+            const totalPlanificado = poaActivo.actividades.reduce((total, actividad) =>
+              total + calcularTotalActividad(poaActivo.id_poa, actividad.actividad_id), 0
+            );
+
+            const presupuestoAsignado = poaActivo.presupuesto_asignado;
+            const saldoDisponible = presupuestoAsignado - totalPlanificado;
+            const porcentajeUsado = (totalPlanificado / presupuestoAsignado) * 100;
+
+            return (
+              <>
+                {/* Header compacto */}
+                <div className="d-flex align-items-center mb-2">
+                  <i className="bi bi-calculator text-primary me-2"></i>
+                  <h6 className="mb-0 text-primary fw-bold fs-7">{poaActivo.codigo_poa}</h6>
+                </div>
+
+                {/* Información presupuestaria compacta */}
+                <div className="bg-light rounded p-2 mb-2">
+                  <div className="d-flex justify-content-between align-items-center mb-1">
+                    <small className="text-muted" style={{ fontSize: '0.7rem' }}>Asignado:</small>
+                    <span className="fw-bold text-success" style={{ fontSize: '0.75rem' }}>
+                      ${presupuestoAsignado.toLocaleString('es-CO')}
+                    </span>
+                  </div>
+                  <div className="d-flex justify-content-between align-items-center mb-1">
+                    <small className="text-muted" style={{ fontSize: '0.7rem' }}>Planificado:</small>
+                    <span className="fw-bold text-primary" style={{ fontSize: '0.75rem' }}>
+                      ${totalPlanificado.toLocaleString('es-CO')}
+                    </span>
+                  </div>
+                  <div className="d-flex justify-content-between align-items-center">
+                    <small className="text-muted" style={{ fontSize: '0.7rem' }}>Disponible:</small>
+                    <span className={`fw-bold ${saldoDisponible >= 0 ? 'text-success' : 'text-danger'}`} style={{ fontSize: '0.75rem' }}>
+                      ${saldoDisponible.toLocaleString('es-CO')}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Barra de progreso compacta */}
+                <div className="mb-2">
+                  <div className="d-flex justify-content-between align-items-center mb-1">
+                    <small className="text-muted" style={{ fontSize: '0.7rem' }}>Uso:</small>
+                    <small className={`fw-bold ${porcentajeUsado > 100 ? 'text-danger' : 'text-primary'}`} style={{ fontSize: '0.7rem' }}>
+                      {porcentajeUsado.toFixed(1)}%
+                    </small>
+                  </div>
+                  <div className="progress" style={{ height: '6px' }}>
+                    <div
+                      className={`progress-bar ${porcentajeUsado > 100 ? 'bg-danger' : 'bg-success'}`}
+                      role="progressbar"
+                      style={{ width: `${Math.min(porcentajeUsado, 100)}%` }}
+                      aria-valuenow={porcentajeUsado}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                    >
+                    </div>
+                  </div>
+                  {porcentajeUsado > 100 && (
+                    <small className="text-danger" style={{ fontSize: '0.65rem' }}>
+                      <i className="bi bi-exclamation-triangle me-1"></i>
+                      Presupuesto excedido
+                    </small>
+                  )}
+                </div>
+
+                {/* Botón desplegable para actividades */}
+                <div className="mb-2">
+                  <button
+                    className="btn btn-outline-primary btn-sm w-100 d-flex align-items-center justify-content-between"
+                    onClick={() => setShowActividades(!showActividades)}
+                    style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
+                  >
+                    <span>
+                      <i className="bi bi-list-task me-1"></i>
+                      Actividades ({poaActivo.actividades.length})
+                    </span>
+                    <i className={`bi bi-chevron-${showActividades ? 'up' : 'down'}`}></i>
+                  </button>
+
+                  {/* Desglose por actividades (desplegable) */}
+                  {showActividades && (
+                    <div className="mt-2" style={{ maxHeight: '150px', overflowY: 'auto' }}>
+                      {poaActivo.actividades.map((actividad, index) => {
+                        const totalActividad = calcularTotalActividad(poaActivo.id_poa, actividad.actividad_id);
+                        const descripcionActividad = getDescripcionActividad(poaActivo.id_poa, actividad.codigo_actividad);
+
+                        return (
+                          <div key={actividad.actividad_id} className="border-bottom pb-1 mb-1">
+                            <div className="d-flex justify-content-between align-items-start">
+                              <div className="flex-grow-1 me-2">
+                                <small className="text-muted d-block" style={{ fontSize: '0.65rem' }}>
+                                  Act. {index + 1}
+                                </small>
+                                <small className="text-dark" style={{ fontSize: '0.65rem' }}>
+                                  {descripcionActividad ?
+                                    (descripcionActividad.length > 30 ?
+                                      `${descripcionActividad.substring(0, 30)}...` :
+                                      descripcionActividad
+                                    ) :
+                                    'Sin descripción'
+                                  }
+                                </small>
+                              </div>
+                              <div className="text-end">
+                                <span className="badge bg-primary" style={{ fontSize: '0.6rem' }}>
+                                  ${totalActividad.toLocaleString('es-CO')}
+                                </span>
+                                <br />
+                                <small className="text-muted" style={{ fontSize: '0.6rem' }}>
+                                  {actividad.tareas.length} tarea{actividad.tareas.length !== 1 ? 's' : ''}
+                                </small>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Alertas compactas */}
+                {saldoDisponible < 0 && (
+                  <Alert variant="danger" className="py-1 px-2 mb-0" style={{ fontSize: '0.7rem' }}>
+                    <small>
+                      <i className="bi bi-exclamation-triangle me-1"></i>
+                      <strong>Advertencia:</strong> Presupuesto excedido.
+                    </small>
+                  </Alert>
+                )}
+
+                {saldoDisponible >= 0 && saldoDisponible < (presupuestoAsignado * 0.1) && totalPlanificado > 0 && (
+                  <Alert variant="warning" className="py-1 px-2 mb-0" style={{ fontSize: '0.7rem' }}>
+                    <small>
+                      <i className="bi bi-info-circle me-1"></i>
+                      <strong>Aviso:</strong> Menos del 10% disponible.
+                    </small>
+                  </Alert>
+                )}
+              </>
+            );
+          })()}
+        </div>
+      )}
     </Container>
   );
 }
