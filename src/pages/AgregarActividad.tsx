@@ -161,7 +161,7 @@ const AgregarActividad: React.FC = () => {
 
   // Inicializar la estructura de poasConActividades cuando cambian los POAs y precarga las actividades
   useEffect(() => {
-    const cargarDetallesTarea = async () => {
+    const cargarDetallesTareaYPrecargar = async () => {
       if (poasProyecto.length === 0) return;
 
       setIsLoading(true);
@@ -178,26 +178,32 @@ const AgregarActividad: React.FC = () => {
           const tipoPOA = poa.tipo_poa || 'PVIF';
           const actividadesPorTipo = getActividadesPorTipoPOA(tipoPOA);
 
-          // Precargamos todas las actividades disponibles para este POA
-          const actividadesPreCargadas: ActividadConTareas[] = [];
+          // Crear las actividades precargadas con sus tareas
+          const actividadesConTareasPrecargadas: ActividadConTareas[] = [];
 
-          // Creamos una actividad precargada para cada actividad disponible
-          actividadesPorTipo.forEach((act, index) => {
-            actividadesPreCargadas.push({
-              actividad_id: `pre-${poa.id_poa}-${act.id}-${Date.now()}-${index}`,
-              codigo_actividad: act.id, // CORRECCIÓN: Precargar con el código ya asignado
-              tareas: []
+          for (const [index, actividad] of actividadesPorTipo.entries()) {
+            // Obtener las tareas para esta actividad específica
+            const tareasPrecargadas = await precargarTareasParaActividad(
+              detallesTarea,
+              actividad.id,
+              tipoPOA,
+              poa.id_poa
+            );
+
+            actividadesConTareasPrecargadas.push({
+              actividad_id: `pre-${poa.id_poa}-${actividad.id}-${Date.now()}-${index}`,
+              codigo_actividad: actividad.id,
+              tareas: tareasPrecargadas
             });
-          });
-
+          }
 
           nuevosPoasConActividades.push({
             id_poa: poa.id_poa,
             codigo_poa: poa.codigo_poa,
-            tipo_poa: tipoPOA, // CORRECCIÓN: Usar el tipo correcto
+            tipo_poa: tipoPOA,
             presupuesto_asignado: parseFloat(poa.presupuesto_asignado.toString()),
-            actividades: actividadesPreCargadas, // Actividades precargadas con códigos
-            detallesTarea // Guardamos los detalles de tarea disponibles
+            actividades: actividadesConTareasPrecargadas,
+            detallesTarea
           });
         }
 
@@ -216,7 +222,7 @@ const AgregarActividad: React.FC = () => {
     };
 
     try {
-      cargarDetallesTarea();
+      cargarDetallesTareaYPrecargar();
     } catch (err) {
       showError('Error al cargar los detalles de tareas');
       setIsLoading(false);
@@ -273,14 +279,14 @@ const AgregarActividad: React.FC = () => {
   };
 
   // Agregar nueva actividad en un POA específico
-  const agregarActividad = (poaId: string) => {
+  const agregarActividad = async (poaId: string) => {
     const poa = poasConActividades.find(p => p.id_poa === poaId);
     if (!poa) return;
 
-    // CORRECCIÓN: Obtener actividades disponibles usando el tipo correcto del POA
+    // Obtener actividades disponibles usando el tipo correcto del POA
     const actividadesDisponibles = getActividadesPorTipoPOA(poa.tipo_poa);
 
-    // Obtener códigos de actividades ya seleccionadas
+    // Obtener códigos de actividades ya seleccionadas (que no estén vacías)
     const actividadesYaSeleccionadas = poa.actividades
       .map(act => act.codigo_actividad)
       .filter(codigo => codigo && codigo !== "");
@@ -303,7 +309,7 @@ const AgregarActividad: React.FC = () => {
   };
 
   // Confirmar la selección de actividad en el modal
-  const confirmarSeleccionActividad = () => {
+  const confirmarSeleccionActividad = async () => {
     const poaId = currentPoa;
     if (!poaId || !actividadSeleccionadaModal) {
       showError('Debe seleccionar una actividad');
@@ -314,121 +320,166 @@ const AgregarActividad: React.FC = () => {
     if (!poa) return;
 
     // Verificar que la actividad no esté ya agregada
-    const actividadYaExiste = poa.actividades.some(act => act.codigo_actividad === actividadSeleccionadaModal);
+    const actividadYaExiste = poa.actividades.some(act =>
+      act.codigo_actividad === actividadSeleccionadaModal
+    );
+
     if (actividadYaExiste) {
       showError('Esta actividad ya ha sido agregada');
       return;
     }
 
-    // CORRECCIÓN: Buscar una actividad vacía (sin código) o crear una nueva
-    let actividadPrecargada = poa.actividades.find(act =>
-      !act.codigo_actividad || act.codigo_actividad === ""
-    );
+    setIsLoading(true);
+    setLoadingMessage('Cargando tareas para la actividad...');
 
-    // Si no hay actividad vacía, crear una nueva
-    if (!actividadPrecargada) {
-      const nuevaActividad: ActividadConTareas = {
-        actividad_id: `new-${poaId}-${actividadSeleccionadaModal}-${Date.now()}`,
-        codigo_actividad: "",
-        tareas: []
-      };
+    try {
+      // Buscar una actividad vacía (sin código) para usar
+      let actividadPrecargada = poa.actividades.find(act =>
+        !act.codigo_actividad || act.codigo_actividad === ""
+      );
 
-      // Actualizar el POA con la nueva actividad
-      const nuevosPoasConActividades = poasConActividades.map(poaActual => {
-        if (poaActual.id_poa === poaId) {
-          return {
-            ...poaActual,
-            actividades: [...poaActual.actividades, nuevaActividad]
-          };
-        }
-        return poaActual;
-      });
+      // Si no hay actividad vacía, crear una nueva con sus tareas
+      if (!actividadPrecargada) {
+        const tareasPrecargadas = await precargarTareasParaActividad(
+          poa.detallesTarea,
+          actividadSeleccionadaModal,
+          poa.tipo_poa,
+          poaId
+        );
 
-      setPoasConActividades(nuevosPoasConActividades);
-      actividadPrecargada = nuevaActividad;
-    }
+        const nuevaActividad: ActividadConTareas = {
+          actividad_id: `new-${poaId}-${actividadSeleccionadaModal}-${Date.now()}`,
+          codigo_actividad: actividadSeleccionadaModal,
+          tareas: tareasPrecargadas
+        };
 
-    // Si es el primer POA, replicar la selección a todos los POAs
-    const isFirstPoa = poasConActividades.length > 0 && poasConActividades[0].id_poa === poaId;
-
-    // Actualizar el estado de POAs con actividades
-    const nuevosPoasConActividades = poasConActividades.map(poaActual => {
-      if (poaActual.id_poa === poaId || (isFirstPoa && poaActual.id_poa !== poaId)) {
-        // CORRECCIÓN: Buscar o crear actividad para actualizar
-        let actPrecargadaLocal;
-
-        if (poaActual.id_poa === poaId) {
-          // Para el POA actual, usar la actividad que encontramos
-          actPrecargadaLocal = actividadPrecargada;
-        } else {
-          // Para otros POAs, buscar una actividad vacía o crear una nueva
-          actPrecargadaLocal = poaActual.actividades.find(act =>
-            !act.codigo_actividad || act.codigo_actividad === ""
-          );
-
-          if (!actPrecargadaLocal) {
-            // Crear nueva actividad para este POA
-            actPrecargadaLocal = {
-              actividad_id: `new-${poaActual.id_poa}-${actividadSeleccionadaModal}-${Date.now()}`,
-              codigo_actividad: "",
-              tareas: []
+        // Actualizar el POA con la nueva actividad
+        const nuevosPoasConActividades = poasConActividades.map(poaActual => {
+          if (poaActual.id_poa === poaId) {
+            return {
+              ...poaActual,
+              actividades: [...poaActual.actividades, nuevaActividad]
             };
           }
-        }
+          return poaActual;
+        });
 
-        if (actPrecargadaLocal) {
-          // Actualizar o añadir la actividad con el código seleccionado
-          let actividadesActualizadas;
+        setPoasConActividades(nuevosPoasConActividades);
+        actividadPrecargada = nuevaActividad;
+      } else {
+        // Usar actividad precargada existente, actualizando sus tareas si es necesario
+        const tareasPrecargadas = await precargarTareasParaActividad(
+          poa.detallesTarea,
+          actividadSeleccionadaModal,
+          poa.tipo_poa,
+          poaId
+        );
 
-          const actividadExiste = poaActual.actividades.some(act =>
-            act.actividad_id === actPrecargadaLocal!.actividad_id
-          );
-
-          if (actividadExiste) {
-            // Actualizar actividad existente
-            actividadesActualizadas = poaActual.actividades.map(act =>
-              act.actividad_id === actPrecargadaLocal!.actividad_id
-                ? { ...act, codigo_actividad: actividadSeleccionadaModal }
+        // Actualizar la actividad precargada con el código y las tareas
+        const nuevosPoasConActividades = poasConActividades.map(poaActual => {
+          if (poaActual.id_poa === poaId) {
+            const actividadesActualizadas = poaActual.actividades.map(act =>
+              act.actividad_id === actividadPrecargada!.actividad_id
+                ? {
+                  ...act,
+                  codigo_actividad: actividadSeleccionadaModal,
+                  tareas: tareasPrecargadas
+                }
                 : act
             );
-          } else {
-            // Añadir nueva actividad
-            actividadesActualizadas = [
-              ...poaActual.actividades,
-              { ...actPrecargadaLocal, codigo_actividad: actividadSeleccionadaModal }
-            ];
+
+            return {
+              ...poaActual,
+              actividades: actividadesActualizadas
+            };
           }
+          return poaActual;
+        });
 
-          // CORRECCIÓN: Ordenar según el orden de actividades disponibles del tipo correcto
-          const actividadesDisponibles = getActividadesPorTipoPOA(poaActual.tipo_poa);
-          actividadesActualizadas.sort((a, b) => {
-            const indexA = actividadesDisponibles.findIndex(act => act.id === a.codigo_actividad);
-            const indexB = actividadesDisponibles.findIndex(act => act.id === b.codigo_actividad);
-            return indexA - indexB;
-          });
+        setPoasConActividades(nuevosPoasConActividades);
+      }
 
-          return {
-            ...poaActual,
-            actividades: actividadesActualizadas
-          };
+      // Si es el primer POA, replicar la selección a todos los POAs
+      const isFirstPoa = poasConActividades.length > 0 && poasConActividades[0].id_poa === poaId;
+
+      if (isFirstPoa) {
+        // Replicar a otros POAs
+        const nuevosPoasConActividades = poasConActividades.map(async (poaActual) => {
+          if (poaActual.id_poa !== poaId) {
+            let actPrecargadaLocal = poaActual.actividades.find(act =>
+              !act.codigo_actividad || act.codigo_actividad === ""
+            );
+
+            if (!actPrecargadaLocal) {
+              // Crear nueva actividad para este POA
+              const tareasPrecargadas = await precargarTareasParaActividad(
+                poaActual.detallesTarea,
+                actividadSeleccionadaModal,
+                poaActual.tipo_poa,
+                poaActual.id_poa
+              );
+
+              actPrecargadaLocal = {
+                actividad_id: `new-${poaActual.id_poa}-${actividadSeleccionadaModal}-${Date.now()}`,
+                codigo_actividad: actividadSeleccionadaModal,
+                tareas: tareasPrecargadas
+              };
+
+              return {
+                ...poaActual,
+                actividades: [...poaActual.actividades, actPrecargadaLocal]
+              };
+            } else {
+              // Actualizar actividad existente
+              const tareasPrecargadas = await precargarTareasParaActividad(
+                poaActual.detallesTarea,
+                actividadSeleccionadaModal,
+                poaActual.tipo_poa,
+                poaActual.id_poa
+              );
+
+              const actividadesActualizadas = poaActual.actividades.map(act =>
+                act.actividad_id === actPrecargadaLocal!.actividad_id
+                  ? {
+                    ...act,
+                    codigo_actividad: actividadSeleccionadaModal,
+                    tareas: tareasPrecargadas
+                  }
+                  : act
+              );
+
+              return {
+                ...poaActual,
+                actividades: actividadesActualizadas
+              };
+            }
+          }
+          return poaActual;
+        });
+
+        // Esperar a que todas las promesas se resuelvan
+        const poasActualizados = await Promise.all(nuevosPoasConActividades);
+        setPoasConActividades(poasActualizados);
+      }
+
+      // Cerrar el modal y limpiar la selección
+      setShowActividadModal(false);
+      setActividadSeleccionadaModal('');
+
+      // Hacer scroll a la actividad actualizada
+      setTimeout(() => {
+        const activityElement = document.getElementById(`actividad-${actividadPrecargada?.actividad_id}`);
+        if (activityElement) {
+          activityElement.scrollIntoView({ behavior: 'smooth' });
         }
-      }
-      return poaActual;
-    });
+      }, 100);
 
-    setPoasConActividades(nuevosPoasConActividades);
-
-    // Cerrar el modal y limpiar la selección
-    setShowActividadModal(false);
-    setActividadSeleccionadaModal('');
-
-    // Hacer scroll a la actividad actualizada
-    setTimeout(() => {
-      const activityElement = document.getElementById(`actividad-${actividadPrecargada?.actividad_id}`);
-      if (activityElement) {
-        activityElement.scrollIntoView({ behavior: 'smooth' });
-      }
-    }, 100);
+    } catch (error) {
+      showError('Error al cargar las tareas de la actividad');
+      console.error('Error en confirmarSeleccionActividad:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Eliminar actividad de un POA específico
@@ -1459,6 +1510,100 @@ const AgregarActividad: React.FC = () => {
     const item = await getItemPresupuestarioPorId(id);
     cacheItemsPresupuestarios.set(id, item);
     return item;
+  };
+
+  const precargarTareasParaActividad = async (
+    detallesTarea: DetalleTarea[],
+    codigoActividad: string,
+    tipoPOA: string,
+    poaId: string
+  ): Promise<TareaForm[]> => {
+    try {
+      // Filtrar detalles de tarea para esta actividad específica
+      const detallesFiltrados = await filtrarDetallesPorActividadConConsultas(
+        detallesTarea,
+        codigoActividad,
+        tipoPOA,
+        (id: string) => getItemPresupuestarioConCache(id, tareaAPI.getItemPresupuestarioPorId)
+      );
+
+      // Agrupar detalles duplicados
+      const detallesAgrupados = await agruparDetallesDuplicados(
+        detallesFiltrados,
+        (id: string) => getItemPresupuestarioConCache(id, tareaAPI.getItemPresupuestarioPorId)
+      );
+
+      // Crear tareas precargadas para cada detalle agrupado
+      const tareasPrecargadas: TareaForm[] = [];
+
+      for (const [index, detalle] of detallesAgrupados.entries()) {
+        const numeroTarea = obtenerNumeroTarea(detalle, tipoPOA);
+        const nombreTarea = numeroTarea ? `${numeroTarea} - ${detalle.nombre || ''}` : (detalle.nombre || '');
+
+        // Crear la tarea precargada básica
+        let tareaPrecargada: TareaForm = {
+          tempId: `pre-${poaId}-${codigoActividad}-${detalle.id_detalle_tarea}-${Date.now()}-${index}`,
+          id_detalle_tarea: detalle.id_detalle_tarea,
+          nombre: nombreTarea,
+          detalle_descripcion: detalle.descripcion || '',
+          detalle: detalle,
+          numero_tarea: numeroTarea,
+          codigo_item: detalle.item_presupuestario?.codigo || 'N/A',
+          cantidad: 0,
+          precio_unitario: 0,
+          total: 0,
+          gastos_mensuales: new Array(12).fill(0),
+          saldo_disponible: 0,
+          expanded: false // Inicialmente colapsada
+        };
+
+        // Manejar items múltiples
+        if (detalle.tiene_multiples_items && detalle.items_presupuestarios && detalle.items_presupuestarios.length > 0) {
+          const itemPorDefecto = detalle.items_presupuestarios[0];
+          tareaPrecargada = {
+            ...tareaPrecargada,
+            itemPresupuestario: itemPorDefecto,
+            codigo_item: itemPorDefecto.codigo || 'N/D',
+            id_item_presupuestario_seleccionado: itemPorDefecto.id_item_presupuestario
+          };
+        } else if (detalle.item_presupuestario) {
+          tareaPrecargada = {
+            ...tareaPrecargada,
+            itemPresupuestario: detalle.item_presupuestario
+          };
+        }
+
+        // Manejar descripciones múltiples
+        if (detalle.tiene_multiples_descripciones && detalle.descripciones_disponibles && detalle.descripciones_disponibles.length > 0) {
+          const primeraDescripcion = detalle.descripciones_disponibles[0];
+          tareaPrecargada = {
+            ...tareaPrecargada,
+            descripcion_seleccionada: primeraDescripcion,
+            detalle_descripcion: primeraDescripcion
+          };
+
+          // Aplicar precio automático si es contratación de servicios profesionales
+          const esServiciosProfesionales = detalle.nombre?.toLowerCase().includes('contratación de servicios profesionales');
+          if (esServiciosProfesionales) {
+            const precio = obtenerPrecioPorDescripcion(primeraDescripcion);
+            if (precio !== null) {
+              tareaPrecargada = {
+                ...tareaPrecargada,
+                precio_unitario: precio
+              };
+            }
+          }
+        }
+
+        tareasPrecargadas.push(tareaPrecargada);
+      }
+
+      return tareasPrecargadas;
+
+    } catch (error) {
+      console.error('Error al precargar tareas para actividad:', codigoActividad, error);
+      return []; // Retornar array vacío en caso de error
+    }
   };
 
   return (
