@@ -7,6 +7,9 @@ import { POA } from '../interfaces/poa';
 import VerPOA from '../components/VerPOA';
 import 'react-toastify/dist/ReactToastify.css';
 
+//Importar funcion de exportar a excel
+import ExportarPOAProyecto from '../components/ExportarPOAProyecto';
+
 // ¡IMPORTAR LAS FUNCIONES DE TOAST!
 import { showError, showInfo, showSuccess } from '../utils/toast';
 
@@ -34,7 +37,7 @@ const VerProyectos: React.FC = () => {
   const [estadosProyecto, setEstadosProyecto] = useState<EstadoProyecto[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Estados para filtros
   const [filters, setFilters] = useState<FilterState>({
     searchTerm: '',
@@ -45,7 +48,7 @@ const VerProyectos: React.FC = () => {
     maxBudget: '',
     yearFilter: ''
   });
-  
+
   // Estados para modal
   const [showModal, setShowModal] = useState(false);
   const [selectedPOA, setSelectedPOA] = useState<POA | null>(null);
@@ -55,7 +58,7 @@ const VerProyectos: React.FC = () => {
     const loadData = async () => {
       try {
         setLoading(true);
-        
+
         // Obtener proyectos y estados en paralelo
         const [proyectosResponse, estadosResponse] = await Promise.all([
           projectAPI.getProyectos(),
@@ -79,21 +82,21 @@ const VerProyectos: React.FC = () => {
           try {
             const poas = await poaAPI.getPOAsByProyecto(proyecto.id_proyecto);
             const estadoProyecto = estadosConDescripcion.find(e => e.id_estado_proyecto === proyecto.id_estado_proyecto);
-            
+
             proyectosConPOAs.push({
               ...proyecto,
               poas: poas,
               estadoProyecto: estadoProyecto
             });
             if (maxtoastinfo < 2) {
-            showInfo('POAs del Proyecto obtenidos exitosamente');
-            maxtoastinfo++;
+              showInfo('POAs del Proyecto obtenidos exitosamente');
+              maxtoastinfo++;
             }
           } catch (projectError) {
             console.warn(`No se pudieron obtener POAs para proyecto ${proyecto.codigo_proyecto}:`, projectError);
             if (maxtoasterror < 2) {
-            showError('No se pudieron obtener POAs para proyecto');
-            maxtoasterror++;
+              showError('No se pudieron obtener POAs para proyecto');
+              maxtoasterror++;
             }
             const estadoProyecto = estadosConDescripcion.find(e => e.id_estado_proyecto === proyecto.id_estado_proyecto);
             proyectosConPOAs.push({
@@ -145,7 +148,7 @@ const VerProyectos: React.FC = () => {
     // Aplicar búsqueda por texto
     if (filters.searchTerm) {
       const searchLower = filters.searchTerm.toLowerCase();
-      filteredProyectos = filteredProyectos.filter(proyecto => 
+      filteredProyectos = filteredProyectos.filter(proyecto =>
         proyecto.titulo.toLowerCase().includes(searchLower) ||
         proyecto.codigo_proyecto.toLowerCase().includes(searchLower)
       );
@@ -153,7 +156,7 @@ const VerProyectos: React.FC = () => {
 
     // Aplicar filtro por estado
     if (filters.estadoFilter) {
-      filteredProyectos = filteredProyectos.filter(proyecto => 
+      filteredProyectos = filteredProyectos.filter(proyecto =>
         proyecto.id_estado_proyecto === filters.estadoFilter
       );
     }
@@ -161,7 +164,7 @@ const VerProyectos: React.FC = () => {
     // Aplicar filtro por presupuesto mínimo
     if (filters.minBudget) {
       const minBudget = parseFloat(filters.minBudget);
-      filteredProyectos = filteredProyectos.filter(proyecto => 
+      filteredProyectos = filteredProyectos.filter(proyecto =>
         (proyecto.presupuesto_aprobado || 0) >= minBudget
       );
     }
@@ -169,14 +172,14 @@ const VerProyectos: React.FC = () => {
     // Aplicar filtro por presupuesto máximo
     if (filters.maxBudget) {
       const maxBudget = parseFloat(filters.maxBudget);
-      filteredProyectos = filteredProyectos.filter(proyecto => 
+      filteredProyectos = filteredProyectos.filter(proyecto =>
         (proyecto.presupuesto_aprobado || 0) <= maxBudget
       );
     }
 
     // Aplicar filtro por año (basado en años de los POAs)
     if (filters.yearFilter) {
-      filteredProyectos = filteredProyectos.filter(proyecto => 
+      filteredProyectos = filteredProyectos.filter(proyecto =>
         proyecto.poas?.some(poa => poa.anio_ejecucion === filters.yearFilter)
       );
     }
@@ -184,7 +187,7 @@ const VerProyectos: React.FC = () => {
     // Aplicar ordenamiento
     filteredProyectos.sort((a, b) => {
       let comparison = 0;
-      
+
       switch (filters.sortBy) {
         case 'codigo':
           comparison = a.codigo_proyecto.localeCompare(b.codigo_proyecto);
@@ -384,12 +387,13 @@ const VerProyectos: React.FC = () => {
                 <th>POA's Asignados</th>
                 <th>Año de Ejecución</th>
                 <th>Presupuesto Aprobado</th>
+                <th>Exportar Excel</th>
               </tr>
             </thead>
             <tbody>
               {filteredProyectos.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-4">
+                  <td colSpan={7} className="text-center py-4">
                     <div className="text-muted">
                       {filters.searchTerm || filters.estadoFilter || filters.yearFilter || filters.minBudget || filters.maxBudget
                         ? 'No hay proyectos que coincidan con los filtros aplicados'
@@ -400,7 +404,7 @@ const VerProyectos: React.FC = () => {
                 </tr>
               ) : (
                 filteredProyectos.map((proyecto) => {
-                  const yearsRange = proyecto.poas && proyecto.poas.length > 0 
+                  const yearsRange = proyecto.poas && proyecto.poas.length > 0
                     ? Array.from(new Set(proyecto.poas.map(poa => poa.anio_ejecucion))).sort().join(', ')
                     : 'N/A';
 
@@ -413,9 +417,9 @@ const VerProyectos: React.FC = () => {
                         <code className="bg-light px-2 py-1 rounded">{proyecto.codigo_proyecto}</code>
                       </td>
                       <td>
-                        <Badge 
-                          bg={proyecto.estadoProyecto?.nombre === 'Activo' ? 'success' : 
-                              proyecto.estadoProyecto?.nombre === 'Inactivo' ? 'danger' : 'secondary'}
+                        <Badge
+                          bg={proyecto.estadoProyecto?.nombre === 'Activo' ? 'success' :
+                            proyecto.estadoProyecto?.nombre === 'Inactivo' ? 'danger' : 'secondary'}
                         >
                           {proyecto.estadoProyecto?.nombre || 'Sin estado'}
                         </Badge>
@@ -445,6 +449,12 @@ const VerProyectos: React.FC = () => {
                           ${proyecto.presupuesto_aprobado?.toLocaleString() || 'N/A'}
                         </span>
                       </td>
+                      <td>
+                        <ExportarPOAProyecto
+                          codigoProyecto={proyecto.codigo_proyecto}
+                          poas={proyecto.poas || []}
+                        />
+                      </td>
                     </tr>
                   );
                 })
@@ -455,9 +465,9 @@ const VerProyectos: React.FC = () => {
       </div>
 
       {/* Modal para mostrar detalles del POA - ACTUALIZADO */}
-      <Modal 
-        show={showModal} 
-        onHide={closeModal} 
+      <Modal
+        show={showModal}
+        onHide={closeModal}
         dialogClassName="modal-90w"
         centered
       >

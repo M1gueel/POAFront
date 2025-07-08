@@ -79,7 +79,7 @@ const AgregarActividad: React.FC = () => {
   const [taskErrors, setTaskErrors] = useState<{ [key: string]: string }>({});
 
   // Estados para controlar el botón de exportar
-  const [datosGuardados, setDatosGuardados] = useState(false);
+  const [, setDatosGuardados] = useState(false);
   const [actividadesYTareasCreadas, setActividadesYTareasCreadas] = useState<any[]>([]);
 
   // Estado para total del POA real vs gastado
@@ -1764,10 +1764,10 @@ const AgregarActividad: React.FC = () => {
                 <p>Una vez guardadas las actividades y tareas, no se pueden cambiar hasta ser revisadas por la Dirección de Investigación. ¿Desea continuar?</p>
               </Modal.Body>
               <Modal.Footer>
-                <Button variant="secondary" onClick={handleCloseModals}>
-                  Volver
+                <Button variant="primary" onClick={handleCloseModals}>
+                  Volver al Inicio
                 </Button>
-                <Button variant="primary" onClick={handleGuardarDatos} disabled={isLoading}>
+                <Button variant="success" onClick={handleGuardarDatos} disabled={isLoading}>
                   {isLoading ? (
                     <>
                       <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2" />
