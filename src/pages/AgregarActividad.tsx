@@ -43,7 +43,7 @@ const AgregarActividad: React.FC = () => {
   const [proyectoSeleccionado, setProyectoSeleccionado] = useState<Proyecto | null>(null);
   const [proyectos, setProyectos] = useState<Proyecto[]>([]);
 
-  // Estados para POAs y periodos - CORREGIDO: usar POAExtendido
+  // Estados para POAs y periodos
   const [poasProyecto, setPoasProyecto] = useState<POAExtendido[]>([]);
   const [, setPeriodosProyecto] = useState<Periodo[]>([]);
 
@@ -63,10 +63,9 @@ const AgregarActividad: React.FC = () => {
   const [currentTarea, setCurrentTarea] = useState<TareaForm | null>(null);
   const [isEditingTarea, setIsEditingTarea] = useState(false);
 
-  // Estado para el modal de selección de actividades
-  const [showActividadModal, setShowActividadModal] = useState(false);
-  const [actividadesDisponiblesModal, setActividadesDisponiblesModal] = useState<ActividadOpciones[]>([]);
-  const [actividadSeleccionadaModal, setActividadSeleccionadaModal] = useState<string>('');
+  //Estados para modales de guardar tareas
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   //Estado para detalles filtrados en el modal
   const [detallesFiltrados, setDetallesFiltrados] = useState<DetalleTarea[]>([]);
@@ -301,242 +300,6 @@ const AgregarActividad: React.FC = () => {
       setIsLoading(false);
     }
   };
-
-  // Agregar nueva actividad en un POA específico
-  const agregarActividad = async (poaId: string) => {
-    const poa = poasConActividades.find(p => p.id_poa === poaId);
-    if (!poa) return;
-
-    // Obtener actividades disponibles usando el tipo correcto del POA
-    const actividadesDisponibles = getActividadesPorTipoPOA(poa.tipo_poa);
-
-    // Obtener códigos de actividades ya seleccionadas (que no estén vacías)
-    const actividadesYaSeleccionadas = poa.actividades
-      .map(act => act.codigo_actividad)
-      .filter(codigo => codigo && codigo !== "");
-
-    // Filtrar actividades no utilizadas
-    const actividadesNoUtilizadas = actividadesDisponibles.filter(
-      act => !actividadesYaSeleccionadas.includes(act.id)
-    );
-
-    // Si no hay actividades disponibles, mostrar mensaje
-    if (actividadesNoUtilizadas.length === 0) {
-      showWarning('No hay más actividades disponibles para agregar');
-      return;
-    }
-
-    // Mostrar modal para seleccionar actividad
-    setShowActividadModal(true);
-    setCurrentPoa(poaId);
-    setActividadesDisponiblesModal(actividadesNoUtilizadas);
-  };
-
-  // Confirmar la selección de actividad en el modal
-  const confirmarSeleccionActividad = async () => {
-    const poaId = currentPoa;
-    if (!poaId || !actividadSeleccionadaModal) {
-      showError('Debe seleccionar una actividad');
-      return;
-    }
-
-    const poa = poasConActividades.find(p => p.id_poa === poaId);
-    if (!poa) return;
-
-    // Verificar que la actividad no esté ya agregada
-    const actividadYaExiste = poa.actividades.some(act =>
-      act.codigo_actividad === actividadSeleccionadaModal
-    );
-
-    if (actividadYaExiste) {
-      showError('Esta actividad ya ha sido agregada');
-      return;
-    }
-
-    setIsLoading(true);
-    setLoadingMessage('Cargando tareas para la actividad...');
-
-    try {
-      // Buscar una actividad vacía (sin código) para usar
-      let actividadPrecargada = poa.actividades.find(act =>
-        !act.codigo_actividad || act.codigo_actividad === ""
-      );
-
-      // Si no hay actividad vacía, crear una nueva con sus tareas
-      if (!actividadPrecargada) {
-        const tareasPrecargadas = await precargarTareasParaActividad(
-          poa.detallesTarea,
-          actividadSeleccionadaModal,
-          poa.tipo_poa,
-          poaId
-        );
-
-        const nuevaActividad: ActividadConTareas = {
-          actividad_id: `new-${poaId}-${actividadSeleccionadaModal}-${Date.now()}`,
-          codigo_actividad: actividadSeleccionadaModal,
-          tareas: tareasPrecargadas
-        };
-
-        // Actualizar el POA con la nueva actividad
-        const nuevosPoasConActividades = poasConActividades.map(poaActual => {
-          if (poaActual.id_poa === poaId) {
-            return {
-              ...poaActual,
-              actividades: [...poaActual.actividades, nuevaActividad]
-            };
-          }
-          return poaActual;
-        });
-
-        setPoasConActividades(nuevosPoasConActividades);
-        actividadPrecargada = nuevaActividad;
-      } else {
-        // Usar actividad precargada existente, actualizando sus tareas si es necesario
-        const tareasPrecargadas = await precargarTareasParaActividad(
-          poa.detallesTarea,
-          actividadSeleccionadaModal,
-          poa.tipo_poa,
-          poaId
-        );
-
-        // Actualizar la actividad precargada con el código y las tareas
-        const nuevosPoasConActividades = poasConActividades.map(poaActual => {
-          if (poaActual.id_poa === poaId) {
-            const actividadesActualizadas = poaActual.actividades.map(act =>
-              act.actividad_id === actividadPrecargada!.actividad_id
-                ? {
-                  ...act,
-                  codigo_actividad: actividadSeleccionadaModal,
-                  tareas: tareasPrecargadas
-                }
-                : act
-            );
-
-            return {
-              ...poaActual,
-              actividades: actividadesActualizadas
-            };
-          }
-          return poaActual;
-        });
-
-        setPoasConActividades(nuevosPoasConActividades);
-      }
-
-      // Si es el primer POA, replicar la selección a todos los POAs
-      const isFirstPoa = poasConActividades.length > 0 && poasConActividades[0].id_poa === poaId;
-
-      if (isFirstPoa) {
-        // Replicar a otros POAs
-        const nuevosPoasConActividades = poasConActividades.map(async (poaActual) => {
-          if (poaActual.id_poa !== poaId) {
-            let actPrecargadaLocal = poaActual.actividades.find(act =>
-              !act.codigo_actividad || act.codigo_actividad === ""
-            );
-
-            if (!actPrecargadaLocal) {
-              // Crear nueva actividad para este POA
-              const tareasPrecargadas = await precargarTareasParaActividad(
-                poaActual.detallesTarea,
-                actividadSeleccionadaModal,
-                poaActual.tipo_poa,
-                poaActual.id_poa
-              );
-
-              actPrecargadaLocal = {
-                actividad_id: `new-${poaActual.id_poa}-${actividadSeleccionadaModal}-${Date.now()}`,
-                codigo_actividad: actividadSeleccionadaModal,
-                tareas: tareasPrecargadas
-              };
-
-              return {
-                ...poaActual,
-                actividades: [...poaActual.actividades, actPrecargadaLocal]
-              };
-            } else {
-              // Actualizar actividad existente
-              const tareasPrecargadas = await precargarTareasParaActividad(
-                poaActual.detallesTarea,
-                actividadSeleccionadaModal,
-                poaActual.tipo_poa,
-                poaActual.id_poa
-              );
-
-              const actividadesActualizadas = poaActual.actividades.map(act =>
-                act.actividad_id === actPrecargadaLocal!.actividad_id
-                  ? {
-                    ...act,
-                    codigo_actividad: actividadSeleccionadaModal,
-                    tareas: tareasPrecargadas
-                  }
-                  : act
-              );
-
-              return {
-                ...poaActual,
-                actividades: actividadesActualizadas
-              };
-            }
-          }
-          return poaActual;
-        });
-
-        // Esperar a que todas las promesas se resuelvan
-        const poasActualizados = await Promise.all(nuevosPoasConActividades);
-        setPoasConActividades(poasActualizados);
-      }
-
-      // Cerrar el modal y limpiar la selección
-      setShowActividadModal(false);
-      setActividadSeleccionadaModal('');
-
-      // Hacer scroll a la actividad actualizada
-      setTimeout(() => {
-        const activityElement = document.getElementById(`actividad-${actividadPrecargada?.actividad_id}`);
-        if (activityElement) {
-          activityElement.scrollIntoView({ behavior: 'smooth' });
-        }
-      }, 100);
-
-    } catch (error) {
-      showError('Error al cargar las tareas de la actividad');
-      console.error('Error en confirmarSeleccionActividad:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Eliminar actividad de un POA específico
-  const eliminarActividad = (poaId: string, actividadId: string) => {
-    const poa = poasConActividades.find(p => p.id_poa === poaId);
-    if (!poa) return;
-
-    const actividad = poa.actividades.find(a => a.actividad_id === actividadId);
-    if (!actividad) return;
-
-    // Si es el primer POA, eliminar la actividad de todos los POAs
-    const isFirstPoa = poasConActividades.length > 0 && poasConActividades[0].id_poa === poaId;
-
-    // Actualizar el estado de POAs con actividades
-    const nuevosPoasConActividades = poasConActividades.map(poaActual => {
-      if (poaActual.id_poa === poaId || (isFirstPoa && poaActual.id_poa !== poaId)) {
-        return {
-          ...poaActual,
-          actividades: poaActual.actividades.map(act =>
-            act.actividad_id === actividadId ||
-              (isFirstPoa && act.codigo_actividad === actividad.codigo_actividad)
-              ? { ...act, codigo_actividad: "", tareas: [] } // Resetear en lugar de eliminar
-              : act
-          )
-        };
-      }
-      return poaActual;
-    });
-
-    setPoasConActividades(nuevosPoasConActividades);
-    showSuccess('Actividad eliminada correctamente');
-  };
-
 
   // Función para obtener el número de tarea según el tipo de POA
   // ACTUALIZADA: Ahora usa el campo 'caracteristicas' de DetalleTarea
@@ -839,12 +602,10 @@ const AgregarActividad: React.FC = () => {
 
     // Validar que haya planificación mensual
     const totalPlanificado = currentTarea.gastos_mensuales?.reduce((sum, val) => sum + (val || 0), 0) || 0;
-    if (totalPlanificado === 0) {
-      setTaskError('gastos_mensuales', 'Debe planificar al menos un mes con valor mayor a cero');
-      hasErrors = true;
-    }
-    if (totalPlanificado > (currentTarea.total || 0)) {
-      setTaskError('gastos_mensuales', 'La planificación mensual supera el total disponible de la tarea');
+    if (totalPlanificado != (currentTarea.total || 0)) {
+      const diferencia = (currentTarea.total || 0) - totalPlanificado;
+      const mensaje = `La planificación mensual no coincide con el total asignado a la tarea. Diferencia: ${diferencia > 0 ? `faltan ${diferencia}` : `se excedió por ${Math.abs(diferencia)}`}`;
+      setTaskError('gastos_mensuales', mensaje);
       hasErrors = true;
     }
 
@@ -963,9 +724,7 @@ const AgregarActividad: React.FC = () => {
   };
 
   // Manejar el envío del formulario
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const handleGuardarDatos = async () => {
     if (!validarFormulario()) {
       return;
     }
@@ -1192,6 +951,10 @@ const AgregarActividad: React.FC = () => {
       setActividadesYTareasCreadas(datosParaExportar);
       setDatosGuardados(true);
 
+      // Cerrar el modal de confirmación y mostrar el de éxito
+      setShowConfirmModal(false);
+      setShowSuccessModal(true);
+
       // Mostrar mensaje de éxito y actualizar toast
       toast.update(toastId, {
         render: `Se crearon ${totalActividadesCreadas} actividades con ${totalTareasCreadas} tareas y ${totalProgramacionesCreadas} programaciones mensuales`,
@@ -1202,12 +965,34 @@ const AgregarActividad: React.FC = () => {
 
       showSuccess(`Datos guardados exitosamente. ${totalActividadesCreadas} actividades, ${totalTareasCreadas} tareas y ${totalProgramacionesCreadas} programaciones mensuales creadas.`);
 
-
     } catch (err) {
+      setShowConfirmModal(false);
       showError(err instanceof Error ? err.message : 'Error al crear las actividades y tareas');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  //Función para abrir el modal de confirmación
+  const handleOpenConfirmModal = () => {
+    setShowConfirmModal(true);
+  };
+
+  //Función para cerrar modales
+  const handleCloseModals = () => {
+    setShowConfirmModal(false);
+    setShowSuccessModal(false);
+  };
+
+  //Función para redirigir al dashboard
+  const handleVolverDashboard = () => {
+    navigate('/Dashboard');
+  };
+
+  //Abrir el modal de guardado de tareas
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    handleOpenConfirmModal();
   };
 
 
@@ -1781,19 +1566,7 @@ const AgregarActividad: React.FC = () => {
                             eventKey={poa.id_poa}
                             title={`${poa.codigo_poa} - ${poa.tipo_poa}`}
                           >
-                            <div className="d-flex justify-content-between align-items-center mb-3">
-                              <h6>Presupuesto Asignado: ${poa.presupuesto_asignado.toLocaleString('es-CO')}</h6>
-                              <Button
-                                variant="success"
-                                size="sm"
-                                onClick={() => agregarActividad(poa.id_poa)}
-                              >
-                                <i className="bi bi-plus-circle me-1"></i> Agregar Actividad
-                              </Button>
-                            </div>
-
                             {/* Lista de Actividades con Tareas */}
-                            {/* Reemplazar la parte del formulario para seleccionar actividad */}
                             {poa.actividades.map((actividad, indexActividad) => (
                               <Card
                                 key={actividad.actividad_id}
@@ -1805,21 +1578,11 @@ const AgregarActividad: React.FC = () => {
                                     <h6 className="mb-0 text-primary me-2">Actividad ({indexActividad + 1}):</h6>
                                     <span>{getDescripcionActividad(poa.id_poa, actividad.codigo_actividad)}</span>
                                   </div>
-                                  <Button
-                                    variant="outline-danger"
-                                    size="sm"
-                                    onClick={() => eliminarActividad(poa.id_poa, actividad.actividad_id)}
-                                  >
-                                    <i className="bi bi-trash"></i> Eliminar
-                                  </Button>
                                 </Card.Header>
 
-                                <Card.Body className="p-3">
-                                  <hr className="my-3" />
-
-
-                                  {/* Sección de Tareas - Se mantiene igual */}
-                                  <div className="mt-3">
+                                <Card.Body className="p-3 pt-2">
+                                  {/* Sección de Tareas*/}
+                                  <div className="mt-2">
                                     <div className="d-flex justify-content-between align-items-center mb-3">
                                       <h6>Tareas asignadas</h6>
                                       <Button
@@ -1872,21 +1635,24 @@ const AgregarActividad: React.FC = () => {
                                                   <td className="text-center">{tarea.cantidad === 0 ? '' : tarea.cantidad}</td>
                                                   <td className="text-center">{tarea.precio_unitario === 0 ? '' : `$${tarea.precio_unitario.toFixed(2)}`}</td>
                                                   <td className="text-center">{tarea.total === 0 ? '' : `$${tarea.total?.toFixed(2)}`}</td>
-                                                  <td className="text-center">
+                                                  <td className="d-flex align-items-center justify-content-center">
                                                     <Button
                                                       variant="outline-secondary"
                                                       size="sm"
-                                                      className="me-1"
+                                                      className="me-1 p-0 d-flex align-items-center justify-content-center"
+                                                      style={{ width: '45px', height: '45px' }}
                                                       onClick={() => mostrarModalTarea(poa.id_poa, actividad.actividad_id, tarea)}
                                                     >
-                                                      <i className="bi bi-pencil"></i>
+                                                      <i className="bi bi-pencil" style={{ margin: 0 }}></i>
                                                     </Button>
                                                     <Button
                                                       variant="outline-danger"
                                                       size="sm"
+                                                      className="me-1 p-0 d-flex align-items-center justify-content-center"
+                                                      style={{ width: '45px', height: '45px' }}
                                                       onClick={() => eliminarTarea(poa.id_poa, actividad.actividad_id, tarea.tempId)}
                                                     >
-                                                      <i className="bi bi-trash"></i>
+                                                      <i className="bi bi-trash" style={{ margin: 0 }}></i>
                                                     </Button>
                                                   </td>
                                                 </tr>
@@ -1975,33 +1741,6 @@ const AgregarActividad: React.FC = () => {
                     Cancelar
                   </Button>
 
-                  {/* Botón de Exportar POAs - Solo habilitado después de guardar */}
-                  {datosGuardados && (
-                    <div className="me-2">
-                      <ExportarPOA
-                        codigoProyecto={proyectoSeleccionado.codigo_proyecto}
-                        poas={poasProyecto.map(poa => ({
-                          id_poa: poa.id_poa,
-                          codigo_poa: poa.codigo_poa,
-                          anio_ejecucion: poa.anio_ejecucion,
-                          presupuesto_asignado: poa.presupuesto_asignado
-                        }))}
-                        actividadesYTareas={actividadesYTareasCreadas} // NUEVO PROP
-                        onExport={() => showSuccess("POA exportado correctamente")}
-                      />
-                    </div>
-                  )}
-                  {!datosGuardados && (
-                    <div className="me-2">
-                      <div title="Debe guardar las actividades y tareas primero">
-                        <Button variant="success" disabled className="d-flex align-items-center">
-                          <i className="fas fa-file-excel me-2"></i>
-                          Exportar POAs
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-
                   <Button variant="primary" type="submit" disabled={isLoading}>
                     {isLoading ? (
                       <>
@@ -2016,37 +1755,56 @@ const AgregarActividad: React.FC = () => {
               </Row>
             )}
 
-            {/* Modal para seleccionar actividad */}
-            <Modal show={showActividadModal} onHide={() => setShowActividadModal(false)}>
+            {/* Modal de Confirmación */}
+            <Modal show={showConfirmModal} onHide={handleCloseModals} centered>
               <Modal.Header closeButton>
-                <Modal.Title>Seleccionar Actividad</Modal.Title>
+                <Modal.Title>Confirmar Guardado</Modal.Title>
               </Modal.Header>
               <Modal.Body>
-                <Form.Group className="mb-3">
-                  <Form.Label>Actividades Disponibles</Form.Label>
-                  <Form.Select
-                    value={actividadSeleccionadaModal}
-                    onChange={(e) => setActividadSeleccionadaModal(e.target.value)}
-                  >
-                    <option value="">Seleccione una actividad...</option>
-                    {actividadesDisponiblesModal.map(act => (
-                      <option key={act.id} value={act.id}>
-                        {act.descripcion}
-                      </option>
-                    ))}
-                  </Form.Select>
-                </Form.Group>
+                <p>Una vez guardadas las actividades y tareas, no se pueden cambiar hasta ser revisadas por la Dirección de Investigación. ¿Desea continuar?</p>
               </Modal.Body>
               <Modal.Footer>
-                <Button variant="secondary" onClick={() => setShowActividadModal(false)}>
-                  Cancelar
+                <Button variant="secondary" onClick={handleCloseModals}>
+                  Volver
                 </Button>
-                <Button variant="primary" onClick={confirmarSeleccionActividad}>
-                  Agregar Actividad
+                <Button variant="primary" onClick={handleGuardarDatos} disabled={isLoading}>
+                  {isLoading ? (
+                    <>
+                      <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2" />
+                      Guardando...
+                    </>
+                  ) : (
+                    'Guardar'
+                  )}
                 </Button>
               </Modal.Footer>
             </Modal>
 
+            {/* Modal de Éxito */}
+            <Modal show={showSuccessModal} onHide={handleCloseModals} centered>
+              <Modal.Header closeButton>
+                <Modal.Title>Éxito</Modal.Title>
+              </Modal.Header>
+              <Modal.Body>
+                <p>Actividades y Tareas guardadas exitosamente</p>
+              </Modal.Body>
+              <Modal.Footer>
+                <Button variant="secondary" onClick={handleVolverDashboard}>
+                  Volver
+                </Button>
+                <ExportarPOA
+                  codigoProyecto={proyectoSeleccionado?.codigo_proyecto || ''}
+                  poas={poasProyecto.map(poa => ({
+                    id_poa: poa.id_poa,
+                    codigo_poa: poa.codigo_poa,
+                    anio_ejecucion: poa.anio_ejecucion,
+                    presupuesto_asignado: poa.presupuesto_asignado
+                  }))}
+                  actividadesYTareas={actividadesYTareasCreadas}
+                  onExport={() => showSuccess("POA exportado correctamente")}
+                />
+              </Modal.Footer>
+            </Modal>
             {/* Modal para agregar/editar tareas */}
             <Modal show={showTareaModal} onHide={() => setShowTareaModal(false)} size='lg'>
               <Modal.Header closeButton>
