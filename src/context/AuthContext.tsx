@@ -1,7 +1,8 @@
 import { createContext, useState, useContext, useEffect, ReactNode, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Usuario, AuthContextType } from '../interfaces/user';
+import { Usuario, AuthContextType, Rol } from '../interfaces/user'; // Agregar Rol aquí
 import { API } from '../api/userAPI';
+
 
 // Crear el contexto
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -44,6 +45,56 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     clearAuth();
     navigate('/login');
   }, [clearAuth, navigate]);
+
+  // Función para obtener el rol completo
+  const getUserRole = (): Rol | null => {
+    console.log('getUserRole() - usuario:', usuario);
+    console.log('getUserRole() - usuario.rol:', usuario?.rol);
+    return usuario?.rol || null;
+  };
+
+  // Función para verificar rol por UUID
+  const hasRole = (roleId: string): boolean => {
+    const result = usuario?.id_rol === roleId;
+    console.log(`hasRole(${roleId}):`, result);
+    console.log('usuario?.id_rol:', usuario?.id_rol);
+    return result;
+  };
+
+  // Función para verificar rol por nombre
+  const hasRoleByName = (roleName: string): boolean => {
+    const result = usuario?.rol?.nombre_rol === roleName;
+    console.log(`hasRoleByName(${roleName}):`, result);
+    console.log('usuario?.rol?.nombre_rol:', usuario?.rol?.nombre_rol);
+    return result;
+  };
+
+  // Función para verificar múltiples roles por UUID
+  const hasAnyRole = (roleIds: string[]): boolean => {
+    const result = roleIds.some(roleId => hasRole(roleId));
+    console.log(`hasAnyRole(${roleIds.join(', ')}):`, result);
+    return result;
+  };
+
+  // Función para verificar múltiples roles por nombre
+  const hasAnyRoleByName = (roleNames: string[]): boolean => {
+    const result = roleNames.some(roleName => hasRoleByName(roleName));
+    console.log(`hasAnyRoleByName(${roleNames.join(', ')}):`, result);
+    return result;
+  };
+
+  // Funciones de utilidad
+  const getUserId = (): string | null => {
+    return usuario?.id || null;
+  };
+
+  const getRoleId = (): string | null => {
+    return usuario?.id_rol || null;
+  };
+
+  const getRoleName = (): string | null => {
+    return usuario?.rol?.nombre_rol || null;
+  };
 
   // Función para verificar el token periódicamente
   const verificarToken = useCallback(async () => {
@@ -90,6 +141,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const storedToken = localStorage.getItem('token');
       const storedUsuario = localStorage.getItem('usuario');
 
+      console.log('=== Inicializando Auth ===');
+      console.log('storedToken:', storedToken ? 'Existe' : 'No existe');
+      console.log('storedUsuario:', storedUsuario ? 'Existe' : 'No existe');
+
       if (storedToken && storedUsuario) {
         try {
           // Verificar si el token es válido
@@ -97,6 +152,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           
           if (tokenValido) {
             const parsedUsuario = JSON.parse(storedUsuario);
+            console.log('Usuario parseado:', parsedUsuario);
+            console.log('ID del rol:', parsedUsuario.id_rol);
+            console.log('Rol completo:', parsedUsuario.rol);
+            
             setToken(storedToken);
             setUsuario(parsedUsuario);
             API.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
@@ -163,6 +222,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Función de login
   const login = useCallback((newToken: string, userData: Usuario) => {
+    console.log('=== Login ===');
+    console.log('newToken:', newToken ? 'Existe' : 'No existe');
+    console.log('userData:', userData);
+    
     localStorage.setItem('token', newToken);
     localStorage.setItem('usuario', JSON.stringify(userData));
     API.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
@@ -178,7 +241,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isAuthenticated: !!token,
     login,
     logout,
-    loading
+    loading,
+    getUserRole,
+    hasRole,
+    hasRoleByName,
+    hasAnyRole,
+    hasAnyRoleByName,
+    getUserId,
+    getRoleId,
+    getRoleName
   };
 
   return (
