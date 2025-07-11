@@ -25,7 +25,7 @@ const Perfil: React.FC = () => {
         setPerfil(perfilData);
 
         // Obtener el nombre del rol
-        const rolName = await userAPI.getRolNameById(perfilData.rol);
+        const rolName = await userAPI.getRolNameById(perfilData.id_rol);
         setNombreRol(rolName);
       } catch (err) {
         console.error('Error al cargar el perfil:', err);
