@@ -1764,8 +1764,8 @@ const AgregarActividad: React.FC = () => {
                 <p>Una vez guardadas las actividades y tareas, no se pueden cambiar hasta ser revisadas por la Dirección de Investigación. ¿Desea continuar?</p>
               </Modal.Body>
               <Modal.Footer>
-                <Button variant="primary" onClick={handleCloseModals}>
-                  Volver al Inicio
+                <Button variant="danger" onClick={handleCloseModals}>
+                  Volver
                 </Button>
                 <Button variant="success" onClick={handleGuardarDatos} disabled={isLoading}>
                   {isLoading ? (
@@ -1789,8 +1789,8 @@ const AgregarActividad: React.FC = () => {
                 <p>Actividades y Tareas guardadas exitosamente</p>
               </Modal.Body>
               <Modal.Footer>
-                <Button variant="secondary" onClick={handleVolverDashboard}>
-                  Volver
+                <Button variant="primary" onClick={handleVolverDashboard}>
+                  Volver al Inicio
                 </Button>
                 <ExportarPOA
                   codigoProyecto={proyectoSeleccionado?.codigo_proyecto || ''}

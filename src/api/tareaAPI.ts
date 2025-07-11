@@ -27,6 +27,33 @@ export const tareaAPI = {
         }
         },
 
+    // Obtener item presupuestario de una tarea específica
+    getItemPresupuestarioDeTarea: async (idTarea: string): Promise<ItemPresupuestario> => {
+        try {
+            console.log(`Consultando item presupuestario de tarea con ID: ${idTarea}`);
+            const response = await API.get(`/tareas/${idTarea}/item-presupuestario`);
+            console.log("Item presupuestario de tarea obtenido:", response.data);
+            return response.data as ItemPresupuestario;
+        } catch (error) {
+            console.error("Error al obtener item presupuestario de tarea:", error);
+            if (error && typeof error === 'object' && 'response' in error) {
+                const axiosError = error as any;
+                console.error("Respuesta del servidor:", axiosError.response.data);
+                console.error("Status:", axiosError.response.status);
+                
+                // Manejar errores específicos
+                if (axiosError.response.status === 404) {
+                    if (axiosError.response.data?.detail === "Tarea no encontrada") {
+                        throw new Error("Tarea no encontrada");
+                    } else if (axiosError.response.data?.detail === "Item presupuestario no asociado a esta tarea") {
+                        throw new Error("Item presupuestario no asociado a esta tarea");
+                    }
+                }
+            }
+            throw error;
+        }
+    },
+
     // Obtener tareas por actividad
     getTareasPorActividad: async (idActividad: string): Promise<Tarea[]> => {
         const response = await API.get(`/actividades/${idActividad}/tareas`);

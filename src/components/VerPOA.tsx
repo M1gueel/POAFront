@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Alert, Table, Spinner } from 'react-bootstrap';
 import { POA } from '../interfaces/poa';
 import { Actividad } from '../interfaces/actividad';
-import { Tarea, ProgramacionMensualOut } from '../interfaces/tarea';
+import { Tarea, ProgramacionMensualOut, ItemPresupuestario } from '../interfaces/tarea';
 import { actividadAPI } from '../api/actividadAPI';
 import { tareaAPI } from '../api/tareaAPI';
 import { showWarning } from '../utils/toast';
+import { getActividadesPorTipoPOA } from '../utils/listaActividades.ts'; // Importar la función de utilidad
 
 interface VerPOAProps {
   poa: POA;
@@ -14,6 +15,8 @@ interface VerPOAProps {
 
 interface TareaConProgramacion extends Tarea {
   gastos_mensuales: number[];
+  item_presupuestario?: ItemPresupuestario;
+  codigo_item?: string;
 }
 
 interface ActividadConTareasYProgramacion extends Actividad {
@@ -57,6 +60,68 @@ const VerPOA: React.FC<VerPOAProps> = ({ poa }) => {
     });
   };
 
+  // Función para obtener el item presupuestario de una tarea usando el nuevo endpoint
+  const obtenerItemPresupuestarioDeTarea = async (idTarea: string): Promise<{ codigo: string; itemPresupuestario?: ItemPresupuestario }> => {
+    try {
+      const itemPresupuestario = await tareaAPI.getItemPresupuestarioDeTarea(idTarea);
+      return {
+        codigo: itemPresupuestario.codigo,
+        itemPresupuestario: itemPresupuestario
+      };
+    } catch (error) {
+      console.warn(`No se pudo obtener item presupuestario para tarea ${idTarea}:`, error);
+      
+      // Manejar errores específicos
+      if (error instanceof Error) {
+        if (error.message === "Item presupuestario no asociado a esta tarea") {
+          return { codigo: 'Sin Item' };
+        } else if (error.message === "Tarea no encontrada") {
+          return { codigo: 'Tarea no encontrada' };
+        }
+      }
+      
+      return { codigo: 'Error' };
+    }
+  };
+
+  // Función para obtener el tipo de POA desde el código
+  const obtenerTipoPOA = (codigoPOA: string): string => {
+    // Extraer el tipo del código POA (ej: "PIM-2024-001" -> "PIM")
+    const partes = codigoPOA.split('-');
+    return partes[0] || '';
+  };
+
+  // Función para ordenar actividades según la configuración
+  const ordenarActividadesSegunConfiguracion = (actividades: ActividadConTareasYProgramacion[], tipoPOA: string): ActividadConTareasYProgramacion[] => {
+    const actividadesConfiguracion = getActividadesPorTipoPOA(tipoPOA);
+    
+    // Crear un mapa de descripción -> índice de orden
+    const ordenMap = new Map<string, number>();
+    actividadesConfiguracion.forEach((actConfig, index) => {
+      ordenMap.set(actConfig.descripcion, index);
+    });
+
+    // Ordenar actividades según la configuración
+    const actividadesOrdenadas = [...actividades].sort((a, b) => {
+      const ordenA = ordenMap.get(a.descripcion_actividad);
+      const ordenB = ordenMap.get(b.descripcion_actividad);
+      
+      // Si ambas actividades están en la configuración, usar el orden definido
+      if (ordenA !== undefined && ordenB !== undefined) {
+        return ordenA - ordenB;
+      }
+      
+      // Si solo una está en la configuración, la que está va primero
+      if (ordenA !== undefined) return -1;
+      if (ordenB !== undefined) return 1;
+      
+      // Si ninguna está en la configuración, mantener orden original
+      return 0;
+    });
+
+    return actividadesOrdenadas;
+  };
+
   useEffect(() => {
     const cargarDatosPOA = async () => {
       try {
@@ -74,13 +139,22 @@ const VerPOA: React.FC<VerPOAProps> = ({ poa }) => {
             // Obtener tareas de la actividad
             const tareasData = await tareaAPI.getTareasPorActividad(actividad.id_actividad);
             
-            // 3. Para cada tarea, obtener su programación mensual
+            // 3. Para cada tarea, obtener su programación mensual e item presupuestario
             const tareasConProgramacion: TareaConProgramacion[] = [];
             
             for (const tarea of tareasData) {
               try {
                 // Obtener programación mensual de la tarea
-                const programacionData = await tareaAPI.getProgramacionMensualPorTarea(tarea.id_tarea);
+                const programacionPromise = tareaAPI.getProgramacionMensualPorTarea(tarea.id_tarea);
+                
+                // Obtener item presupuestario de la tarea usando el nuevo endpoint
+                const itemPresupuestarioPromise = obtenerItemPresupuestarioDeTarea(tarea.id_tarea);
+                
+                // Ejecutar ambas consultas en paralelo
+                const [programacionData, itemPresupuestarioData] = await Promise.all([
+                  programacionPromise.catch(() => []), // Si falla, usar array vacío
+                  itemPresupuestarioPromise
+                ]);
                 
                 // Crear array de 12 meses inicializado en 0
                 const gastosMensuales = Array(12).fill(0);
@@ -96,16 +170,20 @@ const VerPOA: React.FC<VerPOAProps> = ({ poa }) => {
                 
                 tareasConProgramacion.push({
                   ...tarea,
-                  gastos_mensuales: gastosMensuales
+                  gastos_mensuales: gastosMensuales,
+                  item_presupuestario: itemPresupuestarioData.itemPresupuestario,
+                  codigo_item: itemPresupuestarioData.codigo
                 });
                 
               } catch (tareaError) {
-                console.warn(`No se pudo obtener programación para tarea ${tarea.id_tarea}:`, tareaError);
-                showWarning(`No se pudieron obtener programación para tarea ${tarea.id_tarea}:`);
-                // Si no hay programación, usar array de ceros
+                console.warn(`Error al procesar tarea ${tarea.id_tarea}:`, tareaError);
+                showWarning(`Error al procesar tarea ${tarea.id_tarea}`);
+                
+                // Si hay error, usar valores por defecto
                 tareasConProgramacion.push({
                   ...tarea,
-                  gastos_mensuales: Array(12).fill(0)
+                  gastos_mensuales: Array(12).fill(0),
+                  codigo_item: 'Error'
                 });
               }
             }
@@ -117,7 +195,7 @@ const VerPOA: React.FC<VerPOAProps> = ({ poa }) => {
             
           } catch (actividadError) {
             console.warn(`No se pudieron obtener tareas para actividad ${actividad.id_actividad}:`, actividadError);
-            showWarning(`No se pudieron obtener tareas para actividad ${actividad.id_actividad}:`);
+            showWarning(`No se pudieron obtener tareas para actividad ${actividad.id_actividad}`);
             // Si no hay tareas, crear actividad con array vacío
             actividadesConTareas.push({
               ...actividad,
@@ -126,7 +204,11 @@ const VerPOA: React.FC<VerPOAProps> = ({ poa }) => {
           }
         }
         
-        setActividades(actividadesConTareas);
+        // *** ORDENAR ACTIVIDADES SEGÚN LA CONFIGURACIÓN ***
+        const tipoPOA = obtenerTipoPOA(poa.codigo_poa);
+        const actividadesOrdenadas = ordenarActividadesSegunConfiguracion(actividadesConTareas, tipoPOA);
+        
+        setActividades(actividadesOrdenadas);
         
       } catch (err) {
         console.error('Error al cargar datos del POA:', err);
@@ -160,19 +242,10 @@ const VerPOA: React.FC<VerPOAProps> = ({ poa }) => {
     return meses.reduce((total, _, index) => total + calcularTotalMes(index), 0);
   };
 
-  // Función para obtener el código del item presupuestario
-  const obtenerCodigoItemPresupuestario = (tarea: Tarea): string => {
-    // Primero intentar obtener el código del detalle_tarea
-    if (tarea.detalle_tarea?.codigo_item) {
-      return tarea.detalle_tarea.codigo_item;
-    }
-    
-    // Si no está ahí, intentar obtenerlo del item_presupuestario
-    if (tarea.detalle_tarea?.item_presupuestario?.codigo) {
-      return tarea.detalle_tarea.item_presupuestario.codigo;
-    }
-    
-    return 'N/A';
+  // Función simplificada para obtener el código del item presupuestario
+  const obtenerCodigoItemPresupuestario = (tarea: TareaConProgramacion): string => {
+    // Usar el código obtenido del nuevo endpoint
+    return tarea.codigo_item || 'N/A';
   };
 
   if (loading) {

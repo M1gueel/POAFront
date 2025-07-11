@@ -132,17 +132,25 @@ const ExportarPOAProyecto: React.FC<ExportarPOAProyectoProps> = ({
     });
   };
 
-  // Función para obtener el código del item presupuestario
-  const obtenerCodigoItemPresupuestario = (tarea: any): string => {
-    if (tarea.detalle_tarea?.codigo_item) {
-      return tarea.detalle_tarea.codigo_item;
+  // Función para obtener el código del item presupuestario usando el nuevo endpoint
+  const obtenerCodigoItemPresupuestario = async (idTarea: string): Promise<string> => {
+    try {
+      const itemPresupuestario = await tareaAPI.getItemPresupuestarioDeTarea(idTarea);
+      return itemPresupuestario.codigo;
+    } catch (error) {
+      console.warn(`No se pudo obtener el item presupuestario para la tarea ${idTarea}:`, error);
+      
+      // Manejar errores específicos
+      if (error instanceof Error) {
+        if (error.message === "Tarea no encontrada") {
+          console.warn(`Tarea ${idTarea} no encontrada`);
+        } else if (error.message === "Item presupuestario no asociado a esta tarea") {
+          console.warn(`No hay item presupuestario asociado a la tarea ${idTarea}`);
+        }
+      }
+      
+      return 'N/A';
     }
-    
-    if (tarea.detalle_tarea?.item_presupuestario?.codigo) {
-      return tarea.detalle_tarea.item_presupuestario.codigo;
-    }
-    
-    return 'N/A';
   };
 
   // Función para obtener datos de un POA específico
@@ -159,7 +167,7 @@ const ExportarPOAProyecto: React.FC<ExportarPOAProyectoProps> = ({
           // Obtener tareas de la actividad
           const tareasData = await tareaAPI.getTareasPorActividad(actividad.id_actividad);
           
-          // 3. Para cada tarea, obtener su programación mensual
+          // 3. Para cada tarea, obtener su programación mensual y código del item presupuestario
           const tareasConProgramacion: TareaConProgramacion[] = [];
           
           for (const tarea of tareasData) {
@@ -179,6 +187,9 @@ const ExportarPOAProyecto: React.FC<ExportarPOAProyectoProps> = ({
                 }
               });
               
+              // Obtener código del item presupuestario usando el nuevo endpoint
+              const codigoItem = await obtenerCodigoItemPresupuestario(tarea.id_tarea);
+              
               tareasConProgramacion.push({
                 id_tarea: tarea.id_tarea,
                 nombre: tarea.nombre,
@@ -187,12 +198,21 @@ const ExportarPOAProyecto: React.FC<ExportarPOAProyectoProps> = ({
                 precio_unitario: formatearNumero(tarea.precio_unitario),
                 total: formatearNumero(tarea.total),
                 gastos_mensuales: gastosMensuales,
-                codigo_item: obtenerCodigoItemPresupuestario(tarea),
+                codigo_item: codigoItem,
                 detalle_tarea: tarea.detalle_tarea
               });
               
             } catch (tareaError) {
               console.warn(`No se pudo obtener programación para tarea ${tarea.id_tarea}:`, tareaError);
+              
+              // Intentar obtener al menos el código del item presupuestario
+              let codigoItem = 'N/A';
+              try {
+                codigoItem = await obtenerCodigoItemPresupuestario(tarea.id_tarea);
+              } catch (itemError) {
+                console.warn(`No se pudo obtener código de item para tarea ${tarea.id_tarea}:`, itemError);
+              }
+              
               // Si no hay programación, usar array de ceros
               tareasConProgramacion.push({
                 id_tarea: tarea.id_tarea,
@@ -202,7 +222,7 @@ const ExportarPOAProyecto: React.FC<ExportarPOAProyectoProps> = ({
                 precio_unitario: formatearNumero(tarea.precio_unitario),
                 total: formatearNumero(tarea.total),
                 gastos_mensuales: Array(12).fill(0),
-                codigo_item: obtenerCodigoItemPresupuestario(tarea),
+                codigo_item: codigoItem,
                 detalle_tarea: tarea.detalle_tarea
               });
             }
