@@ -141,8 +141,8 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
             {hasAccessTo([ROLES.ADMINISTRADOR, ROLES.DIRECTOR_INVESTIGACION]) && (
               <Nav.Item>
                 <Nav.Link
-                  className={`text-white ${isActive("/tipos-proyecto")}`}
-                  onClick={() => handleNavigate("/tipos-proyecto")}
+                  className={`text-white ${isActive("/editar-proyecto")}`}
+                  onClick={() => handleNavigate("/editar-proyecto")}
                 >
                   <FolderKanban size={iconSize} className="me-2" />
                   Editar Proyecto
@@ -362,8 +362,8 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
           {hasAccessTo([ROLES.ADMINISTRADOR, ROLES.DIRECTOR_INVESTIGACION]) && (
             <Nav.Item>
               <Nav.Link
-                className={`text-white ${isActive("/tipos-proyecto")}`}
-                onClick={() => handleNavigate("/tipos-proyecto")}
+                className={`text-white ${isActive("/editar-proyecto")}`}
+                onClick={() => handleNavigate("/editar-proyecto")}
                 style={{ cursor: 'pointer' }}
                 title="Editar Proyecto"
               >

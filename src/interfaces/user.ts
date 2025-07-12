@@ -75,18 +75,18 @@ export interface AuthContextType {
 
 // Tipos de utilidad actualizados
 export type RoleType = 
-    | '80ffe2c0-f134-4274-b1aa-b632b74ea070'  // Administrador
-    | '229f92d5-5d85-4557-8208-c0c000ac63b4'  // Director de Investigacion
-    | '60b2d6f2-ac42-4447-bde7-8f8979636350'  // Director de Proyecto
-    | 'b7d16467-bff9-41df-ab7f-5df0d9d35f5c'  // Director de reformas
+    | 'c6aab59c-950d-4b09-84c9-7eea7fa5c344'  // Administrador
+    | '5d44779e-d763-4786-b11a-6127b63bde84'  // Director de Investigacion
+    | 'aae5d128-ed35-45b8-8a3a-ca6af10b8ef3'  // Director de Proyecto
+    | '314fd2c8-e9dd-4d17-85de-b2df1cbec5e7'  // Director de reformas
     | string;
 
 // Constantes para los roles (más fácil de mantener)
 export const ROLES = {
-    ADMINISTRADOR: '80ffe2c0-f134-4274-b1aa-b632b74ea070',
-    DIRECTOR_INVESTIGACION: '229f92d5-5d85-4557-8208-c0c000ac63b4',
-    DIRECTOR_PROYECTO: '60b2d6f2-ac42-4447-bde7-8f8979636350',
-    DIRECTOR_REFORMAS: 'b7d16467-bff9-41df-ab7f-5df0d9d35f5c'
+    ADMINISTRADOR: 'c6aab59c-950d-4b09-84c9-7eea7fa5c344',
+    DIRECTOR_INVESTIGACION: '25d44779e-d763-4786-b11a-6127b63bde84',
+    DIRECTOR_PROYECTO: 'aae5d128-ed35-45b8-8a3a-ca6af10b8ef3',
+    DIRECTOR_REFORMAS: '314fd2c8-e9dd-4d17-85de-b2df1cbec5e7'
 } as const;
 
 // Mapeo de nombres de roles
