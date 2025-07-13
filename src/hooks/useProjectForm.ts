@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Proyecto, TipoProyecto, EstadoProyecto } from '../interfaces/project';
 import { projectService } from '../services/projectService';
+import { projectAPI } from '../api/projectAPI';
 import { 
   validateDirectorName, 
   validateBudget, 
@@ -10,14 +11,16 @@ import {
 
 interface UseProjectFormProps {
   initialTipoProyecto: TipoProyecto | null;
+  initialProyecto?: Proyecto | null; // Para edición
+  isEditing?: boolean; // Para distinguir entre crear y editar
 }
 
-export const useProjectForm = ({ initialTipoProyecto }: UseProjectFormProps) => {
+export const useProjectForm = ({ initialTipoProyecto, initialProyecto, isEditing = false }: UseProjectFormProps) => {
   // Form states
   const [codigo_proyecto, setCodigo_proyecto] = useState('');
   const [codigoModificadoManualmente, setCodigoModificadoManualmente] = useState(false);
   const [titulo, setTitulo] = useState('');
-  const [tipoProyecto] = useState<TipoProyecto | null>(initialTipoProyecto);
+  const [tipoProyecto, setTipoProyecto] = useState<TipoProyecto | null>(initialTipoProyecto);
   const [id_estado_proyecto, setId_estado_proyecto] = useState('');
   const [id_director_proyecto, setId_director_proyecto] = useState('');
   const [directorError, setDirectorError] = useState<string | null>(null);
@@ -162,6 +165,22 @@ export const useProjectForm = ({ initialTipoProyecto }: UseProjectFormProps) => 
     }
   }, [fecha_fin, prorrogaOpen, calculandoProrroga]);
 
+  // Update tipoProyecto when initialTipoProyecto changes
+  useEffect(() => {
+    setTipoProyecto(initialTipoProyecto);
+    
+    // Revalidar presupuesto y fecha fin cuando cambie el tipo de proyecto
+    if (initialTipoProyecto && presupuesto_aprobado) {
+      const budgetError = validateBudget(presupuesto_aprobado, initialTipoProyecto);
+      setPresupuestoError(budgetError);
+    }
+    
+    if (initialTipoProyecto && fecha_fin && fecha_inicio) {
+      const endDateError = validateEndDate(fecha_fin, fecha_inicio, initialTipoProyecto.duracion_meses);
+      setFechaFinError(endDateError);
+    }
+  }, [initialTipoProyecto, presupuesto_aprobado, fecha_fin, fecha_inicio]);
+
   // Load initial data
   useEffect(() => {
     const cargarDatos = async () => {
@@ -171,7 +190,37 @@ export const useProjectForm = ({ initialTipoProyecto }: UseProjectFormProps) => 
       try {
         const estadosData = await projectService.getEstadosProyecto();
         setEstadosProyecto(estadosData);
-        setId_estado_proyecto('');
+        
+        // Si estamos editando, cargar los datos del proyecto
+        if (isEditing && initialProyecto) {
+          setCodigo_proyecto(initialProyecto.codigo_proyecto);
+          setTitulo(initialProyecto.titulo);
+          setId_estado_proyecto(initialProyecto.id_estado_proyecto);
+          setId_director_proyecto(initialProyecto.id_director_proyecto);
+          setPresupuesto_aprobado(initialProyecto.presupuesto_aprobado?.toString() || '');
+          setFecha_inicio(initialProyecto.fecha_inicio);
+          setFecha_fin(initialProyecto.fecha_fin);
+          
+          // Cargar datos de prórroga si existen
+          if (initialProyecto.fecha_prorroga || initialProyecto.fecha_prorroga_inicio || initialProyecto.fecha_prorroga_fin) {
+            setProrrogaOpen(true);
+            setFecha_prorroga(initialProyecto.fecha_prorroga || '');
+            setFecha_prorroga_inicio(initialProyecto.fecha_prorroga_inicio || '');
+            setFecha_prorroga_fin(initialProyecto.fecha_prorroga_fin || '');
+            
+            // Solo cargar tiempo_prorroga_meses si existe explícitamente en los datos
+            // No calcularlo automáticamente para mantener consistencia con CrearProyecto
+            if (initialProyecto.tiempo_prorroga_meses) {
+              setTiempo_prorroga_meses(initialProyecto.tiempo_prorroga_meses.toString());
+            }
+          }
+          
+          // Marcar el código como modificado manualmente para evitar que se regenere
+          setCodigoModificadoManualmente(true);
+        } else {
+          setId_estado_proyecto('');
+        }
+        
         setIsLoading(false);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Error desconocido');
@@ -181,7 +230,7 @@ export const useProjectForm = ({ initialTipoProyecto }: UseProjectFormProps) => 
     };
     
     cargarDatos();
-  }, []);
+  }, [isEditing, initialProyecto]);
 
   // Calculate end date when start date changes
   useEffect(() => {
@@ -189,11 +238,19 @@ export const useProjectForm = ({ initialTipoProyecto }: UseProjectFormProps) => 
       const nuevaFechaFinMaxima = projectService.calcularFechaFinMaxima(fecha_inicio, tipoProyecto.duracion_meses);
       setFechaFinMaxima(nuevaFechaFinMaxima);
       
+      // Tanto en modo creación como edición, establecer automáticamente la fecha fin máxima
+      // cuando se cambia la fecha de inicio
       if (!fecha_fin || new Date(fecha_fin) > new Date(nuevaFechaFinMaxima)) {
         setFecha_fin(nuevaFechaFinMaxima);
       }
+      
+      // Validar si existe una fecha de fin
+      if (fecha_fin) {
+        const error = validateEndDate(fecha_fin, fecha_inicio, tipoProyecto.duracion_meses);
+        setFechaFinError(error);
+      }
     }
-  }, [fecha_inicio, tipoProyecto]);
+  }, [fecha_inicio, tipoProyecto, isEditing, fecha_fin]);
 
   // Handle director field change
   const handleDirectorChange = (value: string) => {
@@ -213,16 +270,30 @@ export const useProjectForm = ({ initialTipoProyecto }: UseProjectFormProps) => 
   // Handle budget field change
   const handlePresupuestoChange = (value: string) => {
     setPresupuesto_aprobado(value);
-    const error = validateBudget(value, tipoProyecto);
-    setPresupuestoError(error);
+    
+    // Validar inmediatamente el presupuesto
+    if (value && tipoProyecto) {
+      const error = validateBudget(value, tipoProyecto);
+      setPresupuestoError(error);
+    } else {
+      setPresupuestoError(null);
+    }
   };
 
   // Handle start date change
   const handleFechaInicioChange = (value: string) => {
     setFecha_inicio(value);
-    actualizarCodigoProyectoDesdefecha(value);
     
+    // Solo generar código automáticamente si no estamos en modo edición
+    if (!isEditing) {
+      actualizarCodigoProyectoDesdefecha(value);
+    }
+    
+    // Limpiar fecha de fin para que se establezca automáticamente la nueva fecha máxima
+    // Esto permite que el useEffect se ejecute y establezca la nueva fecha fin máxima
     setFecha_fin('');
+    
+    // Limpiar cualquier error previo de fecha de fin
     setFechaFinError(null);
   };
 
@@ -230,12 +301,20 @@ export const useProjectForm = ({ initialTipoProyecto }: UseProjectFormProps) => 
   const handleFechaFinChange = (value: string) => {
     setFecha_fin(value);
     
-    const error = validateEndDate(value, fecha_inicio, tipoProyecto?.duracion_meses); 
-    setFechaFinError(error);
+    // Validar inmediatamente la fecha de fin
+    if (value && fecha_inicio && tipoProyecto?.duracion_meses) {
+      const error = validateEndDate(value, fecha_inicio, tipoProyecto.duracion_meses); 
+      setFechaFinError(error);
+    } else {
+      setFechaFinError(null);
+    }
   };
 
   // Submit form handler
   const handleSubmit = async () => {
+    // Reset error state
+    setError(null);
+    
     // Validation of required fields
     const validationError = validateProjectFormRequiredFields(
       codigo_proyecto,
@@ -251,45 +330,155 @@ export const useProjectForm = ({ initialTipoProyecto }: UseProjectFormProps) => 
       return false;
     }
 
-    // Validate budget if entered
-    const budgetError = validateBudget(presupuesto_aprobado, tipoProyecto);
-    if (budgetError) {
-      setError(budgetError);
+    // Validate director name format
+    if (!validateDirectorName(id_director_proyecto)) {
+      setDirectorError('El formato debe ser: Nombre Apellido como mínimo y hasta un máximo de 8 palabras para nombres complejos');
+      setError('Por favor corrija el formato del nombre del director');
       return false;
+    }
+
+    // Validate budget if entered
+    if (presupuesto_aprobado) {
+      const budgetError = validateBudget(presupuesto_aprobado, tipoProyecto);
+      if (budgetError) {
+        setPresupuestoError(budgetError);
+        setError(budgetError);
+        return false;
+      }
     }
     
     // Validate end date
-    const endDateError = validateEndDate(fecha_fin, fecha_inicio, tipoProyecto?.duracion_meses);
-    if (endDateError) {
-      setError(endDateError);
-      return false;
+    if (fecha_fin && fecha_inicio && tipoProyecto?.duracion_meses) {
+      const endDateError = validateEndDate(fecha_fin, fecha_inicio, tipoProyecto.duracion_meses);
+      if (endDateError) {
+        setFechaFinError(endDateError);
+        setError(endDateError);
+        return false;
+      }
+    }
+    
+    // Validate that end date is after start date
+    if (fecha_fin && fecha_inicio) {
+      const startDateObj = new Date(fecha_inicio);
+      const endDateObj = new Date(fecha_fin);
+      
+      if (endDateObj < startDateObj) {
+        const error = 'La fecha de fin no puede ser anterior a la fecha de inicio';
+        setFechaFinError(error);
+        setError(error);
+        return false;
+      }
     }
     
     setIsLoading(true);
     
     try {
       // Prepare data to send to backend
-      const proyecto: Partial<Proyecto> = {
-        codigo_proyecto,
-        titulo,
-        id_tipo_proyecto: tipoProyecto!.id_tipo_proyecto,
-        id_estado_proyecto,
-        id_director_proyecto,
-        presupuesto_aprobado: presupuesto_aprobado ? parseFloat(presupuesto_aprobado) : 0,
-        fecha_inicio,
-        fecha_fin,
-      };
+      let proyectoData: Partial<Proyecto>;
       
-      console.log("Enviando datos:", proyecto);
+      if (isEditing && initialProyecto) {
+        // Para edición, preparar solo los campos que se pueden modificar
+        proyectoData = {
+          codigo_proyecto,
+          titulo,
+          id_tipo_proyecto: tipoProyecto!.id_tipo_proyecto,
+          id_estado_proyecto,
+          id_director_proyecto,
+          presupuesto_aprobado: presupuesto_aprobado ? parseFloat(presupuesto_aprobado) : 0,
+          fecha_inicio,
+          fecha_fin,
+          // Mantener la fecha de creación original
+          fecha_creacion: initialProyecto.fecha_creacion
+        };
+        
+        // Solo incluir campos de prórroga si tienen valores válidos
+        if (fecha_prorroga && fecha_prorroga.trim() !== '') {
+          proyectoData.fecha_prorroga = fecha_prorroga;
+        }
+        if (fecha_prorroga_inicio && fecha_prorroga_inicio.trim() !== '') {
+          proyectoData.fecha_prorroga_inicio = fecha_prorroga_inicio;
+        }
+        if (fecha_prorroga_fin && fecha_prorroga_fin.trim() !== '') {
+          proyectoData.fecha_prorroga_fin = fecha_prorroga_fin;
+        }
+        if (tiempo_prorroga_meses && parseInt(tiempo_prorroga_meses) > 0) {
+          proyectoData.tiempo_prorroga_meses = parseInt(tiempo_prorroga_meses);
+        }
+      } else {
+        // Para creación, incluir todos los campos necesarios
+        proyectoData = {
+          codigo_proyecto,
+          titulo,
+          id_tipo_proyecto: tipoProyecto!.id_tipo_proyecto,
+          id_estado_proyecto,
+          id_director_proyecto,
+          presupuesto_aprobado: presupuesto_aprobado ? parseFloat(presupuesto_aprobado) : 0,
+          fecha_inicio,
+          fecha_fin
+        };
+        
+        // Solo incluir campos de prórroga si tienen valores válidos (igual que en edición)
+        if (fecha_prorroga && fecha_prorroga.trim() !== '') {
+          proyectoData.fecha_prorroga = fecha_prorroga;
+        }
+        if (fecha_prorroga_inicio && fecha_prorroga_inicio.trim() !== '') {
+          proyectoData.fecha_prorroga_inicio = fecha_prorroga_inicio;
+        }
+        if (fecha_prorroga_fin && fecha_prorroga_fin.trim() !== '') {
+          proyectoData.fecha_prorroga_fin = fecha_prorroga_fin;
+        }
+        if (tiempo_prorroga_meses && parseInt(tiempo_prorroga_meses) > 0) {
+          proyectoData.tiempo_prorroga_meses = parseInt(tiempo_prorroga_meses);
+        }
+      }
       
-      // Send data to backend via service layer
-      await projectService.crearProyecto(proyecto as Proyecto);
+      console.log("Enviando datos:", proyectoData);
       
-      alert('Proyecto creado con éxito');
+      if (isEditing && initialProyecto) {
+        // Editar proyecto existente
+        await projectAPI.editarProyecto(initialProyecto.id_proyecto, proyectoData as Omit<Proyecto, 'id_proyecto'>);
+        alert('Proyecto actualizado con éxito');
+      } else {
+        // Crear nuevo proyecto
+        await projectService.crearProyecto(proyectoData as Proyecto);
+        alert('Proyecto creado con éxito');
+      }
+      
       setIsLoading(false);
       return true;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Error al crear el proyecto';
+      console.error('Error completo:', err);
+      
+      let errorMessage = isEditing ? 'Error al actualizar el proyecto' : 'Error al crear el proyecto';
+      
+      // Manejo mejorado de errores para obtener información detallada
+      if (err && typeof err === 'object' && 'response' in err) {
+        const response = (err as any).response;
+        console.error('Response status:', response?.status);
+        console.error('Response data:', response?.data);
+        
+        if (response?.status === 422) {
+          // Error de validación del servidor
+          if (response.data && response.data.detail) {
+            if (Array.isArray(response.data.detail)) {
+              // FastAPI devuelve errores de validación como array
+              const errorDetails = response.data.detail.map((error: any) => 
+                `${error.loc.join('.')}: ${error.msg}`
+              ).join(', ');
+              errorMessage = `Error de validación: ${errorDetails}`;
+            } else {
+              errorMessage = `Error de validación: ${response.data.detail}`;
+            }
+          } else {
+            errorMessage = 'Error de validación: Los datos enviados no son válidos';
+          }
+        } else if (response?.data?.message) {
+          errorMessage = response.data.message;
+        }
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+      
       console.error(errorMessage, err);
       setError(errorMessage);
       setIsLoading(false);
@@ -334,6 +523,7 @@ export const useProjectForm = ({ initialTipoProyecto }: UseProjectFormProps) => 
     isLoading,
     error,
     setError,
+    isEditing, // Agregar esta propiedad
     
     // Handlers
     handleDirectorChange,

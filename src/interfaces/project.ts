@@ -12,6 +12,7 @@ export interface Proyecto {
   fecha_prorroga: string;
   fecha_prorroga_inicio: string;
   fecha_prorroga_fin: string;
+  tiempo_prorroga_meses?: number;
 }
 
 export interface TipoProyecto {
@@ -28,7 +29,7 @@ export interface TipoProyecto {
 export interface EstadoProyecto {
   id_estado_proyecto: string;
   nombre: string;
-  descripcion: string;
+  descripcion?: string;
 }
 
 export interface DirectorProyecto {

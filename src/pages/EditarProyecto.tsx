@@ -1,42 +1,88 @@
-// src/components/CrearProyecto.tsx
+// src/pages/EditarProyecto.tsx
 import React, { useEffect, useState } from 'react';
 import { Form, Button, Card } from 'react-bootstrap';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { HelpCircle } from 'lucide-react';
-import { TipoProyecto } from '../interfaces/project';
+import { Proyecto, TipoProyecto } from '../interfaces/project';
+import { projectAPI } from '../api/projectAPI';
 import { useProjectForm } from '../hooks/useProjectForm';
 import { ProyectoFormHeader } from '../components/ProyectoFormHeader';
 import { ProrrogaSection } from '../components/ProrrogaSection';
+import BusquedaProyecto from '../components/BusquedaProyecto';
 import '../styles/NuevoProyecto.css';
 
-interface LocationState {
-  tipoProyecto: TipoProyecto;
-}
-
-const CrearProyecto: React.FC = () => {
-  const location = useLocation();
+const EditarProyecto: React.FC = () => {
   const navigate = useNavigate();
-  const state = location.state as LocationState;
+  
+  // Estados para la búsqueda de proyectos
+  const [proyectos, setProyectos] = useState<Proyecto[]>([]);
+  const [proyectoSeleccionado, setProyectoSeleccionado] = useState<Proyecto | null>(null);
+  const [tipoProyectoSeleccionado, setTipoProyectoSeleccionado] = useState<TipoProyecto | null>(null);
+  const [cargandoProyectos, setCargandoProyectos] = useState(false);
+  const [errorBusqueda, setErrorBusqueda] = useState<string | null>(null);
   
   // Estado para controlar qué tooltip está visible
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
   
-  // Initialize our custom hook
-  const form = useProjectForm({ initialTipoProyecto: state?.tipoProyecto || null });
+  // Initialize our custom hook with editing mode
+  const form = useProjectForm({ 
+    initialTipoProyecto: tipoProyectoSeleccionado, 
+    initialProyecto: proyectoSeleccionado,
+    isEditing: true 
+  });
 
-  // Effect to check if we have a valid project type
+  // Cargar proyectos al montar el componente
   useEffect(() => {
-    if (!state?.tipoProyecto) {
-      form.setError('Por favor seleccione un tipo de proyecto');
-    }
-  }, [state]);
+    const cargarProyectos = async () => {
+      setCargandoProyectos(true);
+      setErrorBusqueda(null);
+      
+      try {
+        const proyectosData = await projectAPI.getProyectos();
+        setProyectos(proyectosData);
+      } catch (error) {
+        console.error('Error cargando proyectos:', error);
+        setErrorBusqueda('Error al cargar los proyectos');
+      } finally {
+        setCargandoProyectos(false);
+      }
+    };
+
+    cargarProyectos();
+  }, []);
+
+  // Cargar tipo de proyecto cuando se selecciona un proyecto
+  useEffect(() => {
+    const cargarTipoProyecto = async () => {
+      if (!proyectoSeleccionado) return;
+
+      try {
+        const tiposProyecto = await projectAPI.getTiposProyecto();
+        const tipoEncontrado = tiposProyecto.find(
+          tipo => tipo.id_tipo_proyecto === proyectoSeleccionado.id_tipo_proyecto
+        );
+        setTipoProyectoSeleccionado(tipoEncontrado || null);
+      } catch (error) {
+        console.error('Error cargando tipo de proyecto:', error);
+        setErrorBusqueda('Error al cargar el tipo de proyecto');
+      }
+    };
+
+    cargarTipoProyecto();
+  }, [proyectoSeleccionado]);
+
+  // Manejar selección de proyecto
+  const handleSeleccionarProyecto = (proyecto: Proyecto) => {
+    setProyectoSeleccionado(proyecto);
+    setErrorBusqueda(null);
+  };
 
   // Submit form handler that performs navigation after successful submission
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     const success = await form.handleSubmit();
     if (success) {
-      navigate('/crearPOA');
+      navigate('/ver-proyectos');
     }
   };
 
@@ -70,13 +116,50 @@ const CrearProyecto: React.FC = () => {
     </div>
   );
 
+  // Si no hay proyecto seleccionado, mostrar búsqueda
+  if (!proyectoSeleccionado) {
+    return (
+      <div className="nuevo-proyecto-wrapper">
+        <Card className="nuevo-proyecto-card shadow-lg">
+          <ProyectoFormHeader 
+            tipoProyecto={null} 
+            error={errorBusqueda}
+            isEditing={true}
+            proyectoSeleccionado={null}
+          />
+          
+          <Card.Body className="p-4">
+            <BusquedaProyecto
+              proyectos={proyectos}
+              isLoading={cargandoProyectos}
+              seleccionarProyecto={handleSeleccionarProyecto}
+          />
+          
+          <div className="button-group mt-4">
+            <Button 
+              variant="secondary" 
+              type="button" 
+              size="lg" 
+              className="btn-custom btn-secondary-custom"
+              onClick={() => navigate('/ver-proyectos')}
+            >
+              Volver
+            </Button>
+          </div>
+          </Card.Body>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="nuevo-proyecto-wrapper">
       <Card className="nuevo-proyecto-card shadow-lg">
         <ProyectoFormHeader 
-          tipoProyecto={form.tipoProyecto} 
+          tipoProyecto={tipoProyectoSeleccionado} 
           error={form.error}
-          isEditing={false}
+          isEditing={true}
+          proyectoSeleccionado={proyectoSeleccionado}
         />
         
         <Card.Body className="p-4">
@@ -87,13 +170,13 @@ const CrearProyecto: React.FC = () => {
               Tipo de Proyecto <span className="required-field">*</span>
               <HelpTooltip 
                 fieldName="tipo_proyecto" 
-                content="El tipo de proyecto no puede ser modificado después de seleccionado." 
+                content="El tipo de proyecto no puede ser modificado después de creado." 
               />
             </Form.Label>
             <Form.Control
               type="text"
               size="lg"
-              value={form.tipoProyecto?.nombre || ''}
+              value={tipoProyectoSeleccionado?.nombre || ''}
               readOnly
               className="form-control-custom form-control-readonly"
               onFocus={() => toggleTooltip('tipo_proyecto')}
@@ -122,7 +205,7 @@ const CrearProyecto: React.FC = () => {
                   Fecha de Inicio <span className="required-field">*</span>
                   <HelpTooltip 
                     fieldName="fecha_inicio" 
-                    content="A partir de esta fecha se generará el código del proyecto y se calculará la fecha máxima de fin." 
+                    content="Modificar esta fecha puede afectar el código del proyecto." 
                   />
                 </Form.Label>
                 <Form.Control
@@ -140,10 +223,10 @@ const CrearProyecto: React.FC = () => {
               <Form.Group controlId="fecha_fin" className="form-group-custom">
                 <Form.Label className="form-label-custom">
                   Fecha de Fin
-                  {form.tipoProyecto?.duracion_meses && form.fecha_inicio && (
+                  {tipoProyectoSeleccionado?.duracion_meses && form.fecha_inicio && (
                     <HelpTooltip 
                       fieldName="fecha_fin" 
-                      content={`Máximo ${form.tipoProyecto.duracion_meses} meses desde la fecha de inicio`} 
+                      content={`Máximo ${tipoProyectoSeleccionado.duracion_meses} meses desde la fecha de inicio`} 
                     />
                   )}
                 </Form.Label>
@@ -155,7 +238,7 @@ const CrearProyecto: React.FC = () => {
                   max={form.fechaFinMaxima}
                   isInvalid={!!form.fechaFinError}
                   className="form-control-custom"
-                  onFocus={() => form.tipoProyecto?.duracion_meses && form.fecha_inicio && toggleTooltip('fecha_fin')}
+                  onFocus={() => tipoProyectoSeleccionado?.duracion_meses && form.fecha_inicio && toggleTooltip('fecha_fin')}
                 />
                 {form.fechaFinError && (
                   <Form.Control.Feedback type="invalid">
@@ -174,15 +257,15 @@ const CrearProyecto: React.FC = () => {
                   Código del Proyecto <span className="required-field">*</span>
                   <HelpTooltip 
                     fieldName="codigo_proyecto" 
-                    content="Código automático según tipo de proyecto y fecha de inicio." 
+                    content="El código puede ser modificado manualmente." 
                   />
                 </Form.Label>
                 <Form.Control
                   type="text"
-                  placeholder="Se generará automáticamente"
+                  placeholder="Código del proyecto"
                   size="lg"
                   value={form.codigo_proyecto}
-                    onChange={(e) => form.setCodigo_proyecto(e.target.value)}
+                  onChange={(e) => form.setCodigo_proyecto(e.target.value)}
                   className="form-control-custom"
                   onFocus={() => toggleTooltip('codigo_proyecto')}
                 />
@@ -255,8 +338,8 @@ const CrearProyecto: React.FC = () => {
               Presupuesto Aprobado
               <HelpTooltip 
                 fieldName="presupuesto_aprobado" 
-                content={form.tipoProyecto?.presupuesto_maximo ? 
-                  `El presupuesto debe ser un valor positivo y no debe exceder ${form.tipoProyecto.presupuesto_maximo.toLocaleString('es-CO')}` : 
+                content={tipoProyectoSeleccionado?.presupuesto_maximo ? 
+                  `El presupuesto debe ser un valor positivo y no debe exceder ${tipoProyectoSeleccionado.presupuesto_maximo.toLocaleString('es-CO')}` : 
                   'El presupuesto debe ser un valor positivo'} 
               />
             </Form.Label>
@@ -301,9 +384,9 @@ const CrearProyecto: React.FC = () => {
               type="button" 
               size="lg" 
               className="btn-custom btn-secondary-custom"
-              onClick={() => navigate('/tipos-proyecto')}
+              onClick={() => setProyectoSeleccionado(null)}
             >
-              Volver
+              Cambiar Proyecto
             </Button>
             <Button 
               variant="primary" 
@@ -312,7 +395,7 @@ const CrearProyecto: React.FC = () => {
               className="btn-custom btn-primary-custom"
               disabled={form.isLoading}
             >
-              {form.isLoading ? 'Cargando...' : 'Crear Proyecto'}
+              {form.isLoading ? 'Actualizando...' : 'Actualizar Proyecto'}
             </Button>
           </div>
           </Form>
@@ -322,4 +405,4 @@ const CrearProyecto: React.FC = () => {
   );
 };
 
-export default CrearProyecto;
+export default EditarProyecto;

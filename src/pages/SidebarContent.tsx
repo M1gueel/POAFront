@@ -107,8 +107,8 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
 
                 <Nav.Item>
                   <Nav.Link
-                    className={`text-white ${isActive("/crearPOA")}`}
-                    onClick={() => handleNavigate("/crearPOA")}
+                    className={`text-white ${isActive("/crear-poa")}`}
+                    onClick={() => handleNavigate("/crear-poa")}
                   >
                     <FileChartLine size={iconSize} className="me-2" />
                     Nuevo POA
@@ -141,8 +141,8 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
             {hasAccessTo([ROLES.ADMINISTRADOR, ROLES.DIRECTOR_DE_INVESTIGACION]) && (
               <Nav.Item>
                 <Nav.Link
-                  className={`text-white ${isActive("/tipos-proyecto")}`}
-                  onClick={() => handleNavigate("/tipos-proyecto")}
+                  className={`text-white ${isActive("/editar-proyecto")}`}
+                  onClick={() => handleNavigate("/editar-proyecto")}
                 >
                   <FolderKanban size={iconSize} className="me-2" />
                   Editar Proyecto
@@ -157,8 +157,8 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
 
                 <Nav.Item>
                   <Nav.Link
-                    className={`text-white ${isActive("/crearPOA")}`}
-                    onClick={() => handleNavigate("/crearPOA")}
+                    className={`text-white ${isActive("/editar-poa")}`}
+                    onClick={() => handleNavigate("/editar-poa")}
                   >
                     <FileChartLine size={iconSize} className="me-2" />
                     Editar POA
@@ -174,8 +174,8 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
 
                 <Nav.Item>
                   <Nav.Link
-                    className={`text-white ${isActive("/agregar-actividad")}`}
-                    onClick={() => handleNavigate("/agregar-actividad")}
+                    className={`text-white ${isActive("/editar-actividad-tarea")}`}
+                    onClick={() => handleNavigate("/editar-actividad-tarea")}
                   >
                     <FileChartLine size={iconSize} className="me-2" />
                     Editar Actividades y Tareas
@@ -332,8 +332,8 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
           {hasAccessTo([ROLES.ADMINISTRADOR, ROLES.DIRECTOR_DE_INVESTIGACION]) && (
             <Nav.Item>
               <Nav.Link
-                className={`text-white ${isActive("/crearPOA")}`}
-                onClick={() => handleNavigate("/crearPOA")}
+                className={`text-white ${isActive("/crear-poa")}`}
+                onClick={() => handleNavigate("/crear-poa")}
                 title="Nuevo POA"
               >
                 <FileChartLine size={iconSize} />
@@ -345,8 +345,8 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
           {hasAccessTo([ROLES.ADMINISTRADOR, ROLES.DIRECTOR_DE_INVESTIGACION, ROLES.DIRECTOR_DE_PROYECTO]) && (
             <Nav.Item>
               <Nav.Link
-                className={`text-white ${isActive("/agregar-actividad")}`}
-                onClick={() => handleNavigate("/agregar-actividad")}
+                className={`text-white ${isActive("/agregar-actividad-tarea")}`}
+                onClick={() => handleNavigate("/agregar-actividad-tarea")}
                 title="Agregar Actividad"
               >
                 <FileChartLine size={iconSize} />
@@ -362,8 +362,8 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
           {hasAccessTo([ROLES.ADMINISTRADOR, ROLES.DIRECTOR_DE_INVESTIGACION]) && (
             <Nav.Item>
               <Nav.Link
-                className={`text-white ${isActive("/tipos-proyecto")}`}
-                onClick={() => handleNavigate("/tipos-proyecto")}
+                className={`text-white ${isActive("/editar-proyecto")}`}
+                onClick={() => handleNavigate("/editar-proyecto")}
                 style={{ cursor: 'pointer' }}
                 title="Editar Proyecto"
               >
@@ -377,8 +377,8 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
           {hasAccessTo([ROLES.ADMINISTRADOR, ROLES.DIRECTOR_DE_INVESTIGACION]) && (
             <Nav.Item>
               <Nav.Link
-                className={`text-white ${isActive("/crearPOA")}`}
-                onClick={() => handleNavigate("/crearPOA")}
+                className={`text-white ${isActive("/editar-poa")}`}
+                onClick={() => handleNavigate("/editar-poa")}
                 title="Editar POA"
               >
                 <FileChartLine size={iconSize} />
@@ -390,8 +390,8 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
           {hasAccessTo([ROLES.ADMINISTRADOR, ROLES.DIRECTOR_DE_INVESTIGACION, ROLES.DIRECTOR_DE_PROYECTO]) && (
             <Nav.Item>
               <Nav.Link
-                className={`text-white ${isActive("/agregar-actividad")}`}
-                onClick={() => handleNavigate("/agregar-actividad")}
+                className={`text-white ${isActive("/agregar-actividad-tarea")}`}
+                onClick={() => handleNavigate("/agregar-actividad-tarea")}
                 title="Editar Actividad"
               >
                 <FileChartLine size={iconSize} />
