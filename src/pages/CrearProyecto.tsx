@@ -72,10 +72,15 @@ const CrearProyecto: React.FC = () => {
 
   return (
     <div className="nuevo-proyecto-wrapper">
-      <Card className="nuevo-proyecto-card">
-        <ProyectoFormHeader tipoProyecto={form.tipoProyecto} error={form.error} />
+      <Card className="nuevo-proyecto-card shadow-lg">
+        <ProyectoFormHeader 
+          tipoProyecto={form.tipoProyecto} 
+          error={form.error}
+          isEditing={false}
+        />
         
-        <Form className="py-3" onSubmit={onSubmit}>
+        <Card.Body className="p-4">
+          <Form onSubmit={onSubmit}>
           {/* Tipo de Proyecto */}
           <Form.Group controlId="tipo_proyecto" className="form-group-custom">
             <Form.Label className="form-label-custom">
@@ -310,7 +315,8 @@ const CrearProyecto: React.FC = () => {
               {form.isLoading ? 'Cargando...' : 'Crear Proyecto'}
             </Button>
           </div>
-        </Form>
+          </Form>
+        </Card.Body>
       </Card>
     </div>
   );

@@ -59,9 +59,27 @@ export const poaAPI = {
     },
 
     // Editar un POA existente
-    editarPOA: async (id: string, poaData: Partial<PoaCreate>): Promise<POA> => {
-        const response = await API.put<POA>(`/poas/${id}`, poaData);
-        return response.data;
+    editarPOA: async (id: string, poaData: PoaCreate): Promise<POA> => {
+        const datosAEnviar = {
+            ...poaData,
+            fecha_creacion: poaData.fecha_creacion ? poaData.fecha_creacion.split('Z')[0] : new Date().toISOString().split('Z')[0], // Eliminar la información de zona horaria
+        };
+        
+        console.log("POA data being sent to API for editing:", datosAEnviar);
+
+        try {
+            const response = await API.put<POA>(`/poas/${id}`, datosAEnviar);
+            console.log("Respuesta del servidor para edición:", response.data);
+            return response.data;
+        } catch (error) {
+            console.error("Error detallado al editar POA:", error);
+            if (typeof error === 'object' && error !== null && 'response' in error) {
+                const err = error as { response: { data: any; status: any } };
+                console.error("Respuesta del servidor:", err.response.data);
+                console.error("Status:", err.response.status);
+            }
+            throw error;
+        }
     },
 
     // Función para obtener el tipo POA correspondiente a un tipo de proyecto

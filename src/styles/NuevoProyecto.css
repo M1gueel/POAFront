@@ -28,6 +28,25 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
+/* Variante para edición con header amarillo */
+.nuevo-proyecto-wrapper .nuevo-proyecto-header.editing {
+  background: linear-gradient(135deg, #ffc107 0%, #ffb300 100%) !important;
+  color: #212529 !important; /* Texto oscuro para contraste con amarillo */
+}
+
+/* También agregar una versión menos específica por si acaso */
+.nuevo-proyecto-header.editing {
+  background: linear-gradient(135deg, #ffc107 0%, #ffb300 100%) !important;
+  color: #212529 !important;
+}
+
+/* Mejora del badge en modo edición */
+.nuevo-proyecto-wrapper .nuevo-proyecto-header.editing .badge,
+.nuevo-proyecto-header.editing .badge {
+  background-color: #495057 !important;
+  color: white !important;
+}
+
 .nuevo-proyecto-title {
   margin-bottom: 0;
   font-weight: 700;

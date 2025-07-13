@@ -16,6 +16,7 @@ import ReportePOA from './pages/ReportePOA';
 import LogsCargaExcel from './pages/LogsCargaExcel';
 import VerProyectos from './pages/VerProyectos';
 import EditarProyecto from './pages/EditarProyecto';
+import EditarPOA from './pages/EditarPOA';
 import { ThemeProvider } from "@mui/material/styles";
 
 import theme from "./theme";
@@ -90,7 +91,7 @@ function AppContent() {
             </ProtectedRoute>
           } />
 
-          <Route path="/crearPOA" element={
+          <Route path="/crear-poa" element={
             <ProtectedRoute>
               <RoleProtectedRoute requiredRoles={[
                 ROLES.ADMINISTRADOR,
@@ -101,7 +102,7 @@ function AppContent() {
             </ProtectedRoute>
           } />
 
-          <Route path="/agregar-actividad" element={
+          <Route path="/agregar-actividad-tarea" element={
             <ProtectedRoute>
               <RoleProtectedRoute requiredRoles={[
                 ROLES.ADMINISTRADOR,
@@ -120,6 +121,17 @@ function AppContent() {
                 ROLES.DIRECTOR_INVESTIGACION,
               ]}>
                 <EditarProyecto />
+              </RoleProtectedRoute>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/editar-poa" element={
+            <ProtectedRoute>
+              <RoleProtectedRoute requiredRoles={[
+                ROLES.ADMINISTRADOR,
+                ROLES.DIRECTOR_INVESTIGACION,
+              ]}>
+                <EditarPOA />
               </RoleProtectedRoute>
             </ProtectedRoute>
           } />

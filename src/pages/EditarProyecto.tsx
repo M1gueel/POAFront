@@ -1,6 +1,6 @@
 // src/pages/EditarProyecto.tsx
 import React, { useEffect, useState } from 'react';
-import { Form, Button, Card, Alert } from 'react-bootstrap';
+import { Form, Button, Card } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { HelpCircle } from 'lucide-react';
 import { Proyecto, TipoProyecto } from '../interfaces/project';
@@ -120,24 +120,19 @@ const EditarProyecto: React.FC = () => {
   if (!proyectoSeleccionado) {
     return (
       <div className="nuevo-proyecto-wrapper">
-        <Card className="nuevo-proyecto-card">
-          <div className="nuevo-proyecto-header">
-            <h2 className="nuevo-proyecto-title">Editar Proyecto</h2>
-            <p className="nuevo-proyecto-subtitle">
-              Seleccione el proyecto que desea editar
-            </p>
-          </div>
+        <Card className="nuevo-proyecto-card shadow-lg">
+          <ProyectoFormHeader 
+            tipoProyecto={null} 
+            error={errorBusqueda}
+            isEditing={true}
+            proyectoSeleccionado={null}
+          />
           
-          {errorBusqueda && (
-            <Alert variant="danger" className="mb-3">
-              {errorBusqueda}
-            </Alert>
-          )}
-          
-          <BusquedaProyecto
-            proyectos={proyectos}
-            isLoading={cargandoProyectos}
-            seleccionarProyecto={handleSeleccionarProyecto}
+          <Card.Body className="p-4">
+            <BusquedaProyecto
+              proyectos={proyectos}
+              isLoading={cargandoProyectos}
+              seleccionarProyecto={handleSeleccionarProyecto}
           />
           
           <div className="button-group mt-4">
@@ -151,6 +146,7 @@ const EditarProyecto: React.FC = () => {
               Volver
             </Button>
           </div>
+          </Card.Body>
         </Card>
       </div>
     );
@@ -158,7 +154,7 @@ const EditarProyecto: React.FC = () => {
 
   return (
     <div className="nuevo-proyecto-wrapper">
-      <Card className="nuevo-proyecto-card">
+      <Card className="nuevo-proyecto-card shadow-lg">
         <ProyectoFormHeader 
           tipoProyecto={tipoProyectoSeleccionado} 
           error={form.error}
@@ -166,7 +162,8 @@ const EditarProyecto: React.FC = () => {
           proyectoSeleccionado={proyectoSeleccionado}
         />
         
-        <Form className="py-3" onSubmit={onSubmit}>
+        <Card.Body className="p-4">
+          <Form onSubmit={onSubmit}>
           {/* Tipo de Proyecto */}
           <Form.Group controlId="tipo_proyecto" className="form-group-custom">
             <Form.Label className="form-label-custom">
@@ -401,7 +398,8 @@ const EditarProyecto: React.FC = () => {
               {form.isLoading ? 'Actualizando...' : 'Actualizar Proyecto'}
             </Button>
           </div>
-        </Form>
+          </Form>
+        </Card.Body>
       </Card>
     </div>
   );
