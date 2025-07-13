@@ -125,8 +125,8 @@ const ReportePOA: React.FC = () => {
               className="custom-select"
             >
               <MenuItem value="">-- Selecciona un año --</MenuItem>
-              {Array.from({ length: 9 }, (_, i) => {
-                const year = new Date().getFullYear() - i;
+              {Array.from({ length: 12 }, (_, i) => {
+                const year = new Date().getFullYear() +3 - i;
                 return (
                   <MenuItem key={year} value={year}>
                     {year}
