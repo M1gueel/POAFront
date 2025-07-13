@@ -83,87 +83,92 @@ const LogsCargaExcel: React.FC = () => {
       <Box
         sx={{
           display: "flex",
-          gap: 2,
+          justifyContent: "space-between",
           mb: 3,
-          justifyContent: "center",
-          alignItems: "center",
+          pl: 4,
+          pr: 4,
         }}
       >
-        <TextField
-          label="Fecha inicio"
-          type="date"
-          name="fecha_inicio"
-          value={filters.fecha_inicio}
-          onChange={handleChange}
-          InputLabelProps={{ shrink: true }}
-          size="small"
-          sx={{ minWidth: 180 }}
-          placeholder="dd/mm/aaaa"
-          inputProps={{
-            max: new Date().toISOString().split("T")[0]
-          }}
-        />
-        <TextField
-          label="Fecha fin"
-          type="date"
-          name="fecha_fin"
-          value={filters.fecha_fin}
-          onChange={handleChange}
-          InputLabelProps={{ shrink: true }}
-          size="small"
-          sx={{ minWidth: 180 }}
-          placeholder="dd/mm/aaaa"
-          inputProps={{
-            max: new Date().toISOString().split("T")[0]
-          }}
-        />
-        <FormControl size="small" sx={{ minWidth: 180 }}>
-          <InputLabel>Usuario</InputLabel>
-          <Select
-            name="usuario"
-            value={filters.usuario}
-            label="Usuario"
-            onChange={handleSelectChange}
+        {/* Filtros principales */}
+        <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+          <TextField
+            label="Fecha inicio"
+            type="date"
+            name="fecha_inicio"
+            value={filters.fecha_inicio}
+            onChange={handleChange}
+            InputLabelProps={{ shrink: true }}
+            size="small"
+            sx={{ minWidth: 150 }}
+            placeholder="dd/mm/aaaa"
+            inputProps={{
+              max: new Date().toISOString().split("T")[0],
+            }}
+          />
+          <TextField
+            label="Fecha fin"
+            type="date"
+            name="fecha_fin"
+            value={filters.fecha_fin}
+            onChange={handleChange}
+            InputLabelProps={{ shrink: true }}
+            size="small"
+            sx={{ minWidth: 150 }}
+            placeholder="dd/mm/aaaa"
+            inputProps={{
+              max: new Date().toISOString().split("T")[0],
+            }}
+          />
+          <Button
+            variant="contained"
+            sx={{
+              background: "#1d3557",
+              color: "#fff",
+              minWidth: 120,
+              height: 40,
+              "&:hover": {
+                background: "#28497b", // Cambia este color al que prefieras para el hover
+              },
+            }}
+            onClick={handleBuscar}
           >
-            <MenuItem value="">Todos</MenuItem>
-            {usuarios.map((u) => (
-              <MenuItem key={u} value={u}>
-                {u}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        <FormControl size="small" sx={{ minWidth: 180 }}>
-          <InputLabel>Código POA</InputLabel>
-          <Select
-            name="codigo_poa"
-            value={filters.codigo_poa}
-            label="Código POA"
-            onChange={handleSelectChange}
-          >
-            <MenuItem value="">Todos</MenuItem>
-            {codigosPoa.map((c) => (
-              <MenuItem key={c} value={c}>
-                {c}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        <Button
-          variant="contained"
-          sx={{
-            background: "#1d3557",
-            color: "#fff",
-            minWidth: 120,
-            height: 40,
-            '&:hover': {
-      background: "#28497b", // Cambia este color al que prefieras para el hover
-    },
-          }}
-          onClick={handleBuscar}
-        >
-          BUSCAR
-        </Button>
+            BUSCAR
+          </Button>
+        </Box>
+        <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+          <FormControl size="small" sx={{ minWidth: 110 }}>
+            <InputLabel>Usuario</InputLabel>
+            <Select
+              name="usuario"
+              value={filters.usuario}
+              label="Usuario"
+              onChange={handleSelectChange}
+            >
+              <MenuItem value="">Todos</MenuItem>
+              {usuarios.map((u) => (
+                <MenuItem key={u} value={u}>
+                  {u}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ minWidth: 140 }}>
+            <InputLabel>Código POA</InputLabel>
+            <Select
+              name="codigo_poa"
+              value={filters.codigo_poa}
+              label="Código POA"
+              onChange={handleSelectChange}
+            >
+              <MenuItem value="">Todos</MenuItem>
+              {codigosPoa.map((c) => (
+                <MenuItem key={c} value={c}>
+                  {c}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
       </Box>
       <TableContainer component={Paper}>
         <Table>
@@ -173,54 +178,59 @@ const LogsCargaExcel: React.FC = () => {
             }}
           >
             <TableRow>
-    <TableCell
-      align="center"
-      sx={{ color: "#fff", fontWeight: 700, fontSize: 16 }}
-    >
-      Fecha
-    </TableCell>
-    <TableCell
-      align="center"
-      sx={{ color: "#fff", fontWeight: 700, fontSize: 16 }}
-    >
-      Usuario
-    </TableCell>
-    <TableCell
-      align="center"
-      sx={{ color: "#fff", fontWeight: 700, fontSize: 16 }}
-    >
-      Correo
-    </TableCell>
-    <TableCell
-      align="center"
-      sx={{ color: "#fff", fontWeight: 700, fontSize: 16 }}
-    >
-      Proyecto
-    </TableCell>
-    <TableCell
-      align="center"
-      sx={{ color: "#fff", fontWeight: 700, fontSize: 16, minWidth: 200 }}
-    >
-      Código POA
-    </TableCell>
-    <TableCell
-      align="center"
-      sx={{ color: "#fff", fontWeight: 700, fontSize: 16 }}
-    >
-      Archivo
-    </TableCell>
-    <TableCell
-      align="center"
-      sx={{ color: "#fff", fontWeight: 700, fontSize: 16 }}
-    >
-      Hoja
-    </TableCell>
-    <TableCell
-      align="center"
-      sx={{ color: "#fff", fontWeight: 700, fontSize: 16 }}
-    >
-      Mensaje
-    </TableCell>
+              <TableCell
+                align="center"
+                sx={{ color: "#fff", fontWeight: 700, fontSize: 16 }}
+              >
+                Fecha
+              </TableCell>
+              <TableCell
+                align="center"
+                sx={{ color: "#fff", fontWeight: 700, fontSize: 16 }}
+              >
+                Usuario
+              </TableCell>
+              <TableCell
+                align="center"
+                sx={{ color: "#fff", fontWeight: 700, fontSize: 16 }}
+              >
+                Correo
+              </TableCell>
+              <TableCell
+                align="center"
+                sx={{ color: "#fff", fontWeight: 700, fontSize: 16 }}
+              >
+                Proyecto
+              </TableCell>
+              <TableCell
+                align="center"
+                sx={{
+                  color: "#fff",
+                  fontWeight: 700,
+                  fontSize: 16,
+                  minWidth: 200,
+                }}
+              >
+                Código POA
+              </TableCell>
+              <TableCell
+                align="center"
+                sx={{ color: "#fff", fontWeight: 700, fontSize: 16 }}
+              >
+                Archivo
+              </TableCell>
+              <TableCell
+                align="center"
+                sx={{ color: "#fff", fontWeight: 700, fontSize: 16 }}
+              >
+                Hoja
+              </TableCell>
+              <TableCell
+                align="center"
+                sx={{ color: "#fff", fontWeight: 700, fontSize: 16 }}
+              >
+                Observación
+              </TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
