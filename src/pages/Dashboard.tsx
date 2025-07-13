@@ -1,30 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { poaAPI } from '../api/poaAPI';
 import { projectAPI } from '../api/projectAPI';
-import { POA, EstadoPOA } from '../interfaces/poa';
-import { Proyecto } from '../interfaces/project';
+import { EstadoPOA } from '../interfaces/poa';
+import { POAWithProject, FilterState, ColumnFilters } from '../interfaces/dashboard';
 import '../styles/Dashboard.css';
 
-interface POAWithProject extends POA {
-  proyecto?: Proyecto;
-}
-
-interface FilterState {
-  searchTerm: string;
-  sortBy: 'anio' | 'presupuesto' | 'titulo' | 'codigo';
-  sortOrder: 'asc' | 'desc';
-  yearFilter: string;
-  minBudget: string;
-  maxBudget: string;
-}
-
-interface ColumnFilters {
-  [key: string]: FilterState;
-}
-
 const Dashboard: React.FC = () => {
-  const navigate = useNavigate();
   const [estadosPOA, setEstadosPOA] = useState<EstadoPOA[]>([]);
   const [poasWithProjects, setPOAsWithProjects] = useState<POAWithProject[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -192,11 +173,6 @@ const Dashboard: React.FC = () => {
       return filteredPOAs;
     };
   }, [poasWithProjects, columnFilters]);
-
-  // Manejar navegación a agregar actividad
-  const handleAddActivities = (poaId: string) => {
-    navigate('/agregar-actividad', { state: { poaId } });
-  };
 
   // Obtener años únicos para el filtro
   const getUniqueYears = useMemo(() => {
@@ -392,16 +368,6 @@ const Dashboard: React.FC = () => {
                                 </span>
                               </div>
                             </div>
-                          </div>
-                          
-                          <div className="card-footer">
-                            <button
-                              className="btn btn-primary btn-sm w-100"
-                              onClick={() => handleAddActivities(poa.id_poa)}
-                            >
-                              <i className="bi bi-plus-circle me-1"></i>
-                              Añadir Actividades
-                            </button>
                           </div>
                         </div>
                       ))

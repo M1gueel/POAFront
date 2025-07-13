@@ -2,6 +2,7 @@ import { Periodo } from './periodo';
 export interface POA {
   id_poa: string;       // UUID
   id_proyecto: string;  // UUID
+  id_periodo: string;   // UUID del período
   codigo_poa: string;
   fecha_creacion: string;
   id_estado_poa: string;  // UUID
@@ -9,7 +10,7 @@ export interface POA {
   anio_ejecucion: string;
   presupuesto_asignado: number;
   periodo?: Periodo;  // Propiedad opcional
-  }
+}
   
 export interface EstadoPOA {
   id_estado_poa: string;
@@ -34,6 +35,6 @@ export interface PoaCreate {
   id_tipo_poa: string;  // Debe ser un UUID válido
   anio_ejecucion: string;
   presupuesto_asignado: number;  // Se convierte a Decimal en el backend
-  fecha_creacion?: string;  // Se añade automáticamente en poaAPI.ts
-  id_estado_poa: string | null; // Añadir este campo
+  fecha_creacion: string;  // Requerido para la edición
+  id_estado_poa: string; // Requerido para la edición
 }

@@ -32,6 +32,18 @@ export const projectAPI = {
         return response.data;
     },
 
+    // Editar un proyecto existente
+    editarProyecto: async (id: string, proyectoData: Omit<Proyecto, 'id_proyecto'>): Promise<Proyecto> => {
+        const response = await API.put<Proyecto>(`/proyectos/${id}`, proyectoData);
+        return response.data;
+    },
+
+    // Obtener un proyecto específico por ID
+    obtenerProyecto: async (id: string): Promise<Proyecto> => {
+        const response = await API.get<Proyecto>(`/proyectos/${id}`);
+        return response.data;
+    },
+
     // Obtener proyectos (para asociar al POA)
     //TODO: Realizar el filtrado de proyecto en el servidor
     getProyectos: async (filtro?: { codigo?: string, titulo?: string }): Promise<Proyecto[]> => {

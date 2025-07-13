@@ -16,8 +16,8 @@ export interface ActividadForm {
 
 export interface ActividadCreate {
     descripcion_actividad: string;
-    total_por_actividad: number; // Este valor siempre será 0 inicialmente
-    saldo_actividad: number; // Este valor siempre será 0 inicialmente
+    total_por_actividad?: number; // Opcional: el backend lo calcula automáticamente
+    saldo_actividad?: number; // Opcional: el backend lo calcula automáticamente
 }
 
 export interface ActividadForm {
@@ -36,7 +36,7 @@ export interface POAConActividades {
     }[];
   }
 
-  export interface ActividadConTareas {
+export interface ActividadConTareas {
   actividad_id: string;
   codigo_actividad: string;
   id_actividad_real?: string; // ID real generado por el backend

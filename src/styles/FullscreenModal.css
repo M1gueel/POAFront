@@ -1,0 +1,98 @@
+/* FullscreenModal.css */
+
+/* Modal que ocupa 90% de la pantalla */
+.modal-90w {
+  width: 90vw;
+  max-width: none !important;
+  margin: 2vh auto !important;
+}
+
+.modal-90w .modal-content {
+  height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-90w .modal-header {
+  flex-shrink: 0; 
+  border-bottom: 1px solid #011843;
+  padding: 1rem 1.5rem;
+  background-color: #011843;
+  color: white;
+}
+
+.modal-90w .modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+  background-color: #ffffff;
+}
+
+.modal-90w .modal-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: white;
+}
+
+/* Estilo para el botón de cierre (la "X") */
+.modal-90w .btn-close {
+  filter: brightness(0) invert(1); /* convierte la X a blanco */
+  opacity: 1; /* asegúrate de que sea visible */
+  font-weight: bold;
+}
+
+/* Estilos responsivos */
+@media (max-width: 768px) {
+  .modal-90w {
+    width: 95vw;
+    margin: 1vh auto !important;
+  }
+  
+  .modal-90w .modal-content {
+    height: 95vh;
+  }
+  
+  .modal-90w .modal-body {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .modal-90w {
+    width: 98vw;
+    margin: 0.5vh auto !important;
+  }
+  
+  .modal-90w .modal-content {
+    height: 98vh;
+  }
+  
+  .modal-90w .modal-body {
+    padding: 0.75rem;
+  }
+}
+
+/* Mejoras adicionales para la tabla dentro del modal */
+.modal-90w .table-responsive {
+  border-radius: 0.375rem;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.modal-90w .table {
+  margin-bottom: 0;
+}
+
+/* Estilos para el backdrop del modal */
+.modal-backdrop.show {
+  opacity: 0.6;
+}
+
+/* Animación suave para el modal */
+.modal.fade .modal-dialog {
+  transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+}
+
+.modal.show .modal-dialog {
+  transform: none;
+  opacity: 1;
+}

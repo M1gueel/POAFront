@@ -1,5 +1,6 @@
 import React from 'react';
 import { Row, Col, Form, Table, Badge } from 'react-bootstrap';
+import { XCircle } from 'lucide-react';
 import { Proyecto } from '../interfaces/project';
 
 interface BusquedaProyectoProps {
@@ -9,6 +10,7 @@ interface BusquedaProyectoProps {
   // Props opcionales para validación
   validarProyecto?: (proyecto: Proyecto) => Promise<{ esValido: boolean; razon?: string }>;
   mostrarValidacion?: boolean;
+  modoEdicion?: boolean; // Nueva prop para determinar si es modo edición
 }
 
 const BusquedaProyecto: React.FC<BusquedaProyectoProps> = ({
@@ -16,7 +18,8 @@ const BusquedaProyecto: React.FC<BusquedaProyectoProps> = ({
   isLoading,
   seleccionarProyecto,
   validarProyecto,
-  mostrarValidacion = false
+  mostrarValidacion = false,
+  modoEdicion = false // Valor por defecto
 }) => {
   // Estados locales del componente hijo
   const [busquedaProyecto, setBusquedaProyecto] = React.useState('');
@@ -95,6 +98,11 @@ const BusquedaProyecto: React.FC<BusquedaProyectoProps> = ({
     setMostrarBusqueda(false);
   };
 
+  const limpiarBusqueda = () => {
+    setBusquedaProyecto('');
+    setMostrarBusqueda(false);
+  };
+
   const obtenerEstiloFila = (proyecto: Proyecto) => {
     if (!mostrarValidacion || !validaciones[proyecto.id_proyecto]) {
       return { cursor: 'pointer' };
@@ -127,16 +135,41 @@ const BusquedaProyecto: React.FC<BusquedaProyectoProps> = ({
     <Row>
       <Col md={12} className="mb-4">
         <Form.Group controlId="id_proyecto">
-          <Form.Label className="fw-semibold">Proyecto Asociado <span className="text-danger">*</span></Form.Label>
+          <Form.Label className="fw-semibold">
+            {modoEdicion ? 'Proyecto a Editar' : 'Proyecto Asociado'} <span className="text-danger">*</span>
+          </Form.Label>
           <div className="position-relative">
             <Form.Control
               type="text"
-              placeholder="Buscar proyecto por código o título"
+              placeholder={modoEdicion ? "Buscar proyecto con POAs para editar" : "Buscar proyecto por código o título"}
               value={busquedaProyecto}
               onChange={manejarCambioBusqueda}
               onFocus={() => setMostrarBusqueda(true)}
               className="form-control-lg"
+              style={{ paddingRight: busquedaProyecto ? '2.5rem' : '0.75rem' }}
             />
+            
+            {/* Botón de limpiar */}
+            {busquedaProyecto && (
+              <button
+                type="button"
+                onClick={limpiarBusqueda}
+                className="btn btn-link position-absolute"
+                style={{
+                  right: '0.5rem',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  padding: '0.25rem',
+                  border: 'none',
+                  background: 'none',
+                  color: '#6c757d',
+                  zIndex: 10
+                }}
+                title="Limpiar búsqueda"
+              >
+                <XCircle  size={18} />
+              </button>
+            )}
            
             {/* Resultados de búsqueda */}
             {mostrarBusqueda && (
@@ -177,12 +210,12 @@ const BusquedaProyecto: React.FC<BusquedaProyectoProps> = ({
                                     validacion.esValido ? (
                                       <Badge bg="success" className="ms-1">
                                         <i className="bi bi-check-circle me-1"></i>
-                                        Disponible
+                                        {modoEdicion ? 'Editable' : 'Disponible'}
                                       </Badge>
                                     ) : (
                                       <Badge bg="warning" className="ms-1" title={validacion.razon}>
                                         <i className="bi bi-exclamation-triangle me-1"></i>
-                                        No disponible
+                                        {modoEdicion ? 'Sin POAs' : 'No disponible'}
                                       </Badge>
                                     )
                                   ) : (
