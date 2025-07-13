@@ -61,25 +61,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return result;
   };
 
-  // Función para verificar rol por nombre
-  const hasRoleByName = (roleName: string): boolean => {
-    const result = usuario?.rol?.nombre_rol === roleName;
-    console.log(`hasRoleByName(${roleName}):`, result);
-    console.log('usuario?.rol?.nombre_rol:', usuario?.rol?.nombre_rol);
-    return result;
-  };
-
   // Función para verificar múltiples roles por UUID
   const hasAnyRole = (roleIds: string[]): boolean => {
     const result = roleIds.some(roleId => hasRole(roleId));
     console.log(`hasAnyRole(${roleIds.join(', ')}):`, result);
-    return result;
-  };
-
-  // Función para verificar múltiples roles por nombre
-  const hasAnyRoleByName = (roleNames: string[]): boolean => {
-    const result = roleNames.some(roleName => hasRoleByName(roleName));
-    console.log(`hasAnyRoleByName(${roleNames.join(', ')}):`, result);
     return result;
   };
 
@@ -90,10 +75,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const getRoleId = (): string | null => {
     return usuario?.id_rol || null;
-  };
-
-  const getRoleName = (): string | null => {
-    return usuario?.rol?.nombre_rol || null;
   };
 
   // Función para verificar el token periódicamente
@@ -244,12 +225,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     loading,
     getUserRole,
     hasRole,
-    hasRoleByName,
     hasAnyRole,
-    hasAnyRoleByName,
     getUserId,
-    getRoleId,
-    getRoleName
+    getRoleId
   };
 
   return (

@@ -50,8 +50,10 @@ export const authAPI = {
         
         // Obtener datos del usuario
         let userData: UserProfile = {
-            nombre_rol: email,
-            id_rol: 'Usuario',
+            id: '',
+            nombre: email,
+            email: email,
+            id_rol: '',
         };
         
         try {
@@ -62,11 +64,8 @@ export const authAPI = {
             const userResponse = await API.get('/perfil');
             const userDetails = userResponse.data as { nombre?: string; rol: string };
             
-            // Obtener el nombre del rol basado en el UUID del rol
-            const rolName = await userAPI.getRolNameByUUID(userDetails.rol);
-            
             userData = {
-                nombre_rol: rolName, // El nombre del rol va aquí
+                nombre_rol: userDetails.rol, // Usar UUID para compatibilidad
                 id_rol: userDetails.rol, // El UUID del rol va aquí
                 username: userDetails.nombre
             };
@@ -115,29 +114,6 @@ export const userAPI = {
         }
       },
     
-    // Obtener el nombre del rol a partir del UUID del rol
-    getRolNameByUUID: async (rolUUID: string): Promise<string> => {
-        try {
-            const roles = await rolAPI.getRoles();
-            console.log('Roles obtenidos:', roles);
-            console.log('Buscando rol con UUID:', rolUUID);
-            
-            // Buscar el rol por UUID en lugar de por id_rol
-            const rol = roles.find(r => r.id_rol === rolUUID);
-            console.log('Rol encontrado:', rol);
-            
-            return rol ? rol.nombre_rol : 'Usuario';
-        } catch (error) {
-            console.error('Error al obtener nombre del rol:', error);
-            return 'Usuario';
-        }
-    },
-
-    // Mantener el método original por compatibilidad (deprecated)
-    getRolNameById: async (id_rol: string): Promise<string> => {
-        console.warn('getRolNameById está deprecado, usa getRolNameByUUID');
-        return await userAPI.getRolNameByUUID(id_rol);
-    }
 };
 
 // Servicios de roles

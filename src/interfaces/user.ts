@@ -16,7 +16,7 @@ export interface AuthResponse {
         email: string;
         id_rol: string;     // UUID del rol
         rol?: Rol;          // Información completa del rol (opcional)
-  };
+    };
 }
 
 // Interfaz base para el rol
@@ -59,43 +59,184 @@ export interface AuthContextType {
     login: (token: string, userData: Usuario) => void;
     logout: () => void;
     loading: boolean;
-    
     // Funciones para manejo de roles con UUIDs
     getUserRole: () => Rol | null;
     hasRole: (roleId: string) => boolean;           // Ahora usa UUID
-    hasRoleByName: (roleName: string) => boolean;   // Nueva función para nombres
     hasAnyRole: (roleIds: string[]) => boolean;     // Ahora usa UUIDs
-    hasAnyRoleByName: (roleNames: string[]) => boolean; // Nueva función para nombres
-
     // Nuevas funciones de utilidad
     getUserId: () => string | null;
     getRoleId: () => string | null;
-    getRoleName: () => string | null;
 }
 
-// Tipos de utilidad actualizados
-export type RoleType = 
-    | '80ffe2c0-f134-4274-b1aa-b632b74ea070'  // Administrador
-    | '229f92d5-5d85-4557-8208-c0c000ac63b4'  // Director de Investigacion
-    | '60b2d6f2-ac42-4447-bde7-8f8979636350'  // Director de Proyecto
-    | 'b7d16467-bff9-41df-ab7f-5df0d9d35f5c'  // Director de reformas
-    | string;
+// Clase para manejo dinámico de roles
+class RoleManager {
+    private static instance: RoleManager;
+    private roles: Map<string, string> = new Map(); // clave_normalizada -> id_rol
+    private rolesByName: Map<string, string> = new Map(); // nombre_original -> id_rol
+    private rolesLoaded: boolean = false;
 
-// Constantes para los roles (más fácil de mantener)
-export const ROLES = {
-    ADMINISTRADOR: '80ffe2c0-f134-4274-b1aa-b632b74ea070',
-    DIRECTOR_INVESTIGACION: '229f92d5-5d85-4557-8208-c0c000ac63b4',
-    DIRECTOR_PROYECTO: '60b2d6f2-ac42-4447-bde7-8f8979636350',
-    DIRECTOR_REFORMAS: 'b7d16467-bff9-41df-ab7f-5df0d9d35f5c'
-} as const;
+    private constructor() {}
 
-// Mapeo de nombres de roles
-export const ROLE_NAMES = {
-    [ROLES.ADMINISTRADOR]: 'Administrador',
-    [ROLES.DIRECTOR_INVESTIGACION]: 'Director de Investigacion',
-    [ROLES.DIRECTOR_PROYECTO]: 'Director de Proyecto',
-    [ROLES.DIRECTOR_REFORMAS]: 'Director de reformas'
-} as const;
+    static getInstance(): RoleManager {
+        if (!RoleManager.instance) {
+            RoleManager.instance = new RoleManager();
+        }
+        return RoleManager.instance;
+    }
+
+    // Función para normalizar nombres de roles
+    private normalizeRoleName(roleName: string): string {
+        return roleName
+            .toUpperCase()
+            .replace(/\s+/g, '_')
+            .replace(/[ÁÀÄÂ]/g, 'A')
+            .replace(/[ÉÈËÊ]/g, 'E')
+            .replace(/[ÍÌÏÎ]/g, 'I')
+            .replace(/[ÓÒÖÔ]/g, 'O')
+            .replace(/[ÚÙÜÛ]/g, 'U')
+            .replace(/Ñ/g, 'N')
+            .replace(/[^A-Z0-9_]/g, '');
+    }
+
+    // Cargar roles desde la API
+    async loadRoles(): Promise<void> {
+        if (this.rolesLoaded) return;
+
+        try {
+            const { rolAPI } = await import('../api/userAPI');
+            const rolesData = await rolAPI.getRoles();
+            
+            console.log('🔄 Roles obtenidos de la API:', rolesData);
+            
+            // Limpiar mapas
+            this.roles.clear();
+            this.rolesByName.clear();
+            
+            // Mapear roles
+            rolesData.forEach(rol => {
+                const normalizedName = this.normalizeRoleName(rol.nombre_rol);
+                this.roles.set(normalizedName, rol.id_rol);
+                this.rolesByName.set(rol.nombre_rol, rol.id_rol);
+                
+                console.log(`📋 Mapeando: "${rol.nombre_rol}" -> "${normalizedName}" -> ${rol.id_rol}`);
+            });
+            
+            this.rolesLoaded = true;
+            console.log('✅ Roles cargados exitosamente');
+            console.log('🗂️ Mapa de roles normalizados:', Object.fromEntries(this.roles));
+            console.log('🗂️ Mapa de roles por nombre original:', Object.fromEntries(this.rolesByName));
+        } catch (error) {
+            console.error('❌ Error al cargar roles:', error);
+            throw error;
+        }
+    }
+
+    // Obtener UUID del rol por nombre normalizado
+    getRoleId(roleName: string): string | null {
+        const normalizedName = this.normalizeRoleName(roleName);
+        const roleId = this.roles.get(normalizedName);
+        
+        console.log(`🔍 Buscando rol: "${roleName}" -> "${normalizedName}" -> ${roleId || 'NO ENCONTRADO'}`);
+        
+        return roleId || null;
+    }
+
+    // Obtener UUID del rol por nombre original
+    getRoleIdByOriginalName(originalName: string): string | null {
+        const roleId = this.rolesByName.get(originalName);
+        console.log(`🔍 Buscando por nombre original: "${originalName}" -> ${roleId || 'NO ENCONTRADO'}`);
+        return roleId || null;
+    }
+
+    // Verificar si los roles están cargados
+    isLoaded(): boolean {
+        return this.rolesLoaded;
+    }
+
+    // Obtener todos los roles normalizados
+    getAllRoles(): Record<string, string> {
+        return Object.fromEntries(this.roles);
+    }
+
+    // Obtener todos los roles por nombre original
+    getAllRolesByOriginalName(): Record<string, string> {
+        return Object.fromEntries(this.rolesByName);
+    }
+
+    // Recargar roles (útil para refresh)
+    async reloadRoles(): Promise<void> {
+        this.rolesLoaded = false;
+        await this.loadRoles();
+    }
+
+    // Método para debugging
+    debugRoles(): void {
+        console.log('=== ESTADO DE ROLES ===');
+        console.log('Roles cargados:', this.rolesLoaded);
+        console.log('Roles normalizados:', Object.fromEntries(this.roles));
+        console.log('Roles por nombre original:', Object.fromEntries(this.rolesByName));
+        console.log('========================');
+    }
+}
+
+// Instancia global del manager
+const roleManager = RoleManager.getInstance();
+
+// Objeto proxy para los roles que consulta dinámicamente
+export const ROLES = new Proxy({}, {
+    get(target, prop: string) {
+        if (typeof prop !== 'string') return undefined;
+        
+        const roleId = roleManager.getRoleId(prop);
+        if (!roleId) {
+            console.warn(`⚠️ Rol '${prop}' no encontrado. Roles disponibles:`, roleManager.getAllRoles());
+            roleManager.debugRoles(); // Agregar debug automático
+            return null;
+        }
+        return roleId;
+    }
+}) as {
+    ADMINISTRADOR: string;
+    DIRECTOR_DE_INVESTIGACION: string;  // Cambiado para coincidir con el nombre normalizado
+    DIRECTOR_DE_PROYECTO: string;       // Cambiado para coincidir con el nombre normalizado
+    DIRECTOR_DE_REFORMAS: string;       // Cambiado para coincidir con el nombre normalizado
+    [key: string]: string;
+};
+
+// Función para inicializar los roles (debe llamarse al inicio de la app)
+export const initializeRoles = async (): Promise<void> => {
+    console.log('🚀 Inicializando roles...');
+    await roleManager.loadRoles();
+    console.log('✅ Roles inicializados');
+};
+
+// Función para verificar si los roles están cargados
+export const areRolesLoaded = (): boolean => {
+    return roleManager.isLoaded();
+};
+
+// Función para obtener todos los roles (útil para debugging)
+export const getAllRoles = (): Record<string, string> => {
+    return roleManager.getAllRoles();
+};
+
+// Función para obtener todos los roles por nombre original
+export const getAllRolesByOriginalName = (): Record<string, string> => {
+    return roleManager.getAllRolesByOriginalName();
+};
+
+// Función para debugging
+export const debugRoles = (): void => {
+    roleManager.debugRoles();
+};
+
+// Función para obtener rol por nombre original (útil para casos especiales)
+export const getRoleIdByOriginalName = (originalName: string): string | null => {
+    return roleManager.getRoleIdByOriginalName(originalName);
+};
+
+// Tipos de utilidad actualizados (ahora dinámicos)
+export type RoleType = string; // Ahora es completamente dinámico
 
 // Interfaz para validación de roles
 export interface RoleValidation {
@@ -115,9 +256,9 @@ export interface DecodedJWT {
 }
 
 // Tipos de permisos (puedes expandir según necesites)
-export type Permission = 
+export type Permission =
     | 'read'
-    | 'write' 
+    | 'write'
     | 'delete'
     | 'admin'
     | 'manage_projects'

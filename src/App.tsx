@@ -23,23 +23,126 @@ import theme from "./theme";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import RoleProtectedRoute from './components/RoleProtectedRoute';
-// Importar las constantes de roles
-import { ROLES } from './interfaces/user';
 
-// Componente interno para debugging
+// Importar las funciones de roles actualizadas
+import { ROLES, initializeRoles, areRolesLoaded, getAllRoles } from './interfaces/user';
+import { useState, useEffect } from 'react';
+
+
+// Componente interno para debugging mejorado
 const DebugInfo = () => {
-  const { usuario, getUserRole, hasRole, getRoleId, getRoleName } = useAuth();
+  const { usuario, getUserRole, hasRole, getRoleId } = useAuth();
   
-  console.log('=== DEBUG INFO ===');
-  console.log('Usuario completo:', usuario);
-  console.log('ID del rol del usuario:', getRoleId());
-  console.log('Nombre del rol:', getRoleName());
-  console.log('Rol completo:', getUserRole());
-  console.log('ROLES.ADMINISTRADOR:', ROLES.ADMINISTRADOR);
-  console.log('¿Tiene rol de admin?', hasRole(ROLES.ADMINISTRADOR));
-  console.log('¿Coincide el ID?', getRoleId() === ROLES.ADMINISTRADOR);
+  useEffect(() => {
+    if (areRolesLoaded()) {
+      console.log('=== DEBUG INFO COMPLETO ===');
+      console.log('👤 Usuario completo:', usuario);
+      console.log('🔑 ID del rol del usuario:', getRoleId());
+      console.log('👨‍💼 Rol completo:', getUserRole());
+      console.log('🔍 Roles disponibles:', getAllRoles());
+      
+      // Verificar cada rol específico
+      console.log('🔐 Verificaciones de roles:');
+      console.log('  - ADMINISTRADOR:', ROLES.ADMINISTRADOR);
+      console.log('  - DIRECTOR_DE_INVESTIGACION:', ROLES.DIRECTOR_DE_INVESTIGACION);
+      console.log('  - DIRECTOR_DE_PROYECTO:', ROLES.DIRECTOR_DE_PROYECTO);
+      console.log('  - DIRECTOR_DE_REFORMAS:', ROLES.DIRECTOR_DE_REFORMAS);
+      
+      console.log('✅ Permisos del usuario actual:');
+      console.log('  - ¿Es ADMINISTRADOR?', hasRole(ROLES.ADMINISTRADOR));
+      console.log('  - ¿Es DIRECTOR_DE_INVESTIGACION?', hasRole(ROLES.DIRECTOR_DE_INVESTIGACION));
+      console.log('  - ¿Es DIRECTOR_DE_PROYECTO?', hasRole(ROLES.DIRECTOR_DE_PROYECTO));
+      console.log('  - ¿Es DIRECTOR_DE_REFORMAS?', hasRole(ROLES.DIRECTOR_DE_REFORMAS));
+      
+      console.log('🔄 Comparación directa:');
+      console.log('  - ID del usuario:', getRoleId());
+      console.log('  - ID de ADMINISTRADOR:', ROLES.ADMINISTRADOR);
+      console.log('  - ¿Coincide?', getRoleId() === ROLES.ADMINISTRADOR);
+      
+      // Debug adicional
+      // debugRoles();
+      console.log('============================');
+    }
+  }, [usuario, getRoleId, hasRole, getUserRole]);
   
-  return null; // No renderiza nada
+  return null;
+};
+
+// Componente para manejar la carga de roles
+const RoleInitializer = ({ children }: { children: React.ReactNode }) => {
+  const [rolesLoaded, setRolesLoaded] = useState(false);
+  const [rolesError, setRolesError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadRoles = async () => {
+      try {
+        console.log('🔄 Iniciando carga de roles...');
+        await initializeRoles();
+        console.log('✅ Roles cargados exitosamente');
+        setRolesLoaded(true);
+      } catch (error) {
+        console.error('❌ Error al cargar roles:', error);
+        setRolesError(error instanceof Error ? error.message : 'Error desconocido');
+      }
+    };
+
+    if (!areRolesLoaded()) {
+      loadRoles();
+    } else {
+      setRolesLoaded(true);
+    }
+  }, []);
+
+  if (rolesError) {
+    return (
+      <div style={{ 
+        padding: '20px', 
+        textAlign: 'center', 
+        color: 'red',
+        fontSize: '16px'
+      }}>
+        <h3>Error al cargar la aplicación</h3>
+        <p>No se pudieron cargar los roles desde el servidor:</p>
+        <p><strong>{rolesError}</strong></p>
+        <button 
+          onClick={() => window.location.reload()}
+          style={{ 
+            padding: '10px 20px', 
+            marginTop: '10px',
+            backgroundColor: '#f44336',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer'
+          }}
+        >
+          Reintentar
+        </button>
+      </div>
+    );
+  }
+
+  if (!rolesLoaded) {
+    return (
+      <div style={{ 
+        padding: '20px', 
+        textAlign: 'center',
+        fontSize: '16px'
+      }}>
+        <h3>Cargando aplicación...</h3>
+        <p>Inicializando roles del sistema...</p>
+        <div style={{ 
+          marginTop: '20px',
+          fontSize: '14px',
+          color: '#666'
+        }}>
+          ⏳ Por favor espera...
+        </div>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
 };
 
 function AppContent() {
@@ -59,19 +162,12 @@ function AppContent() {
             </ProtectedRoute>
           } />
 
-          {/* Ruta problemática - temporalmente sin RoleProtectedRoute */}
-          {/* <Route path="/tipos-proyecto-test" element={
-            <ProtectedRoute>
-              <TiposProyecto />
-            </ProtectedRoute>
-          } /> */}
-
           {/* Ruta original con RoleProtectedRoute */}
           <Route path="/tipos-proyecto" element={
             <ProtectedRoute>
               <RoleProtectedRoute requiredRoles={[
                 ROLES.ADMINISTRADOR,
-                ROLES.DIRECTOR_INVESTIGACION,
+                ROLES.DIRECTOR_DE_INVESTIGACION,
               ]}>
                 <TiposProyecto />
               </RoleProtectedRoute>
@@ -82,7 +178,7 @@ function AppContent() {
             <ProtectedRoute>
               <RoleProtectedRoute requiredRoles={[
                 ROLES.ADMINISTRADOR,
-                ROLES.DIRECTOR_INVESTIGACION,
+                ROLES.DIRECTOR_DE_INVESTIGACION,
               ]}>
                 <CrearProyecto />
               </RoleProtectedRoute>
@@ -93,7 +189,7 @@ function AppContent() {
             <ProtectedRoute>
               <RoleProtectedRoute requiredRoles={[
                 ROLES.ADMINISTRADOR,
-                ROLES.DIRECTOR_INVESTIGACION,
+                ROLES.DIRECTOR_DE_INVESTIGACION,
               ]}>
                 <CrearPOA />
               </RoleProtectedRoute>
@@ -104,8 +200,8 @@ function AppContent() {
             <ProtectedRoute>
               <RoleProtectedRoute requiredRoles={[
                 ROLES.ADMINISTRADOR,
-                ROLES.DIRECTOR_INVESTIGACION,
-                ROLES.DIRECTOR_PROYECTO,
+                ROLES.DIRECTOR_DE_INVESTIGACION,
+                ROLES.DIRECTOR_DE_PROYECTO,
               ]}>
                 <AgregarActividad />
               </RoleProtectedRoute>
@@ -122,7 +218,7 @@ function AppContent() {
             <ProtectedRoute>
               <RoleProtectedRoute requiredRoles={[
                 ROLES.ADMINISTRADOR,
-                ROLES.DIRECTOR_REFORMAS,                
+                ROLES.DIRECTOR_DE_REFORMAS,                
               ]}>
                 <SubirExcel />
               </RoleProtectedRoute>
@@ -133,7 +229,7 @@ function AppContent() {
             <ProtectedRoute>
               <RoleProtectedRoute requiredRoles={[
                 ROLES.ADMINISTRADOR,
-                ROLES.DIRECTOR_REFORMAS,
+                ROLES.DIRECTOR_DE_REFORMAS,
               ]}>
                 <ReportePOA />
               </RoleProtectedRoute>
@@ -144,7 +240,7 @@ function AppContent() {
             <ProtectedRoute>
               <RoleProtectedRoute requiredRoles={[
                 ROLES.ADMINISTRADOR,
-                ROLES.DIRECTOR_REFORMAS,
+                ROLES.DIRECTOR_DE_REFORMAS,
               ]}>
                 <LogsCargaExcel />
               </RoleProtectedRoute>
@@ -155,7 +251,7 @@ function AppContent() {
             <ProtectedRoute>
               <RoleProtectedRoute requiredRoles={[
                 ROLES.ADMINISTRADOR,
-                ROLES.DIRECTOR_REFORMAS,
+                ROLES.DIRECTOR_DE_REFORMAS,
               ]}>
               <VerProyectos />
               </RoleProtectedRoute>
@@ -185,12 +281,14 @@ function AppContent() {
 
 function App() {
   return (
-    <Router>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
-    </Router>
-  );
+      <Router>
+        <AuthProvider>
+          <RoleInitializer>
+            <AppContent />
+          </RoleInitializer>
+        </AuthProvider>
+      </Router>
+    );
 }
 
 export default App;
