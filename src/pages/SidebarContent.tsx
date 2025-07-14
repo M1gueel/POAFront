@@ -212,7 +212,7 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
                       className={`text-white ${isActive("/subir-excel")}`}
                       onClick={() => handleNavigate("/subir-excel")}
                     >
-                      <FileChartLine size={iconSize} className="me-2" />
+                      <FileUp size={iconSize} className="me-2" />
                       Subir POA desde Excel
                     </Nav.Link>
                   </Nav.Item>
@@ -228,7 +228,8 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
                       className={`text-white ${isActive("/reporte-poa")}`}
                       onClick={() => handleNavigate("/reporte-poa")}
                     >
-                      <FileChartLine size={iconSize} className="me-2" />
+                      {/* <FileChartLine size={iconSize} className="me-2" /> */}
+                      <FileSpreadsheet size={iconSize} className="me-2" />
                       Reporte Anual
                     </Nav.Link>
                   </Nav.Item>
@@ -243,7 +244,7 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
                       className={`text-white ${isActive("/LogsCargaExcel")}`}
                       onClick={() => handleNavigate("/LogsCargaExcel")}
                     >
-                      <FileChartLine size={iconSize} className="me-2" />
+                      <History size={iconSize} className="me-2" />
                       Control de cambios - Subir POA
                     </Nav.Link>
                   </Nav.Item>
@@ -418,7 +419,6 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
             </Nav.Item>
           )}
          
-
           {/* Registrar usuario
           {hasAccessTo([ROLES.ADMINISTRADOR]) && (
             <Nav.Item>
@@ -446,7 +446,7 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
                 title="Subir POA desde Excel"
               >
                 <FileUp size={iconSize} className="me-2" />
-                Subir POA desde Excel
+                {/* Subir POA desde Excel */}
               </Nav.Link>
             </Nav.Item>
           )}
@@ -463,7 +463,7 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
                 title="Reporte Anual"
               >
                 <FileSpreadsheet size={iconSize} className="me-2" />
-                Reporte Anual
+                {/* Reporte Anual */}
               </Nav.Link>
             </Nav.Item>
           )}
@@ -480,7 +480,7 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
                 title="Control de cambios - Subir POA"
               >
                 <History size={iconSize} className="me-2" />
-                Control de cambios - Subir POA
+                {/* Control de cambios - Subir POA */}
               </Nav.Link>
             </Nav.Item>
           )}
