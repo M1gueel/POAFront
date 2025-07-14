@@ -501,7 +501,6 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
 
           {/* Registrar usuario */}
           
-  
           <div className="mt-auto mb-5">
           {hasAccessTo([ROLES.ADMINISTRADOR]) && (
           <Nav.Item>
@@ -513,6 +512,8 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
               <UserPlus size={iconSize} />
             </Nav.Link>
           </Nav.Item>
+          )}
+          </div>
 
           <div style={{ marginBottom: '6rem' }} />
 
