@@ -3,7 +3,7 @@ import { UserRegister, UserProfile, AuthResponse, Rol, PerfilUsuario } from '../
 
 // Configuración base de axios
 export const API = axios.create({
-    baseURL: 'https://poa-api.onrender.com',
+    baseURL: import.meta.env.VITE_URL_BACKEND,
 });
 
 // Interceptor para incluir el token en todas las peticiones

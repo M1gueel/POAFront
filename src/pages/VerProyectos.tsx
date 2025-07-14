@@ -74,38 +74,16 @@ const VerProyectos: React.FC = () => {
         setEstadosProyecto(estadosConDescripcion);
 
         // Obtener POAs para cada proyecto
-        const proyectosConPOAs: ProyectoConPOAs[] = [];
-        let maxtoastinfo = 1;
-        let maxtoasterror = 1;
+        const poas = await poaAPI.getPOAs(); // ← todos los POAs de todos los proyectos
 
-        for (const proyecto of proyectosResponse) {
-          try {
-            const poas = await poaAPI.getPOAsByProyecto(proyecto.id_proyecto);
-            const estadoProyecto = estadosConDescripcion.find(e => e.id_estado_proyecto === proyecto.id_estado_proyecto);
-
-            proyectosConPOAs.push({
-              ...proyecto,
-              poas: poas,
-              estadoProyecto: estadoProyecto
-            });
-            if (maxtoastinfo < 2) {
-              showInfo('POAs del Proyecto obtenidos exitosamente');
-              maxtoastinfo++;
-            }
-          } catch (projectError) {
-            console.warn(`No se pudieron obtener POAs para proyecto ${proyecto.codigo_proyecto}:`, projectError);
-            if (maxtoasterror < 2) {
-              showError('No se pudieron obtener POAs para proyecto');
-              maxtoasterror++;
-            }
-            const estadoProyecto = estadosConDescripcion.find(e => e.id_estado_proyecto === proyecto.id_estado_proyecto);
-            proyectosConPOAs.push({
-              ...proyecto,
-              poas: [],
-              estadoProyecto: estadoProyecto
-            });
-          }
-        }
+        const proyectosConPOAs: ProyectoConPOAs[] = proyectosResponse.map(proyecto => {
+          const poasDeEsteProyecto = poas.filter(poa => poa.id_proyecto === proyecto.id_proyecto);
+          return {
+            ...proyecto,
+            poas: poasDeEsteProyecto,
+            estadoProyecto: estadosConDescripcion.find(e => e.id_estado_proyecto === proyecto.id_estado_proyecto)
+          };
+        });
 
         setProyectos(proyectosConPOAs);
       } catch (err) {

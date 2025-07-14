@@ -43,23 +43,18 @@ const Dashboard: React.FC = () => {
         });
         setColumnFilters(initialFilters);
 
+        // Obtener todos los proyectos una sola vez
+        const proyectos = await projectAPI.getProyectos();
+        console.log('Proyectos obtenidos:', proyectos);
+
         // Obtener proyectos para cada POA
         const poasWithProjectsData: POAWithProject[] = [];
-        
         for (const poa of poasResponse) {
-          try {
-            // Obtener todos los proyectos y filtrar por el ID del POA
-            const proyectos = await projectAPI.getProyectos();
-            const proyecto = proyectos.find(p => p.id_proyecto === poa.id_proyecto);
-            
-            poasWithProjectsData.push({
-              ...poa,
-              proyecto: proyecto
-            });
-          } catch (projectError) {
-            console.warn(`No se pudo obtener el proyecto para POA ${poa.codigo_poa}:`, projectError);
-            poasWithProjectsData.push(poa);
-          }
+          const proyecto = proyectos.find(p => p.id_proyecto === poa.id_proyecto);
+          poasWithProjectsData.push({
+            ...poa,
+            proyecto: proyecto
+          });
         }
 
         setPOAsWithProjects(poasWithProjectsData);
