@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { userAPI } from '../api/userAPI';
+import { userAPI, rolAPI } from '../api/userAPI';
 import { PerfilUsuario } from '../interfaces/user';
 import { useAuth } from '../context/AuthContext';
 import '../styles/Perfil.css'; // Importamos los estilos
@@ -11,32 +11,33 @@ const Perfil: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  // En el useEffect:
+useEffect(() => {
     const cargarPerfil = async () => {
-      if (!token) {
-        setError('No hay sesión activa');
-        setLoading(false);
-        return;
-      }
-
-      try {
-        // Obtener el perfil del usuario
-        const perfilData = await userAPI.getPerfilUsuario();
-        setPerfil(perfilData);
-
-        // Obtener el nombre del rol
-        const rolName = await userAPI.getRolNameById(perfilData.id_rol);
-        setNombreRol(rolName);
-      } catch (err) {
-        console.error('Error al cargar el perfil:', err);
-        setError('Error al cargar los datos del perfil');
-      } finally {
-        setLoading(false);
-      }
+        if (!token) {
+            setError('No hay sesión activa');
+            setLoading(false);
+            return;
+        }
+        try {
+            // Obtener el perfil del usuario
+            const perfilData = await userAPI.getPerfilUsuario();
+            setPerfil(perfilData);
+            
+            // Obtener todos los roles y filtrar
+            const roles = await rolAPI.getRoles();
+            const rolEncontrado = roles.find(rol => rol.id_rol === perfilData.id_rol);
+            setNombreRol(rolEncontrado?.nombre_rol || 'Rol no encontrado');
+            
+        } catch (err) {
+            console.error('Error al cargar el perfil:', err);
+            setError('Error al cargar los datos del perfil');
+        } finally {
+            setLoading(false);
+        }
     };
-
     cargarPerfil();
-  }, [token]);
+}, [token]);
 
   if (loading) {
     return (
