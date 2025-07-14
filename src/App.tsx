@@ -214,7 +214,7 @@ function AppContent() {
             <ProtectedRoute>
               <RoleProtectedRoute requiredRoles={[
                 ROLES.ADMINISTRADOR,
-                ROLES.DIRECTOR_INVESTIGACION,
+                ROLES.DIRECTOR_DE_INVESTIGACION,
               ]}>
                 <EditarProyecto />
               </RoleProtectedRoute>
@@ -225,7 +225,7 @@ function AppContent() {
             <ProtectedRoute>
               <RoleProtectedRoute requiredRoles={[
                 ROLES.ADMINISTRADOR,
-                ROLES.DIRECTOR_INVESTIGACION,
+                ROLES.DIRECTOR_DE_INVESTIGACION,
               ]}>
                 <EditarPOA />
               </RoleProtectedRoute>
