@@ -124,8 +124,8 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
 
                 <Nav.Item>
                   <Nav.Link
-                    className={`text-white ${isActive("/agregar-actividad")}`}
-                    onClick={() => handleNavigate("/agregar-actividad")}
+                    className={`text-white ${isActive("/agregar-actividad-tarea")}`}
+                    onClick={() => handleNavigate("/agregar-actividad-tarea")}
                   >
                     <FileChartLine size={iconSize} className="me-2" />
                     Agregar Actividades y Tareas
@@ -138,7 +138,10 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
             <div className="px-3 mt-4 mb-2 text-secondary text-uppercase small">Editar Proyectos Y Actividades</div>
 
             {/* Nuevo Proyecto - Solo para ADMINISTRADOR y DIRECTOR_INVESTIGACION */}
-            {hasAccessTo([ROLES.ADMINISTRADOR, ROLES.DIRECTOR_DE_INVESTIGACION]) && (
+            {hasAccessTo([
+              ROLES.ADMINISTRADOR, 
+              ROLES.DIRECTOR_DE_INVESTIGACION
+            ]) && (
               <Nav.Item>
                 <Nav.Link
                   className={`text-white ${isActive("/editar-proyecto")}`}
@@ -151,7 +154,10 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
             )}
 
             {/* Sección POAs - Solo mostrar si tiene acceso a alguna funcionalidad de POA */}
-            {hasAccessTo([ROLES.ADMINISTRADOR, ROLES.DIRECTOR_DE_INVESTIGACION]) && (
+            {hasAccessTo([
+              ROLES.ADMINISTRADOR,
+              ROLES.DIRECTOR_DE_INVESTIGACION
+            ]) && (
               <>
                 {/* <div className="px-3 mt-4 mb-2 text-secondary text-uppercase small">POAs</div> */}
 
@@ -168,7 +174,11 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
             )}
 
             {/* Sección ACTIVIDADES - Solo mostrar si tiene acceso */}
-            {hasAccessTo([ROLES.ADMINISTRADOR, ROLES.DIRECTOR_DE_INVESTIGACION, ROLES.DIRECTOR_DE_PROYECTO]) && (
+            {hasAccessTo([
+              ROLES.ADMINISTRADOR,
+              ROLES.DIRECTOR_DE_INVESTIGACION,
+              ROLES.DIRECTOR_DE_PROYECTO
+            ]) && (
               <>
                 {/* <div className="px-3 mt-4 mb-2 text-secondary text-uppercase small">ACTIVIDADES</div> */}
 
@@ -358,8 +368,11 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
 
           <div className="px-3 mt-4 mb-2 text-secondary text-uppercase small">Act PR</div>
 
-          {/* Nuevo Proyecto */}
-          {hasAccessTo([ROLES.ADMINISTRADOR, ROLES.DIRECTOR_DE_INVESTIGACION]) && (
+          {/* Editar Proyecto */}
+          {hasAccessTo([
+            ROLES.ADMINISTRADOR,
+            ROLES.DIRECTOR_DE_INVESTIGACION
+          ]) && (
             <Nav.Item>
               <Nav.Link
                 className={`text-white ${isActive("/editar-proyecto")}`}
@@ -373,8 +386,10 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
           )}
 
 
-          {/* Nuevo POA */}
-          {hasAccessTo([ROLES.ADMINISTRADOR, ROLES.DIRECTOR_DE_INVESTIGACION]) && (
+          {/* Editar POA */}
+          {hasAccessTo([
+            ROLES.ADMINISTRADOR,
+            ROLES.DIRECTOR_DE_INVESTIGACION]) && (
             <Nav.Item>
               <Nav.Link
                 className={`text-white ${isActive("/editar-poa")}`}
@@ -386,8 +401,12 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
             </Nav.Item>
           )}
 
-          {/* Agregar Actividad */}
-          {hasAccessTo([ROLES.ADMINISTRADOR, ROLES.DIRECTOR_DE_INVESTIGACION, ROLES.DIRECTOR_DE_PROYECTO]) && (
+          {/* Editar Actividad */}
+          {hasAccessTo([
+            ROLES.ADMINISTRADOR,
+            ROLES.DIRECTOR_DE_INVESTIGACION,
+            ROLES.DIRECTOR_DE_PROYECTO
+          ]) && (
             <Nav.Item>
               <Nav.Link
                 className={`text-white ${isActive("/agregar-actividad-tarea")}`}
@@ -479,7 +498,9 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
 
           {/* Registrar usuario */}
           
+  
           <div className="mt-auto mb-5">
+          {hasAccessTo([ROLES.ADMINISTRADOR]) && (
           <Nav.Item>
             <Nav.Link
               className={`text-white ${isActive("/register")}`}
@@ -489,6 +510,7 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
               <UserPlus size={iconSize} />
             </Nav.Link>
           </Nav.Item>
+          )}
           </div>
 
           <div style={{ marginBottom: '6rem' }} />
