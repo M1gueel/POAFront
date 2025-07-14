@@ -22,7 +22,7 @@ import { projectAPI } from "../api/projectAPI"; // Importa el API
 import { poaAPI } from "../api/poaAPI"; // Importa el API de POA
 import { TipoProyecto } from "../interfaces/project";
 import { POA } from "../interfaces/poa";
-import {excelAPI} from "../api/excelAPI"; // Importa la función de subir Excel
+import { excelAPI } from "../api/excelAPI"; // Importa la función de subir Excel
 
 const SubirExcel: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -40,8 +40,10 @@ const SubirExcel: React.FC = () => {
     anio?: string;
   }>({});
   const [poaSeleccionado2, seterror2] = useState<string | undefined>(undefined);
-  const [nombreHojaError, setNombreHojaError] = useState<string | undefined>(undefined); // Estado para el error del nombre de la hoja
-  
+  const [nombreHojaError, setNombreHojaError] = useState<string | undefined>(
+    undefined
+  ); // Estado para el error del nombre de la hoja
+
   // Estados para el Snackbar
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [message, setMessage] = useState("");
@@ -53,7 +55,7 @@ const SubirExcel: React.FC = () => {
   const [pendingRequest, setPendingRequest] = useState<FormData | null>(null); // Almacena la solicitud pendiente
 
   const [hojas, setHojas] = useState<string[]>([]); // Estado para los nombres de las hojas
-const [seleccionManualPoa, setSeleccionManualPoa] = useState(false);
+  const [seleccionManualPoa, setSeleccionManualPoa] = useState(false);
   // Función para cerrar el Snackbar
   const handleCloseSnackbar = () => {
     setOpenSnackbar(false);
@@ -121,26 +123,27 @@ const [seleccionManualPoa, setSeleccionManualPoa] = useState(false);
   // Sincronizar POA cuando se selecciona tipo de proyecto y año
   useEffect(() => {
     if (opcion && anio) {
-      if (!seleccionManualPoa) { // Solo si no fue manual
-      const tipoProyecto = tiposProyecto.find(
-        (tipo) => tipo.id_tipo_proyecto === opcion
-      );
-      if (tipoProyecto) {
-        const poa = poas.find(
-          (p) =>
-            obtenerCodigoTipo(p.codigo_poa) === tipoProyecto.codigo_tipo &&
-            p.anio_ejecucion === String(anio)
+      if (!seleccionManualPoa) {
+        // Solo si no fue manual
+        const tipoProyecto = tiposProyecto.find(
+          (tipo) => tipo.id_tipo_proyecto === opcion
         );
-        seterror2(undefined);
-        if (poa) {
-          setPoaSeleccionado(poa.id_poa); // Actualizar POA
-          setErrors((prev) => ({ ...prev, poaSeleccionado: undefined })); // Limpiar error
-        } else {
-          setPoaSeleccionado(""); // Limpiar POA si no coincide
-          seterror2(
-            "No se encontró un POA para el tipo de proyecto y año seleccionados."
+        if (tipoProyecto) {
+          const poa = poas.find(
+            (p) =>
+              obtenerCodigoTipo(p.codigo_poa) === tipoProyecto.codigo_tipo &&
+              p.anio_ejecucion === String(anio)
           );
-        }
+          seterror2(undefined);
+          if (poa) {
+            setPoaSeleccionado(poa.id_poa); // Actualizar POA
+            setErrors((prev) => ({ ...prev, poaSeleccionado: undefined })); // Limpiar error
+          } else {
+            setPoaSeleccionado(""); // Limpiar POA si no coincide
+            seterror2(
+              "No se encontró un POA para el tipo de proyecto y año seleccionados."
+            );
+          }
         }
       }
     } else {
@@ -204,12 +207,12 @@ const [seleccionManualPoa, setSeleccionManualPoa] = useState(false);
       newErrors.anio = "Debes seleccionar un año.";
     }
     if (!nombreHoja) {
-    setNombreHojaError("Debes seleccionar el nombre de la hoja.");
-  } else {
-    setNombreHojaError(undefined);
-  }
+      setNombreHojaError("Debes seleccionar el nombre de la hoja.");
+    } else {
+      setNombreHojaError(undefined);
+    }
     setErrors(newErrors);
-  }, [file, opcion, poaSeleccionado, anio,nombreHoja]); // Ejecutar cada vez que cambie alguno de estos estados
+  }, [file, opcion, poaSeleccionado, anio, nombreHoja]); // Ejecutar cada vez que cambie alguno de estos estados
 
   // Manejar el cambio de archivo
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -281,23 +284,23 @@ const [seleccionManualPoa, setSeleccionManualPoa] = useState(false);
       setErrors((prev) => ({ ...prev, file: undefined }));
       setFile(selectedFile);
 
-            // Leer el archivo Excel y obtener los nombres de las hojas
-            const reader = new FileReader();
-            reader.onload = (event) => {
-              const data = new Uint8Array(event.target?.result as ArrayBuffer);
-              const workbook = XLSX.read(data, { type: "array" });
-              const sheetNames = workbook.SheetNames; // Obtener los nombres de las hojas
-              setHojas(sheetNames);
-      
-              // Seleccionar automáticamente la hoja que contenga el año seleccionado
-              if (anio) {
-                const hojaConAnio = sheetNames.find((sheet) => sheet.includes(anio));
-                setNombreHoja(hojaConAnio || ""); // Seleccionar la hoja o dejar vacío
-              } else {
-                setNombreHoja(""); // Limpiar si no hay año seleccionado
-              }
-            };
-            reader.readAsArrayBuffer(selectedFile);
+      // Leer el archivo Excel y obtener los nombres de las hojas
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const data = new Uint8Array(event.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: "array" });
+        const sheetNames = workbook.SheetNames; // Obtener los nombres de las hojas
+        setHojas(sheetNames);
+
+        // Seleccionar automáticamente la hoja que contenga el año seleccionado
+        if (anio) {
+          const hojaConAnio = sheetNames.find((sheet) => sheet.includes(anio));
+          setNombreHoja(hojaConAnio || ""); // Seleccionar la hoja o dejar vacío
+        } else {
+          setNombreHoja(""); // Limpiar si no hay año seleccionado
+        }
+      };
+      reader.readAsArrayBuffer(selectedFile);
     }
   };
 
@@ -336,34 +339,36 @@ const [seleccionManualPoa, setSeleccionManualPoa] = useState(false);
     formData.append("hoja", nombreHoja); // Usar el valor del input para el nombre de la hoja
 
     try {
-        const data = await excelAPI.subirExcel(formData);
+      const data = await excelAPI.subirExcel(formData);
 
-        if (data.requires_confirmation) {
-            setPendingRequest(formData);
-            setOpenDialog(true);
+      if (data.requires_confirmation) {
+        setPendingRequest(formData);
+        setOpenDialog(true);
+      } else {
+        if (data.errores && data.errores.length > 0) {
+          setMessage(
+            `Actividades y tareas creadas con advertencias:\n\n${data.errores.join(
+              "\n"
+            )}`
+          );
+          setSeverity("warning");
         } else {
-            if (data.errores && data.errores.length > 0) {
-                setMessage(
-                    `Actividades y tareas creadas con advertencias:\n\n${data.errores.join("\n")}`
-                );
-                setSeverity("warning");
-            } else {
-                setMessage("Actividades y tareas creadas exitosamente.");
-                setSeverity("success");
-                setFile(null);
-                setOpcion("");
-                setAnio("");
-                setPoaSeleccionado("");
-                setNombreHoja("");
-                setHojas([]);
-                setFormTouched(false);
-            }
-            setOpenSnackbar(true);
+          setMessage("Actividades y tareas creadas exitosamente.");
+          setSeverity("success");
+          setFile(null);
+          setOpcion("");
+          setAnio("");
+          setPoaSeleccionado("");
+          setNombreHoja("");
+          setHojas([]);
+          setFormTouched(false);
         }
-    } catch (err: any) {
-        setMessage(err.detail || "Error al procesar el archivo.");
-        setSeverity("error");
         setOpenSnackbar(true);
+      }
+    } catch (err: any) {
+      setMessage(err.detail || "Error al procesar el archivo.");
+      setSeverity("error");
+      setOpenSnackbar(true);
     }
   };
 
@@ -374,29 +379,29 @@ const [seleccionManualPoa, setSeleccionManualPoa] = useState(false);
     pendingRequest.append("confirmacion", "true");
 
     try {
-        const data = await excelAPI.subirExcel(pendingRequest);
+      const data = await excelAPI.subirExcel(pendingRequest);
 
-        if (data.errores && data.errores.length > 0) {
-            setMessage(`Advertencias:\n\n${data.errores.join("\n")}`);
-            setSeverity("warning");
-        } else {
-            setMessage("Actividades y tareas creadas exitosamente.");
-            setSeverity("success");
-            setFile(null);
-            setOpcion("");
-            setAnio("");
-            setPoaSeleccionado("");
-            setNombreHoja("");
-            setHojas([]);
-            setFormTouched(false);
-        }
+      if (data.errores && data.errores.length > 0) {
+        setMessage(`Advertencias:\n\n${data.errores.join("\n")}`);
+        setSeverity("warning");
+      } else {
+        setMessage("Actividades y tareas creadas exitosamente.");
+        setSeverity("success");
+        setFile(null);
+        setOpcion("");
+        setAnio("");
+        setPoaSeleccionado("");
+        setNombreHoja("");
+        setHojas([]);
+        setFormTouched(false);
+      }
     } catch (err: any) {
-        setMessage(err.detail || "Error al procesar el archivo.");
-        setSeverity("error");
+      setMessage(err.detail || "Error al procesar el archivo.");
+      setSeverity("error");
     } finally {
-        setOpenDialog(false);
-        setPendingRequest(null);
-        setOpenSnackbar(true);
+      setOpenDialog(false);
+      setPendingRequest(null);
+      setOpenSnackbar(true);
     }
   };
 
@@ -419,9 +424,9 @@ const [seleccionManualPoa, setSeleccionManualPoa] = useState(false);
               labelId="opcion-label"
               value={opcion}
               onChange={(e) => {
-    setOpcion(e.target.value);
-    setSeleccionManualPoa(false); // <-- Resetea selección manual
-  }}
+                setOpcion(e.target.value);
+                setSeleccionManualPoa(false); // <-- Resetea selección manual
+              }}
               label="Seleccione tipo de Proyecto"
               className="custom-select"
               renderValue={(selected) => {
@@ -460,16 +465,16 @@ const [seleccionManualPoa, setSeleccionManualPoa] = useState(false);
               labelId="anio-label"
               value={anio}
               onChange={(e) => {
-    setAnio(e.target.value);
-    setSeleccionManualPoa(false); // <-- Resetea selección manual
-  }}
+                setAnio(e.target.value);
+                setSeleccionManualPoa(false); // <-- Resetea selección manual
+              }}
               label="Selecciona un año"
               className="custom-select"
             >
               <MenuItem value="">-- Todos los años --</MenuItem>{" "}
               {/* Opción para limpiar */}
-              {Array.from({ length: 9 }, (_, i) => {
-                const year = new Date().getFullYear() - i;
+              {Array.from({ length: 12 }, (_, i) => {
+                const year = new Date().getFullYear() + 3 - i;
                 return (
                   <MenuItem key={year} value={year}>
                     {year}
@@ -491,9 +496,9 @@ const [seleccionManualPoa, setSeleccionManualPoa] = useState(false);
               labelId="poa-label"
               value={poaSeleccionado}
               onChange={(e) => {
-              setPoaSeleccionado(e.target.value);
-              setSeleccionManualPoa(true); // <-- Selección manual
-            }}
+                setPoaSeleccionado(e.target.value);
+                setSeleccionManualPoa(true); // <-- Selección manual
+              }}
               label="Seleccione POA"
               className="custom-select"
             >
@@ -522,9 +527,7 @@ const [seleccionManualPoa, setSeleccionManualPoa] = useState(false);
               </Button>
               <img src={iconoExcel} alt="Excel" className="icono-excel" />
               <Typography>{file.name}</Typography>
-              
             </div>
-            
           ) : (
             <div
               className="file-dropzone"
@@ -542,17 +545,23 @@ const [seleccionManualPoa, setSeleccionManualPoa] = useState(false);
                 onChange={handleFileChange}
                 style={{ display: "none" }}
               />
-              
             </div>
-            
           )}
           {formTouched && errors.file && (
             <Typography color="error">{errors.file}</Typography>
           )}
           {/* Selector para el nombre de la hoja */}
           {Object.keys(errors).length === 0 && file && (
-            <FormControl fullWidth className="input-margin" sx={{ marginTop: "20px" }}>
-              <InputLabel id="hoja-label" className="custom-label" sx={{ marginBottom: "0px" }}>
+            <FormControl
+              fullWidth
+              className="input-margin"
+              sx={{ marginTop: "20px" }}
+            >
+              <InputLabel
+                id="hoja-label"
+                className="custom-label"
+                sx={{ marginBottom: "0px" }}
+              >
                 Seleccione el nombre de la hoja
               </InputLabel>
               <Select
@@ -561,7 +570,6 @@ const [seleccionManualPoa, setSeleccionManualPoa] = useState(false);
                 onChange={(e) => setNombreHoja(e.target.value)}
                 label="Seleccione el nombre de la hoja"
                 className="custom-select2"
-                
               >
                 {hojas.map((hoja, index) => (
                   <MenuItem key={index} value={hoja}>
@@ -570,13 +578,12 @@ const [seleccionManualPoa, setSeleccionManualPoa] = useState(false);
                 ))}
               </Select>
               {/*  Mensaje de error para el nombre de la hoja si no se selecciona y el formulario ha sido tocado y hay un archivo */}
-          {formTouched && nombreHojaError && file && (
-            <Typography color="error">{nombreHojaError}</Typography>
-          )}
-              
+              {formTouched && nombreHojaError && file && (
+                <Typography color="error">{nombreHojaError}</Typography>
+              )}
             </FormControl>
           )}
-          
+
           {/* Botón de subir */}
           <Button
             type="submit"
@@ -633,7 +640,7 @@ const [seleccionManualPoa, setSeleccionManualPoa] = useState(false);
               color: "white", // Cambiar el color del texto a blanco
               "&:hover": {
                 backgroundColor: "#182c4a", // Cambiar el color de fondo al pasar el mouse
-              },  
+              },
             }}
           >
             Reemplazar

@@ -3,7 +3,7 @@ import { Nav, Button } from 'react-bootstrap';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { SidebarContentProps } from '../interfaces/bar';
-import { TableProperties, FolderKanban, FileChartLine, CircleUserRound, UserPlus, LogOut, Icon } from 'lucide-react';
+import { TableProperties, FolderKanban, FileChartLine, CircleUserRound, UserPlus, LogOut, Icon, FileUp, History,FileSpreadsheet } from 'lucide-react';
 import { owl } from '@lucide/lab';
 import { ROLES } from '../interfaces/user';
 
@@ -445,7 +445,8 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
                 onClick={() => handleNavigate("/subir-excel")}
                 title="Subir POA desde Excel"
               >
-                <FileChartLine size={iconSize} />
+                <FileUp size={iconSize} className="me-2" />
+                Subir POA desde Excel
               </Nav.Link>
             </Nav.Item>
           )}
@@ -461,7 +462,8 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
                 onClick={() => handleNavigate("/reporte-poa")}
                 title="Reporte Anual"
               >
-                <FileChartLine size={iconSize} />
+                <FileSpreadsheet size={iconSize} className="me-2" />
+                Reporte Anual
               </Nav.Link>
             </Nav.Item>
           )}
@@ -477,7 +479,8 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
                 onClick={() => handleNavigate("/LogsCargaExcel")}
                 title="Control de cambios - Subir POA"
               >
-                <FileChartLine size={iconSize} />
+                <History size={iconSize} className="me-2" />
+                Control de cambios - Subir POA
               </Nav.Link>
             </Nav.Item>
           )}
@@ -510,8 +513,6 @@ const SidebarContent: React.FC<SidebarContentProps> = ({
               <UserPlus size={iconSize} />
             </Nav.Link>
           </Nav.Item>
-          )}
-          </div>
 
           <div style={{ marginBottom: '6rem' }} />
 
