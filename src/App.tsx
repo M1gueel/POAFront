@@ -17,6 +17,7 @@ import LogsCargaExcel from './pages/LogsCargaExcel';
 import VerProyectos from './pages/VerProyectos';
 import EditarProyecto from './pages/EditarProyecto';
 import EditarPOA from './pages/EditarPOA';
+import EditarActividad from './pages/EditarActividad';
 import { ThemeProvider } from "@mui/material/styles";
 
 import theme from "./theme";
@@ -206,6 +207,18 @@ function AppContent() {
                 ROLES.DIRECTOR_DE_PROYECTO,
               ]}>
                 <AgregarActividad />
+              </RoleProtectedRoute>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/editar-actividad-tarea" element={
+            <ProtectedRoute>
+              <RoleProtectedRoute requiredRoles={[
+                ROLES.ADMINISTRADOR,
+                ROLES.DIRECTOR_DE_INVESTIGACION,
+                ROLES.DIRECTOR_DE_PROYECTO,
+              ]}>
+                <EditarActividad />
               </RoleProtectedRoute>
             </ProtectedRoute>
           } />

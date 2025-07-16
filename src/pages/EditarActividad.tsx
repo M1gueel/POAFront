@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Form, Button, Container, Card, Row, Col, Tabs, Tab, Spinner, Modal } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 
@@ -11,23 +11,24 @@ import BusquedaProyecto from '../components/BusquedaProyecto';
 import InformacionProyecto from '../components/InformacionProyecto';
 import InformacionPOAs from '../components/InformacionPOAs';
 import TareaModal from '../components/TareaModal';
-import ExportarPOA from '../components/ExportarPOA';
+//import ExportarPOA from '../components/ExportarPOA';
 import ActividadesPorPOA from '../components/ActividadesPorPOA';
 import SidebarPresupuesto from '../components/SidebarPresupuesto';
 
-import { showSuccess, showError } from '../utils/toast';
+import { POAConActividadesYTareas } from '../interfaces/actividad';
+import { showError, showInfo } from '../utils/toast';
 import '../styles/AgregarActividad.css';
 
-const AgregarActividad: React.FC = () => {
+const EditarActividad: React.FC = () => {
   const navigate = useNavigate();
 
-  // Hooks personalizados
+  // Hooks personalizados reutilizados
   const {
     proyectos,
     proyectoSeleccionado,
     isLoading: proyectoLoading,
     seleccionarProyecto,
-    validarProyectoSinActividades
+    validarProyectoConActividades // Diferente validación para editar
   } = useProyectoManager();
 
   const {
@@ -38,7 +39,7 @@ const AgregarActividad: React.FC = () => {
     loadingMessage,
     setActivePoaTab,
     setPoasConActividades,
-    cargarPoasSinActividades,
+    cargarPoasConActividadesYTareasReales, // Nueva función para editar
     getItemPresupuestarioConCache
   } = useActividadManager();
 
@@ -61,22 +62,41 @@ const AgregarActividad: React.FC = () => {
     clearTaskError
   } = useTareaModal();
 
-  // Estados locales específicos del componente
+  // Estados específicos para editar
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [datosGuardados, setDatosGuardados] = useState(false);
-  const [actividadesYTareasCreadas, setActividadesYTareasCreadas] = useState<any[]>([]);
   const [showActividades, setShowActividades] = useState(false);
+  const [actividadesOriginales, setActividadesOriginales] = useState<POAConActividadesYTareas[]>([]);
 
   const isLoading = proyectoLoading || actividadLoading;
+
+  // Efecto para guardar actividades originales cuando se cargan
+  useEffect(() => {
+    if (poasConActividades.length > 0 && actividadesOriginales.length === 0) {
+      setActividadesOriginales(JSON.parse(JSON.stringify(poasConActividades))); // Deep copy
+    }
+  }, [poasConActividades, actividadesOriginales.length]);
+
+  // Función específica para cargar actividades y tareas existentes
+  const cargarActividadesExistentes = async (proyectoId: string) => {
+    try {
+      showInfo('Cargando actividades y tareas existentes...');
+      
+      // Cargar POAs con actividades y tareas reales ordenadas
+      await cargarPoasConActividadesYTareasReales(proyectoId);
+      
+    } catch (error) {
+      showError('Error al cargar las actividades existentes');
+    }
+  };
 
   // Función para manejar la selección de proyecto
   const handleSeleccionarProyecto = async (proyecto: any) => {
     seleccionarProyecto(proyecto);
-    await cargarPoasSinActividades(proyecto.id_proyecto);
+    await cargarActividadesExistentes(proyecto.id_proyecto);
   };
 
-  // Función para guardar tarea en el estado local
+  // Función para guardar tarea (editada o nueva)
   const handleGuardarTarea = (tareaCompleta: any) => {
     setPoasConActividades(prev =>
       prev.map(poa =>
@@ -89,7 +109,7 @@ const AgregarActividad: React.FC = () => {
                   ...act,
                   tareas: isEditingTarea
                     ? act.tareas.map(t => t.tempId === currentTarea?.tempId ? tareaCompleta : t)
-                    : [...act.tareas, tareaCompleta]
+                    : [...act.tareas, tareaCompleta] // Agregar nueva tarea
                 }
                 : act
             )
@@ -97,28 +117,6 @@ const AgregarActividad: React.FC = () => {
           : poa
       )
     );
-  };
-
-  // Función para eliminar tarea
-  const eliminarTarea = (poaId: string, actividadId: string, tareaId: string) => {
-    const nuevosPoasConActividades = poasConActividades.map(poa => {
-      if (poa.id_poa === poaId) {
-        const nuevasActividades = poa.actividades.map(act => {
-          if (act.actividad_id === actividadId) {
-            return {
-              ...act,
-              tareas: act.tareas.filter(t => t.tempId !== tareaId)
-            };
-          }
-          return act;
-        });
-        return { ...poa, actividades: nuevasActividades };
-      }
-      return poa;
-    });
-
-    setPoasConActividades(nuevosPoasConActividades);
-    showSuccess('Tarea eliminada correctamente');
   };
 
   // Función para mostrar modal de tarea
@@ -133,14 +131,13 @@ const AgregarActividad: React.FC = () => {
       poa,
       actividad,
       (id: string) => getItemPresupuestarioConCache(id, async (itemId: string) => {
-        // Aquí iría la llamada a la API
         const { tareaAPI } = await import('../api/tareaAPI');
         return tareaAPI.getItemPresupuestarioPorId(itemId);
       })
     );
   };
 
-  // Función para manejar cambios en detalle de tarea
+  // Wrappers para compatibilidad
   const handleDetalleTareaChangeWrapper = async (idDetalleTarea: string) => {
     await handleDetalleTareaChange(
       idDetalleTarea,
@@ -152,17 +149,45 @@ const AgregarActividad: React.FC = () => {
     );
   };
 
-  // Función para manejar cambios en item presupuestario
   const handleItemPresupuestarioChangeWrapper = async (idItemPresupuestario: string) => {
     await handleItemPresupuestarioChange(idItemPresupuestario, poasConActividades);
   };
 
-  // Función para validar y guardar
   const handleValidarYGuardarTarea = () => {
     validarYGuardarTarea(handleGuardarTarea);
   };
 
-  // Función para toggle de expansión de tarea
+  // Función para eliminar tareas (solo nuevas tareas agregadas en esta sesión)
+  const eliminarTarea = (poaId: string, actividadId: string, tareaId: string) => {
+    const poa = poasConActividades.find(p => p.id_poa === poaId);
+    const actividad = poa?.actividades.find(act => act.actividad_id === actividadId);
+    const tarea = actividad?.tareas.find(t => t.tempId === tareaId);
+    
+    // Solo permitir eliminar tareas que no tienen id_tarea_real (tareas nuevas)
+    if (tarea && !tarea.id_tarea_real) {
+      setPoasConActividades(prev =>
+        prev.map(p =>
+          p.id_poa === poaId
+            ? {
+              ...p,
+              actividades: p.actividades.map(act =>
+                act.actividad_id === actividadId
+                  ? {
+                    ...act,
+                    tareas: act.tareas.filter(t => t.tempId !== tareaId)
+                  }
+                  : act
+              )
+            }
+            : p
+        )
+      );
+      showInfo('Tarea eliminada correctamente');
+    } else {
+      showError('No se pueden eliminar tareas existentes en modo edición. Solo se pueden eliminar tareas agregadas en esta sesión.');
+    }
+  };
+
   const toggleTareaExpansion = (poaId: string, actividadId: string, tareaId: string) => {
     setPoasConActividades(prev =>
       prev.map(poa =>
@@ -187,7 +212,6 @@ const AgregarActividad: React.FC = () => {
     );
   };
 
-  // Función para calcular total de actividad
   const calcularTotalActividad = (poaId: string, actividadId: string) => {
     const poa = poasConActividades.find(p => p.id_poa === poaId);
     if (!poa) return 0;
@@ -198,32 +222,76 @@ const AgregarActividad: React.FC = () => {
     return actividad.tareas.reduce((sum, tarea) => sum + (tarea.total || 0), 0);
   };
 
-  // Función para manejar el envío del formulario
+  // Función para verificar si hay cambios
+  const hayTareasCambiadas = (): boolean => {
+    if (actividadesOriginales.length === 0) return false;
+
+    for (const poa of poasConActividades) {
+      const poaOriginal = actividadesOriginales.find(p => p.id_poa === poa.id_poa);
+      if (!poaOriginal) continue;
+
+      for (const actividad of poa.actividades) {
+        const actividadOriginal = poaOriginal.actividades.find(a => a.actividad_id === actividad.actividad_id);
+        if (!actividadOriginal) continue;
+
+        // Verificar si hay nuevas tareas agregadas (sin id_tarea_real)
+        const tareasNuevas = actividad.tareas.filter(t => !t.id_tarea_real);
+        if (tareasNuevas.length > 0) {
+          return true;
+        }
+
+        // Verificar cambios en tareas existentes
+        for (const tarea of actividad.tareas) {
+          // Solo verificar tareas que tienen id_tarea_real (existentes)
+          if (!tarea.id_tarea_real) continue;
+          
+          const tareaOriginal = actividadOriginal.tareas.find(t => t.id_tarea_real === tarea.id_tarea_real);
+          if (!tareaOriginal) continue;
+
+          // Comparar campos importantes
+          if (
+            tarea.cantidad !== tareaOriginal.cantidad ||
+            tarea.precio_unitario !== tareaOriginal.precio_unitario ||
+            tarea.detalle_descripcion !== tareaOriginal.detalle_descripcion ||
+            tarea.lineaPaiViiv !== tareaOriginal.lineaPaiViiv ||
+            JSON.stringify(tarea.gastos_mensuales) !== JSON.stringify(tareaOriginal.gastos_mensuales)
+          ) {
+            return true;
+          }
+        }
+      }
+    }
+
+    return false;
+  };
+
+  // Función para manejar el envío del formulario (solo validar cambios)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!ActividadTareaService.validarFormulario(proyectoSeleccionado, poasProyecto, poasConActividades)) {
+    if (!proyectoSeleccionado) {
+      showError('Debe seleccionar un proyecto');
+      return;
+    }
+
+    if (!hayTareasCambiadas()) {
+      showError('No se detectaron cambios en las tareas');
       return;
     }
 
     setShowConfirmModal(true);
   };
 
-  // Función para guardar datos
-  const handleGuardarDatos = async () => {
-    const result = await ActividadTareaService.guardarActividades(
-      poasConActividades,
-      setActivePoaTab
-    );
+  // Función para guardar cambios (actualizar tareas existentes)
+  const handleGuardarCambios = async () => {
+    const result = await ActividadTareaService.editarTareas(poasConActividades);
 
     if (result.success) {
-      setActividadesYTareasCreadas(result.data || []);
-      setDatosGuardados(true);
       setShowConfirmModal(false);
       setShowSuccessModal(true);
     } else {
       setShowConfirmModal(false);
-      showError(result.error || 'Error al guardar los datos');
+      showError(result.error || 'Error al actualizar las tareas');
     }
   };
 
@@ -240,8 +308,8 @@ const AgregarActividad: React.FC = () => {
   return (
     <Container className="py-4 main-content-with-sidebar">
       <Card className="shadow-lg">
-        <Card.Header className="bg-primary bg-gradient text-white p-3">
-          <h2 className="mb-0 fw-bold text-center">Crear Actividades y Tareas para Proyecto</h2>
+        <Card.Header className="bg-warning bg-gradient text-dark p-3">
+          <h2 className="mb-0 fw-bold text-center">Editar Actividades y Tareas de Proyecto</h2>
         </Card.Header>
         <Card.Body className="p-4">
           <Form onSubmit={handleSubmit}>
@@ -250,7 +318,7 @@ const AgregarActividad: React.FC = () => {
               proyectos={proyectos}
               isLoading={isLoading}
               seleccionarProyecto={handleSeleccionarProyecto}
-              validarProyecto={validarProyectoSinActividades}
+              validarProyecto={validarProyectoConActividades} // Validación diferente
               mostrarValidacion={true}
             />
 
@@ -273,9 +341,9 @@ const AgregarActividad: React.FC = () => {
                 <Col md={12}>
                   <Card>
                     <Card.Header className="bg-light">
-                      <h5 className="mb-0">Definición de Actividades por POA</h5>
+                      <h5 className="mb-0">Editar Tareas por POA</h5>
                       <p className="text-muted small mb-0">
-                        Las actividades añadidas en el primer POA se replicarán automáticamente en los demás POAs
+                        Solo se pueden modificar las tareas existentes. Las actividades no se pueden cambiar.
                       </p>
                     </Card.Header>
                     <Card.Body>
@@ -293,7 +361,7 @@ const AgregarActividad: React.FC = () => {
                             <ActividadesPorPOA
                               poa={poa}
                               onMostrarModalTarea={handleMostrarModalTarea}
-                              onEliminarTarea={eliminarTarea}
+                              onEliminarTarea={eliminarTarea} // Función deshabilitada
                               onToggleTareaExpansion={toggleTareaExpansion}
                               calcularTotalActividad={calcularTotalActividad}
                               poasConActividades={poasConActividades}
@@ -315,14 +383,18 @@ const AgregarActividad: React.FC = () => {
                     Cancelar
                   </Button>
 
-                  <Button variant="primary" type="submit" disabled={isLoading}>
+                  <Button 
+                    variant="warning" 
+                    type="submit" 
+                    disabled={isLoading || !hayTareasCambiadas()}
+                  >
                     {isLoading ? (
                       <>
                         <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2" />
-                        Guardando...
+                        Actualizando...
                       </>
                     ) : (
-                      'Guardar Actividades y Tareas'
+                      'Actualizar Tareas'
                     )}
                   </Button>
                 </Col>
@@ -332,23 +404,23 @@ const AgregarActividad: React.FC = () => {
             {/* Modal de Confirmación */}
             <Modal show={showConfirmModal} onHide={handleCloseModals} centered>
               <Modal.Header closeButton>
-                <Modal.Title>Confirmar Guardado</Modal.Title>
+                <Modal.Title>Confirmar Actualización</Modal.Title>
               </Modal.Header>
               <Modal.Body>
-                <p>Debe guardar las actividades y tareas de TODOS los POA's, no se pueden cambiar hasta ser revisadas por la Dirección de Investigación. ¿Desea continuar?</p>
+                <p>¿Está seguro de que desea actualizar las tareas modificadas? Los cambios se aplicarán inmediatamente.</p>
               </Modal.Body>
               <Modal.Footer>
-                <Button variant="danger" onClick={handleCloseModals}>
-                  Volver
+                <Button variant="secondary" onClick={handleCloseModals}>
+                  Cancelar
                 </Button>
-                <Button variant="success" onClick={handleGuardarDatos} disabled={isLoading}>
+                <Button variant="warning" onClick={handleGuardarCambios} disabled={isLoading}>
                   {isLoading ? (
                     <>
                       <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" className="me-2" />
-                      Guardando...
+                      Actualizando...
                     </>
                   ) : (
-                    'Guardar'
+                    'Confirmar Actualización'
                   )}
                 </Button>
               </Modal.Footer>
@@ -357,32 +429,19 @@ const AgregarActividad: React.FC = () => {
             {/* Modal de Éxito */}
             <Modal show={showSuccessModal} onHide={handleCloseModals} centered>
               <Modal.Header closeButton>
-                <Modal.Title>Éxito</Modal.Title>
+                <Modal.Title>Actualización Exitosa</Modal.Title>
               </Modal.Header>
               <Modal.Body>
-                <p>Actividades y Tareas guardadas exitosamente</p>
+                <p>Las tareas han sido actualizadas exitosamente</p>
               </Modal.Body>
               <Modal.Footer>
                 <Button variant="primary" onClick={handleVolverDashboard}>
                   Volver al Inicio
                 </Button>
-                {datosGuardados && (
-                  <ExportarPOA
-                    codigoProyecto={proyectoSeleccionado?.codigo_proyecto || ''}
-                    poas={poasProyecto.map(poa => ({
-                      id_poa: poa.id_poa,
-                      codigo_poa: poa.codigo_poa,
-                      anio_ejecucion: poa.anio_ejecucion,
-                      presupuesto_asignado: poa.presupuesto_asignado
-                    }))}
-                    actividadesYTareas={actividadesYTareasCreadas}
-                    onExport={() => showSuccess("POA exportado correctamente")}
-                  />
-                )}
               </Modal.Footer>
             </Modal>
 
-            {/* Modal para agregar/editar tareas */}
+            {/* Modal para editar tareas */}
             <TareaModal
               show={showTareaModal}
               onHide={() => setShowTareaModal(false)}
@@ -426,4 +485,4 @@ const AgregarActividad: React.FC = () => {
   );
 };
 
-export default AgregarActividad;
+export default EditarActividad;

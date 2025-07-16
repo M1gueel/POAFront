@@ -6,6 +6,7 @@ import { actividadAPI } from '../api/actividadAPI';
 import { tareaAPI } from '../api/tareaAPI';
 import { showError, showSuccess } from '../utils/toast';
 import { ProgramacionMensualOut } from '../interfaces/tarea';
+import { ordenarActividadesSegunConfiguracion } from '../utils/ordenarActividades';
 
 interface ExportarPOAProyectoProps {
   codigoProyecto: string;
@@ -159,10 +160,13 @@ const ExportarPOAProyecto: React.FC<ExportarPOAProyectoProps> = ({
       // 1. Obtener actividades del POA
       const actividadesData = await actividadAPI.getActividadesPorPOA(poa.id_poa);
       
-      // 2. Para cada actividad, obtener sus tareas
+      // *** ORDENAR ACTIVIDADES SEGÚN LA CONFIGURACIÓN ANTES DE OBTENER TAREAS ***
+      const actividadesOrdenadas = await ordenarActividadesSegunConfiguracion(actividadesData, poa.codigo_poa);
+      
+      // 2. Para cada actividad ordenada, obtener sus tareas
       const actividadesConTareas: ActividadConTareasYProgramacion[] = [];
       
-      for (const actividad of actividadesData) {
+      for (const actividad of actividadesOrdenadas) {
         try {
           // Obtener tareas de la actividad
           const tareasData = await tareaAPI.getTareasPorActividad(actividad.id_actividad);
@@ -247,6 +251,7 @@ const ExportarPOAProyecto: React.FC<ExportarPOAProyectoProps> = ({
         }
       }
       
+      // Las actividades ya están ordenadas, solo las retornamos
       return actividadesConTareas;
       
     } catch (error) {

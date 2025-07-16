@@ -72,9 +72,10 @@ export interface LimiteActividadesTipoPoa {
 
 export interface TareaForm {
   tempId: string;
+  id_tarea_real?: string; // Para editar tareas existentes
   id_detalle_tarea: string;
   nombre: string;
-  detalle_descripcion: string;
+  detalle_descripcion?: string;
   cantidad: number;
   precio_unitario: number;
   total?: number;

@@ -6,7 +6,7 @@ import { Tarea, ProgramacionMensualOut, ItemPresupuestario } from '../interfaces
 import { actividadAPI } from '../api/actividadAPI';
 import { tareaAPI } from '../api/tareaAPI';
 import { showWarning } from '../utils/toast';
-import { getActividadesPorTipoPOA } from '../utils/listaActividades.ts'; // Importar la función de utilidad
+import { ordenarActividadesSegunConfiguracion } from '../utils/ordenarActividades';
 
 interface VerPOAProps {
   poa: POA;
@@ -84,44 +84,6 @@ const VerPOA: React.FC<VerPOAProps> = ({ poa }) => {
     }
   };
 
-  // Función para obtener el tipo de POA desde el código
-  const obtenerTipoPOA = (codigoPOA: string): string => {
-    // Extraer el tipo del código POA (ej: "PIM-2024-001" -> "PIM")
-    const partes = codigoPOA.split('-');
-    return partes[0] || '';
-  };
-
-  // Función para ordenar actividades según la configuración
-  const ordenarActividadesSegunConfiguracion = (actividades: ActividadConTareasYProgramacion[], tipoPOA: string): ActividadConTareasYProgramacion[] => {
-    const actividadesConfiguracion = getActividadesPorTipoPOA(tipoPOA);
-    
-    // Crear un mapa de descripción -> índice de orden
-    const ordenMap = new Map<string, number>();
-    actividadesConfiguracion.forEach((actConfig, index) => {
-      ordenMap.set(actConfig.descripcion, index);
-    });
-
-    // Ordenar actividades según la configuración
-    const actividadesOrdenadas = [...actividades].sort((a, b) => {
-      const ordenA = ordenMap.get(a.descripcion_actividad);
-      const ordenB = ordenMap.get(b.descripcion_actividad);
-      
-      // Si ambas actividades están en la configuración, usar el orden definido
-      if (ordenA !== undefined && ordenB !== undefined) {
-        return ordenA - ordenB;
-      }
-      
-      // Si solo una está en la configuración, la que está va primero
-      if (ordenA !== undefined) return -1;
-      if (ordenB !== undefined) return 1;
-      
-      // Si ninguna está en la configuración, mantener orden original
-      return 0;
-    });
-
-    return actividadesOrdenadas;
-  };
-
   useEffect(() => {
     const cargarDatosPOA = async () => {
       try {
@@ -131,10 +93,13 @@ const VerPOA: React.FC<VerPOAProps> = ({ poa }) => {
         // 1. Obtener actividades del POA
         const actividadesData = await actividadAPI.getActividadesPorPOA(poa.id_poa);
         
-        // 2. Para cada actividad, obtener sus tareas
+        // *** ORDENAR ACTIVIDADES SEGÚN LA CONFIGURACIÓN ANTES DE OBTENER TAREAS ***
+        const actividadesOrdenadas = await ordenarActividadesSegunConfiguracion(actividadesData, poa.codigo_poa);
+        
+        // 2. Para cada actividad ordenada, obtener sus tareas
         const actividadesConTareas: ActividadConTareasYProgramacion[] = [];
         
-        for (const actividad of actividadesData) {
+        for (const actividad of actividadesOrdenadas) {
           try {
             // Obtener tareas de la actividad
             const tareasData = await tareaAPI.getTareasPorActividad(actividad.id_actividad);
@@ -204,11 +169,8 @@ const VerPOA: React.FC<VerPOAProps> = ({ poa }) => {
           }
         }
         
-        // *** ORDENAR ACTIVIDADES SEGÚN LA CONFIGURACIÓN ***
-        const tipoPOA = obtenerTipoPOA(poa.codigo_poa);
-        const actividadesOrdenadas = ordenarActividadesSegunConfiguracion(actividadesConTareas, tipoPOA);
-        
-        setActividades(actividadesOrdenadas);
+        // Las actividades ya están ordenadas, solo las asignamos
+        setActividades(actividadesConTareas);
         
       } catch (err) {
         console.error('Error al cargar datos del POA:', err);

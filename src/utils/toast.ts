@@ -1,61 +1,30 @@
-import { toast, ToastOptions } from 'react-toastify';
+import { toast } from 'react-toastify';
 
-// Configuración por defecto para todos los toasts
-const defaultToastOptions: ToastOptions = {
-  position: "top-right",
-  autoClose: 5000,
-  hideProgressBar: false,
-  closeOnClick: true,
-  pauseOnHover: true,
-  draggable: true,
+export const showSuccess = (message: string) => {
+  toast.success(message);
 };
 
-// Función para mostrar mensajes de error
-export const showError = (message: string, options?: ToastOptions) => {
-  toast.error(message, {
-    ...defaultToastOptions,
-    ...options,
+export const showError = (message: string) => {
+  toast.error(message);
+};
+
+export const showWarning = (message: string) => {
+  toast.warning(message);
+};
+
+export const showInfo = (message: string) => {
+  toast.info(message);
+};
+
+export const showLoadingToast = (message: string) => {
+  return toast.loading(message);
+};
+
+export const updateToast = (toastId: any, message: string, type: 'success' | 'error' | 'info' | 'warning') => {
+  toast.update(toastId, {
+    render: message,
+    type: type,
+    isLoading: false,
+    autoClose: 5000
   });
-};
-
-// Función para mostrar mensajes de éxito
-export const showSuccess = (message: string, options?: ToastOptions) => {
-  toast.success(message, {
-    ...defaultToastOptions,
-    ...options,
-  });
-};
-
-// Función para mostrar mensajes de advertencia
-export const showWarning = (message: string, options?: ToastOptions) => {
-  toast.warning(message, {
-    ...defaultToastOptions,
-    ...options,
-  });
-};
-
-// Función para mostrar mensajes informativos
-export const showInfo = (message: string, options?: ToastOptions) => {
-  toast.info(message, {
-    ...defaultToastOptions,
-    ...options,
-  });
-};
-
-// Función para mostrar toast personalizado
-export const showCustomToast = (message: string, options?: ToastOptions) => {
-  toast(message, {
-    ...defaultToastOptions,
-    ...options,
-  });
-};
-
-// Función para limpiar todos los toasts
-export const clearAllToasts = () => {
-  toast.dismiss();
-};
-
-// Función para configurar opciones globales (opcional)
-export const configureToast = (newDefaults: Partial<ToastOptions>) => {
-  Object.assign(defaultToastOptions, newDefaults);
 };
